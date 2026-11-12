@@ -118,17 +118,16 @@ public static class Dependencies
         finally { try { File.Delete(temp); } catch (IOException) { } catch (UnauthorizedAccessException) { } }
     }
 
+    /// <summary>Valid, trusted Authenticode signature over the file as downloaded, and the signer is Microsoft.</summary>
     static bool SignedByMicrosoft(string file)
     {
+        if (!Authenticode.IsTrusted(file)) return false;
         try
         {
 #pragma warning disable SYSLIB0057
             using var cert = new X509Certificate2(X509Certificate.CreateFromSignedFile(file));
 #pragma warning restore SYSLIB0057
-            if (!cert.Subject.Contains("O=Microsoft Corporation", StringComparison.Ordinal)) return false;
-            using var chain = new X509Chain();
-            chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;   // proxies often block revocation lookups
-            return chain.Build(cert);
+            return cert.Subject.Contains("O=Microsoft Corporation", StringComparison.Ordinal);
         }
         catch (CryptographicException) { return false; }
     }

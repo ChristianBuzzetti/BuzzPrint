@@ -84,10 +84,10 @@ public partial class App : Application
         RegisterHotkeys();
         main.RefreshShortcuts();
         if (Array.IndexOf(e.Args, "--tray") < 0) main.Show();
+        else Toast(L.T("BuzzPrint está activo"), CaptureHotkeyText + " " + L.T("para capturar") + " · " + Store.Settings.HotkeyPick + " " + L.T("para elegir una captura"));
         // WebView2 (Boberto, Studio) ships with Windows 11; on a PC without it, offer Microsoft's installer once.
         if (!Dependencies.WebView2Installed() && !Store.Settings.WebView2Declined)
             Dispatcher.BeginInvoke(async () => await OfferWebView2Async(), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
-        else Toast(L.T("BuzzPrint está activo"), CaptureHotkeyText + " " + L.T("para capturar") + " · " + Store.Settings.HotkeyPick + " " + L.T("para elegir una captura"));
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -98,8 +98,7 @@ public partial class App : Application
         base.OnExit(e);
     }
 
-    // ------------------------------------------------------------------ language
-    /// <summary>Saves the language and restarts BuzzPrint so every window is rebuilt in it.</summary>
+    // ------------------------------------------------------------------ components
     /// <summary>Installs WebView2 if the person agrees, then restarts so Boberto loads; declining is remembered.</summary>
     public async Task OfferWebView2Async()
     {
@@ -126,6 +125,8 @@ public partial class App : Application
         ExitApp();
     }
 
+    // ------------------------------------------------------------------ language
+    /// <summary>Saves the language and restarts BuzzPrint so every window is rebuilt in it.</summary>
     public void SetLanguage(string lang)
     {
         if (lang == L.Lang) return;
