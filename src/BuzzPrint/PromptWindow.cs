@@ -50,22 +50,29 @@ public sealed class PromptWindow : Window
         PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) Close(); };
     }
 
-    public static string? Ask(Window owner, string title, string message, string value)
+    /// <summary>Owner only when it is on screen; otherwise the dialog centers on the screen.</summary>
+    PromptWindow Owned(Window? owner)
     {
-        var w = new PromptWindow(title, message, value, L.T("Guardar"), true) { Owner = owner };
+        if (owner != null && owner.IsVisible) Owner = owner; else WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        return this;
+    }
+
+    public static string? Ask(Window? owner, string title, string message, string value)
+    {
+        var w = new PromptWindow(title, message, value, L.T("Guardar"), true) .Owned(owner);
         w.ShowDialog();
         return w.accepted ? w.input!.Text : null;
     }
 
-    public static bool Confirm(Window owner, string title, string message, string primary, string? cancelText = null)
+    public static bool Confirm(Window? owner, string title, string message, string primary, string? cancelText = null)
     {
-        var w = new PromptWindow(title, message, null, primary, true, cancelText) { Owner = owner };
+        var w = new PromptWindow(title, message, null, primary, true, cancelText) .Owned(owner);
         w.ShowDialog();
         return w.accepted;
     }
 
-    public static void Info(Window owner, string title, string message)
+    public static void Info(Window? owner, string title, string message)
     {
-        new PromptWindow(title, message, null, L.Es ? "Listo" : "OK", false) { Owner = owner }.ShowDialog();
+        new PromptWindow(title, message, null, L.Es ? "Listo" : "OK", false) .Owned(owner).ShowDialog();
     }
 }

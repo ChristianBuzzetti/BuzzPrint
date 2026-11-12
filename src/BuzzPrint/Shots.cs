@@ -20,6 +20,8 @@ static class Shots
         string dir = App.ShotDir!;
         Directory.CreateDirectory(dir);
         var log = new List<string>();
+        var keepSectionsAll = new List<string>(Store.Settings.Sections ?? new List<string>());
+        string keepGroupAll = Store.Settings.LibraryGroupBy;
         try
         {
             Store.CaptureDir = Path.Combine(dir, "library");
@@ -37,12 +39,33 @@ static class Shots
             main.WindowState = WindowState.Normal;
             await Task.Delay(9000);
             Save(main, Path.Combine(dir, "01-library.png"), log);
+            // Default names, sections and grouping (the person's section list and grouping are restored at the end).
+            log.Add("default name: " + Store.DefaultName("Región", new DateTime(2026, 11, 12, 16, 5, 33)) + " | " + Store.DefaultName("DBMON SQL — Workspace: master", DateTime.Now));
+            var seeded = Store.All().OrderBy(x => x.Created).ToList();
+            Store.SetSection(seeded.Take(3), "Proyecto DBMON");
+            Store.SetSection(seeded.Skip(3).Take(2), "Boberto");
+            main.ShotView("section");
+            await Task.Delay(1500);
+            Save(main, Path.Combine(dir, "01b-library-sections.png"), log);
+            main.ShotView("day", "Proyecto DBMON");
+            await Task.Delay(1200);
+            Save(main, Path.Combine(dir, "01c-library-day-filtered.png"), log);
+            main.ShotView("none");
 
             EditorWindow.Open(Store.All().Skip(1).First());
             await Task.Delay(800);
             EditorWindow.Instance!.DemoAnnotate();
             await Task.Delay(1200);
             Save(EditorWindow.Instance!, Path.Combine(dir, "02-editor.png"), log);
+            // Saving an edit keeps the original as it was and adds "<name>_editada".
+            Store.Settings.EditKeepOriginal = true;
+            var before = Store.All().Count;
+            var original = EditorWindow.Instance!.Current!;
+            long originalBytes = new FileInfo(original.Path).Length;
+            EditorWindow.Instance!.SaveForShot();
+            var after = Store.All();
+            var copy = EditorWindow.Instance!.Current!;
+            log.Add("keep original: " + before + " -> " + after.Count + " captures, original unchanged=" + (new FileInfo(original.Path).Length == originalBytes && !File.Exists(original.OrigPath)) + ", copy=" + copy.Display + " edited=" + File.Exists(copy.OrigPath));
 
             var quick = QuickPickWindow.ForShot();
             quick.Show();
@@ -143,6 +166,7 @@ static class Shots
             log.Add("OK");
         }
         catch (Exception ex) { log.Add("FAIL " + ex); }
+        try { Store.Settings.Sections = keepSectionsAll; Store.Settings.LibraryGroupBy = keepGroupAll; Store.SaveSettings(); } catch { }
         File.WriteAllLines(Path.Combine(dir, "shots.log"), log);
         App.Current.ExitApp();
     }

@@ -84,6 +84,10 @@
                 <MenuItem Header="{local:T 'Seleccionar todo'}" InputGestureText="Ctrl+A" Click="SelectAllClick"/>
                 <MenuItem Header="{local:T 'Seleccionar las de hoy'}" Click="SelectTodayClick"/>
                 <MenuItem Header="{local:T 'Exportar las de hoy…'}" Click="ExportTodayClick"/>
+                <Separator/>
+                <MenuItem Header="{local:T 'Nueva sección…'}" Click="NewSectionClick"/>
+                <MenuItem Header="{local:T 'Renombrar sección…'}" Click="RenameSectionClick"/>
+                <MenuItem Header="{local:T 'Eliminar sección…'}" Click="DeleteSectionClick"/>
                 <MenuItem Header="{local:T 'Mostrar en carpeta'}" Click="RevealClick"/>
                 <MenuItem Header="{local:T 'Abrir carpeta de capturas'}" Click="FolderClick"/>
               </MenuItem>
@@ -98,7 +102,7 @@
                   <MenuItem x:Name="LangEsMenu" Header="Español" IsCheckable="True" Click="LangEsClick"/>
                 </MenuItem>
               </MenuItem>
-              <MenuItem Header="{local:T 'Ayuda'}" Tag="&#xE897;"><MenuItem Header="{local:T 'Acerca de BuzzPrint'}" Click="AboutClick"/></MenuItem>
+              <MenuItem Header="{local:T 'Ayuda'}" Tag="&#xE897;"><MenuItem Header="{local:T 'Revisar componentes…'}" Click="ComponentsClick"/><MenuItem Header="{local:T 'Acerca de BuzzPrint'}" Click="AboutClick"/></MenuItem>
             </Menu>
             <Border Padding="{DynamicResource ToolbarPadding}">
               <StackPanel x:Name="CommandToolbar" Orientation="Horizontal" ClipToBounds="True">
@@ -160,6 +164,7 @@
             <StackPanel Orientation="Horizontal" Margin="0,0,0,10"><TextBlock Text="&#x259A;" Foreground="{DynamicResource Accent}" FontSize="10" Margin="0,0,7,0" VerticalAlignment="Center"/><TextBlock Style="{StaticResource SectionLabel}" Text="{local:T 'DESPUÉS DE CAPTURAR'}"/></StackPanel>
             <Border BorderBrush="{DynamicResource AccentRowRule}" BorderThickness="0,0,0,1" Padding="0,8,0,10"><DockPanel><CheckBox x:Name="CopyToggle" DockPanel.Dock="Right" Margin="12,0,0,0" Click="OptionChanged"/><StackPanel><TextBlock Text="{local:T 'Copiar al portapapeles'}" FontWeight="SemiBold"/><TextBlock Text="{local:T 'Lista para pegar con Ctrl+V'}" Foreground="{DynamicResource Muted}" FontSize="{DynamicResource SmallFontSize}" TextWrapping="Wrap"/></StackPanel></DockPanel></Border>
             <Border BorderBrush="{DynamicResource AccentRowRule}" BorderThickness="0,0,0,1" Padding="0,10"><DockPanel><CheckBox x:Name="EditorToggle" DockPanel.Dock="Right" Margin="12,0,0,0" Click="OptionChanged"/><StackPanel><TextBlock Text="{local:T 'Abrir en el editor'}" FontWeight="SemiBold"/><TextBlock Text="{local:T 'Para anotar apenas capturás'}" Foreground="{DynamicResource Muted}" FontSize="{DynamicResource SmallFontSize}" TextWrapping="Wrap"/></StackPanel></DockPanel></Border>
+            <Border BorderBrush="{DynamicResource AccentRowRule}" BorderThickness="0,0,0,1" Padding="0,10"><DockPanel><CheckBox x:Name="KeepOriginalToggle" DockPanel.Dock="Right" Margin="12,0,0,0" Click="OptionChanged"/><StackPanel><TextBlock Text="{local:T 'Conservar la original al editar'}" FontWeight="SemiBold"/><TextBlock Text="{local:T 'La versión anotada se guarda como otra captura'}" Foreground="{DynamicResource Muted}" FontSize="{DynamicResource SmallFontSize}" TextWrapping="Wrap"/></StackPanel></DockPanel></Border>
             <Border BorderBrush="{DynamicResource AccentRowRule}" BorderThickness="0,0,0,1" Padding="0,10"><DockPanel><CheckBox x:Name="PasteToggle" DockPanel.Dock="Right" Margin="12,0,0,0" Click="OptionChanged"/><StackPanel><TextBlock Text="{local:T 'Pegar al elegir del menú'}" FontWeight="SemiBold"/><TextBlock Text="{local:T 'El menú rápido pega en la ventana donde estabas'}" Foreground="{DynamicResource Muted}" FontSize="{DynamicResource SmallFontSize}" TextWrapping="Wrap"/></StackPanel></DockPanel></Border>
             <Border Padding="0,10,0,4"><DockPanel><CheckBox x:Name="StartupToggle" DockPanel.Dock="Right" Margin="12,0,0,0" Click="OptionChanged"/><StackPanel><TextBlock Text="{local:T 'Iniciar con Windows'}" FontWeight="SemiBold"/><TextBlock Text="{local:T 'Arranca en la bandeja del sistema'}" Foreground="{DynamicResource Muted}" FontSize="{DynamicResource SmallFontSize}" TextWrapping="Wrap"/></StackPanel></DockPanel></Border>
             <StackPanel Orientation="Horizontal" Margin="0,22,0,10"><TextBlock Text="&#x259A;" Foreground="{DynamicResource Accent}" FontSize="10" Margin="0,0,7,0" VerticalAlignment="Center"/><TextBlock Style="{StaticResource SectionLabel}" Text="{local:T 'GRABACIÓN'}"/></StackPanel>
@@ -205,9 +210,48 @@
               </TabControl>
             </DockPanel>
           </Border>
+          <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource FaintBorder}" BorderThickness="0,0,0,1" Padding="14,8,16,8">
+            <DockPanel>
+              <Button DockPanel.Dock="Right" Click="NewSectionClick" ToolTip="{local:T 'Crear una sección para agrupar capturas a tu gusto'}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource GlyphText}" Text="&#xE710;" FontSize="11" Margin="0,0,7,0"/><TextBlock Text="{local:T 'Nueva sección'}" VerticalAlignment="Center"/></StackPanel></Button>
+              <WrapPanel VerticalAlignment="Center">
+                <TextBlock Text="{local:T 'DÍA'}" Style="{StaticResource SectionLabel}" Margin="0,0,8,0"/><ComboBox x:Name="DayFilter" Width="190" Margin="0,0,18,0" SelectionChanged="SubFilterChanged"/>
+                <TextBlock Text="{local:T 'SECCIÓN'}" Style="{StaticResource SectionLabel}" Margin="0,0,8,0"/><ComboBox x:Name="SectionFilter" Width="200" Margin="0,0,18,0" SelectionChanged="SubFilterChanged"/>
+                <TextBlock Text="{local:T 'AGRUPAR'}" Style="{StaticResource SectionLabel}" Margin="0,0,8,0"/><ComboBox x:Name="GroupByBox" Width="150" SelectionChanged="SubFilterChanged"/>
+              </WrapPanel>
+            </DockPanel>
+          </Border>
           <Grid>
-            <ListBox x:Name="Library" Background="Transparent" BorderThickness="0" Padding="14,14,0,0" SelectionMode="Extended" ItemContainerStyle="{StaticResource CaptureCard}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" MouseDoubleClick="LibraryDoubleClick" SelectionChanged="LibrarySelectionChanged" PreviewMouseLeftButtonDown="LibraryMouseDown" PreviewMouseMove="LibraryMouseMove" VirtualizingPanel.IsVirtualizing="False">
+            <ListBox x:Name="Library" ContextMenuOpening="LibraryMenuOpening" Background="Transparent" BorderThickness="0" Padding="14,14,0,0" SelectionMode="Extended" ItemContainerStyle="{StaticResource CaptureCard}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" MouseDoubleClick="LibraryDoubleClick" SelectionChanged="LibrarySelectionChanged" PreviewMouseLeftButtonDown="LibraryMouseDown" PreviewMouseMove="LibraryMouseMove" VirtualizingPanel.IsVirtualizing="False">
               <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
+              <ListBox.GroupStyle>
+                <GroupStyle>
+                  <GroupStyle.ContainerStyle>
+                    <Style TargetType="GroupItem">
+                      <Setter Property="Template"><Setter.Value>
+                        <ControlTemplate TargetType="GroupItem">
+                          <DockPanel Margin="0,0,14,6">
+                            <ToggleButton x:Name="Fold" DockPanel.Dock="Top" IsChecked="True" Cursor="Hand" Focusable="False" Margin="0,2,0,8">
+                              <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
+                                <Border Background="Transparent" BorderBrush="{DynamicResource AccentRowRule}" BorderThickness="0,0,0,1" Padding="2,4,2,6">
+                                  <StackPanel Orientation="Horizontal">
+                                    <TextBlock x:Name="Chevron" Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="&#x259A;" Foreground="{DynamicResource Accent}" FontSize="10" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource Ink}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding ItemCount}" FontFamily="{DynamicResource MonoFont}" FontSize="{DynamicResource SmallFontSize}" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                  </StackPanel>
+                                </Border>
+                                <ControlTemplate.Triggers><Trigger Property="IsChecked" Value="False"><Setter TargetName="Chevron" Property="Text" Value="&#xE76C;"/></Trigger></ControlTemplate.Triggers>
+                              </ControlTemplate></ToggleButton.Template>
+                            </ToggleButton>
+                            <ItemsPresenter x:Name="Items"/>
+                          </DockPanel>
+                          <ControlTemplate.Triggers><Trigger SourceName="Fold" Property="IsChecked" Value="False"><Setter TargetName="Items" Property="Visibility" Value="Collapsed"/></Trigger></ControlTemplate.Triggers>
+                        </ControlTemplate>
+                      </Setter.Value></Setter>
+                    </Style>
+                  </GroupStyle.ContainerStyle>
+                </GroupStyle>
+              </ListBox.GroupStyle>
               <ListBox.ContextMenu>
                 <ContextMenu>
                   <MenuItem x:Name="CtxCopy" Header="{local:T 'Copiar imagen'}" InputGestureText="Ctrl+C" Click="CopyClick"/>
@@ -217,6 +261,7 @@
                   <MenuItem Header="{local:T 'Fijar / soltar'}" InputGestureText="Ctrl+P" Click="PinClick"/>
                   <MenuItem Header="{local:T 'Mostrar en carpeta'}" Click="RevealClick"/>
                   <Separator/>
+                  <MenuItem x:Name="CtxSection" Header="{local:T 'Mover a sección'}"/>
                   <MenuItem x:Name="CtxExport" Header="{local:T 'Exportar a PowerPoint, Word o PDF…'}" InputGestureText="Ctrl+E" Click="ExportClick"/>
                   <MenuItem x:Name="CtxStitch" Header="{local:T 'Copiar como una sola imagen'}" InputGestureText="Ctrl+Shift+C" Click="CopyStitchedClick"/>
                   <Separator/>

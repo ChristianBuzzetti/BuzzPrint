@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -7,9 +7,9 @@
     <AssemblyName>BuzzPrint</AssemblyName>
     <RootNamespace>BuzzPrint</RootNamespace>
     <Product>BuzzPrint</Product>
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
     <Authors>Christian Buzzetti</Authors>
-    <Description>BuzzPrint: capturas de pantalla con biblioteca, menú rápido y editor, con el aspecto de DBMON.</Description>
+    <Description>BuzzPrint: capturas de pantalla con biblioteca, menÃº rÃ¡pido y editor, con el aspecto de DBMON.</Description>
     <ApplicationIcon>Assets\buzzprint.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Nullable>enable</Nullable>

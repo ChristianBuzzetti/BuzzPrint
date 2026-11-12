@@ -272,6 +272,8 @@ public partial class EditorWindow : Window
         CommitText();
         try
         {
+            // First save of an untouched capture: keep it as it was and save the annotated version as a new capture.
+            if (Store.Settings.EditKeepOriginal && !File.Exists(item.OrigPath)) { SaveAsCopy(); return; }
             baseImg.Save(item.OrigPath, D.Imaging.ImageFormat.Png);
             var meta = Store.ReadMeta(item) ?? new Dictionary<string, object>();
             meta["shapes"] = shapes.Select(s => (object)s.ToDict()).ToList();
@@ -284,6 +286,30 @@ public partial class EditorWindow : Window
             UpdateInfo();
         }
         catch (Exception ex) { PromptWindow.Info(this, L.T("No se pudo guardar"), ex.Message); }
+    }
+
+    /// <summary>Saves the annotated image as a new library capture "<name>_editada" (annotations stay editable on the
+    /// copy) and switches the editor to it; the original capture is not touched.</summary>
+    void SaveAsCopy()
+    {
+        var original = item!;
+        CaptureItem copy;
+        using (var final = RenderFinal()) copy = Store.Add(final, original.Source);
+        baseImg!.Save(copy.OrigPath, D.Imaging.ImageFormat.Png);
+        var meta = Store.ReadMeta(copy) ?? new Dictionary<string, object>();
+        meta["title"] = original.Display + (L.Es ? "_editada" : "_edited");
+        meta["editedFrom"] = original.Id;
+        meta["shapes"] = shapes.Select(s => (object)s.ToDict()).ToList();
+        if (!string.IsNullOrEmpty(original.Section)) meta["section"] = original.Section;
+        Store.WriteMeta(copy, meta);
+        Store.RaiseChanged();
+        item = Store.All().FirstOrDefault(x => x.Id == copy.Id) ?? copy;
+        dirty = false;
+        DocTitle.Text = item.Display;
+        Title = DocTitle.Text + " · Editor · BuzzPrint";
+        StatusText.Text = L.T("Guardada como copia · la original quedó intacta · ") + item.Display;
+        RefreshTray();
+        UpdateInfo();
     }
 
     void ExportClick(object sender, RoutedEventArgs e)
@@ -618,6 +644,8 @@ public partial class EditorWindow : Window
 
     /// <summary>--shot only: a representative set of annotations on the open capture.</summary>
     internal void Discard() => dirty = false;
+    internal void SaveForShot() => Save();
+    internal CaptureItem? Current => item;
 
     internal void DemoAnnotate()
     {

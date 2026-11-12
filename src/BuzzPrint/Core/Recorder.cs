@@ -42,6 +42,7 @@ public sealed class Recorder
     {
         string bundled = Path.Combine(AppContext.BaseDirectory, "tools", "ffmpeg.exe");
         if (File.Exists(bundled)) return bundled;
+        if (File.Exists(Dependencies.FFmpegHome)) return Dependencies.FFmpegHome;   // downloaded by the app
         foreach (var dir in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(';'))
             try { string p = Path.Combine(dir.Trim(), "ffmpeg.exe"); if (dir.Length > 0 && File.Exists(p)) return p; } catch (ArgumentException) { }
         string winget = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "WinGet", "Links", "ffmpeg.exe");
@@ -213,7 +214,8 @@ public sealed class Recorder
         else
             await RunAsync(exe, "-hide_banner -y -i " + Q(output) + " -filter_complex \"showwavespic=s=640x260:split_channels=0:colors=" + accent + "\" -frames:v 1 " + Q(thumb));
 
-        var meta = new Dictionary<string, object> { { "source", Source }, { "duration", Math.Round(seconds, 1) }, { "kind", Kind == RecordKind.Video ? "video" : "audio" } };
+        var meta = new Dictionary<string, object> { { "source", Source }, { "duration", Math.Round(seconds, 1) }, { "kind", Kind == RecordKind.Video ? "video" : "audio" },
+            { "title", Store.DefaultName(Source, DateTime.Now, Kind == RecordKind.Video ? "Video" : "Audio") } };
         var tracksText = new List<string>();
         if (tracks.Count > 0) { if (sys != null && sys.HasData) tracksText.Add("system"); if (mic != null && mic.HasData) tracksText.Add("mic"); }
         meta["audio"] = string.Join("+", tracksText);

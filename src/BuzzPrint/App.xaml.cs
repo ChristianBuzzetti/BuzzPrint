@@ -41,7 +41,7 @@ public partial class App : Application
         IsShot = shotDir != null;
         if (IsShot) ShotDir = shotDir!.Length > 0 ? shotDir : Path.GetTempPath();
 
-        if (!IsShot && iconDir == null)
+        if (!IsShot && iconDir == null && Array.IndexOf(e.Args, "--fetch-ffmpeg") < 0)
         {
             mutex = new Mutex(false, "BuzzPrint_single_instance");
             bool owned;
@@ -61,6 +61,19 @@ public partial class App : Application
         LoadAppearance();
         EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent, new RoutedEventHandler((sender, _) => Themes.ApplyChrome((Window)sender, Themes.Current)));
         if (iconDir != null) { _ = IconMaker.RunAsync(iconDir.Length > 0 ? iconDir : Path.GetTempPath()); return; }
+        // --fetch-ffmpeg LOG: download FFmpeg without asking (support and tests); writes the result to LOG and exits.
+        if (Arg(e.Args, "--fetch-ffmpeg") is string fetchLog)
+        {
+            Dispatcher.BeginInvoke(async () =>
+            {
+                string result;
+                try { result = "OK " + await Dependencies.DownloadFFmpegAsync(null); }
+                catch (Exception ex) { result = "FAIL " + ex.GetType().Name + ": " + ex.Message; }
+                if (fetchLog.Length > 0) File.WriteAllText(fetchLog, result);
+                ExitApp();
+            });
+            return;
+        }
         if (Appearance.BobertoVisible) BobertoRuntime.Prewarm(BobertoRuntime.DefaultProfile);
 
         main = new MainWindow();
@@ -71,6 +84,9 @@ public partial class App : Application
         RegisterHotkeys();
         main.RefreshShortcuts();
         if (Array.IndexOf(e.Args, "--tray") < 0) main.Show();
+        // WebView2 (Boberto, Studio) ships with Windows 11; on a PC without it, offer Microsoft's installer once.
+        if (!Dependencies.WebView2Installed() && !Store.Settings.WebView2Declined)
+            Dispatcher.BeginInvoke(async () => await OfferWebView2Async(), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         else Toast(L.T("BuzzPrint está activo"), CaptureHotkeyText + " " + L.T("para capturar") + " · " + Store.Settings.HotkeyPick + " " + L.T("para elegir una captura"));
     }
 
@@ -84,6 +100,32 @@ public partial class App : Application
 
     // ------------------------------------------------------------------ language
     /// <summary>Saves the language and restarts BuzzPrint so every window is rebuilt in it.</summary>
+    /// <summary>Installs WebView2 if the person agrees, then restarts so Boberto loads; declining is remembered.</summary>
+    public async Task OfferWebView2Async()
+    {
+        if (await Dependencies.OfferWebView2Async(main))
+        {
+            if (PromptWindow.Confirm(main, L.T("WebView2 instalado"), L.T("Reiniciá BuzzPrint para que aparezca Boberto."), L.T("Reiniciar"), L.T("Más tarde"))) Relaunch();
+        }
+        else { Store.Settings.WebView2Declined = true; Store.SaveSettings(); }
+    }
+
+    /// <summary>Help > Check components: offers whatever is missing, or says all is in place.</summary>
+    public async Task CheckComponentsAsync()
+    {
+        bool web = Dependencies.WebView2Installed(), ff = Recorder.FFmpeg() != null;
+        if (web && ff) { PromptWindow.Info(main, L.T("Componentes"), L.T("Todo instalado: WebView2 para Boberto y FFmpeg para grabar.") + "\n\nFFmpeg: " + Recorder.FFmpeg()); return; }
+        if (!ff && await Dependencies.OfferFFmpegAsync(main) != null) PromptWindow.Info(main, L.T("FFmpeg listo"), L.T("Ya podés grabar video y audio."));
+        if (!web) { Store.Settings.WebView2Declined = false; await OfferWebView2Async(); }
+    }
+
+    void Relaunch()
+    {
+        try { Process.Start(new ProcessStartInfo(Environment.ProcessPath!, "--relaunch") { UseShellExecute = false }); }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { return; }
+        ExitApp();
+    }
+
     public void SetLanguage(string lang)
     {
         if (lang == L.Lang) return;
@@ -314,6 +356,8 @@ public partial class App : Application
     public async void StartRecording(RecordKind kind, Window? hide)
     {
         if (IsRecording || capturing) return;
+        // Recording needs FFmpeg: offer to download it the first time instead of failing.
+        if (Recorder.FFmpeg() == null && (IsShot || await Dependencies.OfferFFmpegAsync(main) == null)) return;
         recordStarting = true;
         bool restore = false;
         try

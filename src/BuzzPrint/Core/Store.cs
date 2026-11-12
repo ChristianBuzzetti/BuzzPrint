@@ -28,6 +28,7 @@ namespace BuzzPrint
         public string ThumbPath;        // recordings: first frame or waveform
         public double Duration;         // recordings, seconds
         public string Note = "";        // free text kept for exports (Word/PowerPoint/PDF)
+        public string Section = "";     // custom library section (empty = none)
         public bool IsRecording { get { return Kind != "image"; } }
 
         public string Display
@@ -44,6 +45,8 @@ namespace BuzzPrint
         public string HotkeyCaptureAlt = "Ctrl+Shift+X";   // used if PrintScreen is taken by Windows
         public bool CopyAfterCapture = true;
         public bool OpenEditorAfterCapture = false;
+        public bool EditKeepOriginal = true;
+        public bool WebView2Declined = false;   // asked once at startup; Help > Check components asks again   // first save of an edit creates "<name>_editada" and leaves the original as it was
         public bool PasteOnPick = true;
         public int DelaySeconds = 3;
         public int QuickPickCount = 12;
@@ -65,6 +68,8 @@ namespace BuzzPrint
         public bool ExportOpen = true;
         public bool ExportSaveText = true;   // titles and notes typed in the export window go back to the library
         public string ExportFolder = "";     // empty = Documents
+        public List<string> Sections = new List<string>();
+        public string LibraryGroupBy = "none";   // none | day | section | source   // custom library sections, in the order the person set
         public string MarkShape = "hex";     // BuzzPrint logo (Personalize → Effects → Logo)
         public string MarkHead = "#0E1015";
         public string MarkEyes = "oval";
@@ -216,6 +221,7 @@ namespace BuzzPrint
                 {
                     object o;
                     if (meta.TryGetValue("title", out o) && o != null) it.Title = o.ToString();
+                    if (meta.TryGetValue("section", out o) && o != null) it.Section = o.ToString();
                     if (meta.TryGetValue("source", out o) && o != null) it.Source = o.ToString();
                     if (meta.TryGetValue("pinned", out o) && o is bool) it.Pinned = (bool)o;
                     if (meta.TryGetValue("note", out o) && o != null) it.Note = o.ToString();
@@ -253,6 +259,7 @@ namespace BuzzPrint
                     {
                         object o;
                         if (meta.TryGetValue("title", out o) && o != null) it.Title = o.ToString();
+                    if (meta.TryGetValue("section", out o) && o != null) it.Section = o.ToString();
                         if (meta.TryGetValue("source", out o) && o != null) it.Source = o.ToString();
                         if (meta.TryGetValue("pinned", out o) && o is bool) it.Pinned = (bool)o;
                         if (meta.TryGetValue("duration", out o) && o != null) { double d; if (double.TryParse(Convert.ToString(o, System.Globalization.CultureInfo.InvariantCulture), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out d)) it.Duration = d; }
@@ -305,6 +312,80 @@ namespace BuzzPrint
             WriteMeta(it, meta);
         }
 
+        /// <summary>Default capture/recording name: kind (or window title) + date, e.g. Region_12_11_2026_16_05_33.
+        /// ASCII and underscores only, so it also works as a file name in exports.</summary>
+        public static string DefaultName(string source, DateTime when, string prefix = null)
+        {
+            if (prefix == null)
+            {
+                if (string.IsNullOrEmpty(source) || source == "Región" || source == "Region") prefix = "Region";
+                else if (source == "Pantalla completa" || source == "Full screen") prefix = L.Es ? "Pantalla" : "Screen";
+                else if (source == "Ventana" || source == "Window") prefix = L.Es ? "Ventana" : "Window";
+                else prefix = source;   // window title
+            }
+            // Strip accents and anything that is not a letter or digit; keep it short.
+            var plain = new System.Text.StringBuilder();
+            foreach (char c in prefix.Normalize(System.Text.NormalizationForm.FormD))
+            {
+                if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) == System.Globalization.UnicodeCategory.NonSpacingMark) continue;
+                if (c < 128 && char.IsLetterOrDigit(c)) plain.Append(c);
+                else if (plain.Length > 0 && plain[plain.Length - 1] != '_') plain.Append('_');
+            }
+            string head = plain.ToString().Trim('_');
+            if (head.Length > 32) head = head.Substring(0, 32).TrimEnd('_');
+            if (head.Length == 0) head = "Captura";
+            return head + "_" + when.ToString("dd_MM_yyyy_HH_mm_ss");
+        }
+
+        // ---- custom sections: a capture belongs to at most one; the list keeps their order (and empty ones).
+        public static List<string> SectionNames()
+        {
+            var names = new List<string>(Settings.Sections ?? new List<string>());
+            foreach (var it in All().Concat(Recordings()))
+                if (it.Section.Length > 0 && !names.Contains(it.Section)) names.Add(it.Section);
+            return names;
+        }
+
+        public static bool AddSection(string name)
+        {
+            name = (name ?? "").Trim();
+            if (name.Length == 0 || SectionNames().Contains(name)) return false;
+            if (Settings.Sections == null) Settings.Sections = new List<string>();
+            Settings.Sections.Add(name);
+            SaveSettings();
+            return true;
+        }
+
+        public static void SetSection(IEnumerable<CaptureItem> items, string name)
+        {
+            name = (name ?? "").Trim();
+            if (name.Length > 0) AddSection(name);
+            foreach (var it in items) UpdateMeta(it, "section", name);
+            RaiseChanged();
+        }
+
+        public static void RenameSection(string from, string to)
+        {
+            to = (to ?? "").Trim();
+            if (to.Length == 0 || from == to) return;
+            var list = Settings.Sections ?? new List<string>();
+            int i = list.IndexOf(from);
+            if (i >= 0) { if (list.Contains(to)) list.RemoveAt(i); else list[i] = to; }
+            else if (!list.Contains(to)) list.Add(to);
+            foreach (var it in All().Concat(Recordings()).Where(x => x.Section == from).ToList()) UpdateMeta(it, "section", to);
+            SaveSettings();
+            RaiseChanged();
+        }
+
+        /// <summary>Removes the section; its captures stay in the library, without a section.</summary>
+        public static void DeleteSection(string name)
+        {
+            Settings.Sections?.Remove(name);
+            foreach (var it in All().Concat(Recordings()).Where(x => x.Section == name).ToList()) UpdateMeta(it, "section", "");
+            SaveSettings();
+            RaiseChanged();
+        }
+
         public static CaptureItem Add(Bitmap bmp, string source)
         {
             string id = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
@@ -316,8 +397,9 @@ namespace BuzzPrint
                 OrigPath = System.IO.Path.Combine(OrigDir, id + ".png"),
                 MetaPath = System.IO.Path.Combine(OrigDir, id + ".json")
             };
-            if (!string.IsNullOrEmpty(source))
-                WriteMeta(it, new Dictionary<string, object> { { "source", source } });
+            var meta = new Dictionary<string, object> { { "title", DefaultName(source, it.Created) } };
+            if (!string.IsNullOrEmpty(source)) meta["source"] = source;
+            WriteMeta(it, meta);
             RaiseChanged();
             return All().FirstOrDefault(x => x.Id == id) ?? it;
         }

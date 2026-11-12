@@ -18,6 +18,7 @@ public sealed class CaptureCard
     public string Meta { get; init; } = "";
     public double CardWidth { get; init; }
     public double ThumbHeight { get; init; }
+    public string Group { get; init; } = "";
     public Visibility PinnedVisibility => Item.Pinned ? Visibility.Visible : Visibility.Collapsed;
     public Visibility EditedVisibility => !Item.IsRecording && File.Exists(Item.OrigPath) ? Visibility.Visible : Visibility.Collapsed;
     public Visibility KindVisibility => Item.IsRecording ? Visibility.Visible : Visibility.Collapsed;
@@ -41,6 +42,7 @@ public partial class MainWindow : Window
         Library.ItemsSource = cards;
         CopyToggle.IsChecked = Store.Settings.CopyAfterCapture;
         EditorToggle.IsChecked = Store.Settings.OpenEditorAfterCapture;
+        KeepOriginalToggle.IsChecked = Store.Settings.EditKeepOriginal;
         PasteToggle.IsChecked = Store.Settings.PasteOnPick;
         StartupToggle.IsChecked = App.StartupEnabled;
         SystemAudioToggle.IsChecked = Store.Settings.RecordSystemAudio;
@@ -211,6 +213,8 @@ public partial class MainWindow : Window
     {
         if (Library == null) return;
         var keep = new HashSet<string>(Selected.Select(x => x.Id));
+        var view = System.Windows.Data.CollectionViewSource.GetDefaultView(cards);
+        view.GroupDescriptions.Clear();
         string q = Search.Text.Trim().ToLowerInvariant();
         bool recordings = Filters.SelectedIndex == 4;
         var all = recordings ? Store.Recordings() : Store.All();
@@ -221,8 +225,13 @@ public partial class MainWindow : Window
             case 2: shown = shown.Where(x => x.Pinned); break;
             case 3: shown = shown.Where(x => File.Exists(x.OrigPath)); break;
         }
-        if (q.Length > 0) shown = shown.Where(it => it.Display.ToLowerInvariant().Contains(q) || it.Source.ToLowerInvariant().Contains(q) || it.Id.Contains(q));
-        var list = shown.ToList();
+        var tabList = shown.ToList();
+        FillSubFilters(tabList);
+        shown = tabList.Where(x => DayMatches(x.Created, dayKey));
+        if (sectionKey == "none") shown = shown.Where(x => x.Section.Length == 0);
+        else if (sectionKey != "all") shown = shown.Where(x => x.Section == sectionKey);
+        if (q.Length > 0) shown = shown.Where(it => it.Display.ToLowerInvariant().Contains(q) || it.Source.ToLowerInvariant().Contains(q) || it.Section.ToLowerInvariant().Contains(q) || it.Id.Contains(q));
+        var list = Arrange(shown).ToList();
         bool compact = appearance.Compact;
         double w = compact ? 210 : 260, th = compact ? 120 : 150;
         CtxCopy.Header = L.T(recordings ? "Copiar archivo" : "Copiar imagen");
@@ -237,9 +246,11 @@ public partial class MainWindow : Window
                 Thumb = it.IsRecording ? (File.Exists(it.ThumbPath) ? Imaging.Thumb(it.ThumbPath, 480) : null) : Imaging.Thumb(it.Path, 480),
                 Title = string.IsNullOrEmpty(it.Title) ? (string.IsNullOrEmpty(it.Source) ? L.T(it.IsRecording ? "Grabación" : "Captura") : it.Source) : it.Title,
                 Meta = it.Created.ToString("dd/MM HH:mm") + (it.Width > 0 ? "  ·  " + it.Width + "×" + it.Height : ""),
-                CardWidth = w, ThumbHeight = th
+                CardWidth = w, ThumbHeight = th,
+                Group = GroupOf(it)
             });
         }
+        if (groupKey != "none") view.GroupDescriptions.Add(new System.Windows.Data.PropertyGroupDescription(nameof(CaptureCard.Group)));
         foreach (var c in cards) if (keep.Contains(c.Item.Id)) Library.SelectedItems.Add(c);
         EmptyState.Visibility = all.Count == 0 ? Visibility.Visible : Visibility.Hidden;   // Hidden keeps its size, so the stage Boberto loads in the background
         EmptyTitle.Text = L.T(recordings ? "Todavía no hay grabaciones" : "Todavía no hay capturas");
@@ -247,6 +258,165 @@ public partial class MainWindow : Window
         SyncEmptyBoberto(all.Count == 0);
         CountText.Text = list.Count == all.Count ? (recordings ? L.Count(all.Count, "GRABACIÓN", "GRABACIONES") : L.Count(all.Count, "CAPTURA", "CAPTURAS")) : L.F("{0} DE {1}", list.Count, all.Count);
         UpdateStatus();
+    }
+
+    // ================================================================== day, section and grouping
+    string dayKey = "any", sectionKey = "all", groupKey = Store.Settings.LibraryGroupBy;
+    internal void ShotView(string group, string section = "all") { groupKey = group; sectionKey = section; Reload(); }
+    bool fillingFilters;
+
+    static bool DayMatches(DateTime when, string key)
+    {
+        var d = when.Date; var today = DateTime.Today;
+        return key switch
+        {
+            "any" => true,
+            "today" => d == today,
+            "yesterday" => d == today.AddDays(-1),
+            "week" => d > today.AddDays(-7),
+            "month" => d.Year == today.Year && d.Month == today.Month,
+            _ => key.StartsWith("d:") && d.ToString("yyyyMMdd") == key[2..]
+        };
+    }
+
+    static string DayLabel(DateTime day)
+    {
+        if (day == DateTime.Today) return L.T("Hoy") + " · " + day.ToString("dd/MM/yyyy");
+        if (day == DateTime.Today.AddDays(-1)) return L.T("Ayer") + " · " + day.ToString("dd/MM/yyyy");
+        string t = day.ToString("dddd dd/MM/yyyy");
+        return char.ToUpper(t[0]) + t[1..];
+    }
+
+    string GroupOf(CaptureItem it) => groupKey switch
+    {
+        "day" => DayLabel(it.Created.Date),
+        "section" => it.Section.Length > 0 ? it.Section : L.T("Sin sección"),
+        "source" => string.IsNullOrWhiteSpace(it.Source) ? L.T("Sin origen") : it.Source,
+        _ => ""
+    };
+
+    /// <summary>Order cards so groups come out in a sensible order: newest day first, sections in their own order
+    /// (no section last), sources alphabetically. Without grouping, the library order (pinned first) stays.</summary>
+    IEnumerable<CaptureItem> Arrange(IEnumerable<CaptureItem> items)
+    {
+        switch (groupKey)
+        {
+            case "day": return items.OrderByDescending(x => x.Created);
+            case "section":
+                var order = Store.SectionNames();
+                return items.OrderBy(x => x.Section.Length == 0 ? int.MaxValue : order.IndexOf(x.Section)).ThenByDescending(x => x.Pinned).ThenByDescending(x => x.Created);
+            case "source": return items.OrderBy(x => string.IsNullOrWhiteSpace(x.Source) ? "\uffff" : x.Source, StringComparer.CurrentCultureIgnoreCase).ThenByDescending(x => x.Created);
+            default: return items;
+        }
+    }
+
+    /// <summary>Day and section choices come from the captures in the current tab, with counts; the choice is kept
+    /// while it still exists.</summary>
+    void FillSubFilters(List<CaptureItem> items)
+    {
+        fillingFilters = true;
+        try
+        {
+            var days = new List<(string, string)> { ("any", L.T("Cualquier día")) };
+            void Add(string key, string text) { int n = items.Count(x => DayMatches(x.Created, key)); if (n > 0) days.Add((key, text + "  (" + n + ")")); }
+            Add("today", L.T("Hoy")); Add("yesterday", L.T("Ayer")); Add("week", L.T("Últimos 7 días")); Add("month", L.T("Este mes"));
+            foreach (var g in items.GroupBy(x => x.Created.Date).OrderByDescending(g => g.Key))
+                days.Add(("d:" + g.Key.ToString("yyyyMMdd"), DayLabel(g.Key) + "  (" + g.Count() + ")"));
+            dayKey = Fill(DayFilter, days, dayKey);
+
+            var names = Store.SectionNames();
+            var sections = new List<(string, string)> { ("all", L.T("Todas las secciones")) };
+            foreach (var name in names) sections.Add((name, name + "  (" + items.Count(x => x.Section == name) + ")"));
+            if (names.Count > 0) sections.Add(("none", L.T("Sin sección") + "  (" + items.Count(x => x.Section.Length == 0) + ")"));
+            sectionKey = Fill(SectionFilter, sections, sectionKey);
+
+            groupKey = Fill(GroupByBox, new List<(string, string)> { ("none", L.T("Sin agrupar")), ("day", L.T("Día")), ("section", L.T("Sección")), ("source", L.T("Origen")) }, groupKey);
+        }
+        finally { fillingFilters = false; }
+    }
+
+    static string Fill(ComboBox box, List<(string key, string text)> options, string selected)
+    {
+        if (!options.Any(o => o.key == selected)) selected = options[0].key;
+        box.Items.Clear();
+        foreach (var (key, text) in options)
+        {
+            var item = new ComboBoxItem { Content = text, Tag = key };
+            box.Items.Add(item);
+            if (key == selected) box.SelectedItem = item;
+        }
+        return selected;
+    }
+
+    void SubFilterChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (fillingFilters || sender is not ComboBox box || box.SelectedItem is not ComboBoxItem { Tag: string key }) return;
+        if (box == DayFilter) dayKey = key;
+        else if (box == SectionFilter) sectionKey = key;
+        else { groupKey = key; Store.Settings.LibraryGroupBy = key; Store.SaveSettings(); }
+        Reload();
+    }
+
+    // Right-click > Move to section: existing sections, a new one, or none.
+    void LibraryMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        CtxSection.Items.Clear();
+        var sel = Selected;
+        CtxSection.IsEnabled = sel.Count > 0;
+        foreach (var name in Store.SectionNames())
+        {
+            var m = new MenuItem { Header = name, IsChecked = sel.Count > 0 && sel.All(x => x.Section == name) };
+            m.Click += (_, _) => { Store.SetSection(Selected, name); StatusText.Text = L.F("Movidas a «{0}»", name); };
+            CtxSection.Items.Add(m);
+        }
+        if (CtxSection.Items.Count > 0) CtxSection.Items.Add(new Separator());
+        var add = new MenuItem { Header = L.T("Nueva sección…") };
+        add.Click += (_, _) => NewSectionClick(this, new RoutedEventArgs());
+        CtxSection.Items.Add(add);
+        var clear = new MenuItem { Header = L.T("Quitar de la sección"), IsEnabled = sel.Any(x => x.Section.Length > 0) };
+        clear.Click += (_, _) => Store.SetSection(Selected, "");
+        CtxSection.Items.Add(clear);
+    }
+
+    /// <summary>Creates a section; the selected captures (if any) move into it.</summary>
+    void NewSectionClick(object sender, RoutedEventArgs e)
+    {
+        var sel = Selected;
+        var name = PromptWindow.Ask(this, L.T("Nueva sección"), sel.Count > 0 ? L.F("Las {0} capturas elegidas pasan a esta sección.", sel.Count) : L.T("Un nombre para agrupar capturas a tu gusto: un proyecto, un cliente, un tema."), "");
+        if (string.IsNullOrWhiteSpace(name)) return;
+        name = name.Trim();
+        if (!Store.AddSection(name) && sel.Count == 0) { StatusText.Text = L.F("La sección «{0}» ya existe", name); return; }
+        if (sel.Count > 0) Store.SetSection(sel, name); else Reload();
+        StatusText.Text = L.F("Sección «{0}» lista", name);
+    }
+
+    string? CurrentSection()
+    {
+        if (sectionKey is "all" or "none")
+        {
+            PromptWindow.Info(this, L.T("Secciones"), L.T("Elegí la sección en el filtro SECCIÓN y volvé a intentar."));
+            return null;
+        }
+        return sectionKey;
+    }
+
+    void RenameSectionClick(object sender, RoutedEventArgs e)
+    {
+        if (CurrentSection() is not string from) return;
+        var to = PromptWindow.Ask(this, L.T("Renombrar sección"), L.T("Las capturas de la sección se mueven al nombre nuevo."), from);
+        if (string.IsNullOrWhiteSpace(to) || to.Trim() == from) return;
+        Store.RenameSection(from, to.Trim());
+        sectionKey = to.Trim();
+        Reload();
+    }
+
+    void DeleteSectionClick(object sender, RoutedEventArgs e)
+    {
+        if (CurrentSection() is not string name) return;
+        if (!PromptWindow.Confirm(this, L.T("Eliminar sección"), L.F("Se elimina la sección «{0}». Sus capturas quedan en la biblioteca, sin sección.", name), L.T("Eliminar"))) return;
+        Store.DeleteSection(name);
+        sectionKey = "all";
+        Reload();
     }
 
     // The empty library hosts a second, live Boberto (the engine's peana) with the same Studio look and gestures.
@@ -504,6 +674,7 @@ public partial class MainWindow : Window
     void FolderClick(object sender, RoutedEventArgs e) => Process.Start("explorer.exe", "\"" + (Filters.SelectedIndex == 4 ? Store.RecordDir : Store.CaptureDir) + "\"");
     void FocusSearchClick(object sender, RoutedEventArgs e) { Search.Focus(); Search.SelectAll(); }
     void SelectAllClick(object sender, RoutedEventArgs e) => Library.SelectAll();
+    async void ComponentsClick(object sender, RoutedEventArgs e) => await App.Current.CheckComponentsAsync();
     void AboutClick(object sender, RoutedEventArgs e)
     {
         var v = typeof(App).Assembly.GetName().Version;
@@ -518,6 +689,7 @@ public partial class MainWindow : Window
     {
         Store.Settings.CopyAfterCapture = CopyToggle.IsChecked == true;
         Store.Settings.OpenEditorAfterCapture = EditorToggle.IsChecked == true;
+        Store.Settings.EditKeepOriginal = KeepOriginalToggle.IsChecked == true;
         Store.Settings.PasteOnPick = PasteToggle.IsChecked == true;
         Store.Settings.RecordSystemAudio = SystemAudioToggle.IsChecked == true;
         Store.Settings.RecordMicrophone = MicToggle.IsChecked == true;
