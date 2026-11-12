@@ -10,9 +10,19 @@
 
 **Requirements:** Windows 10/11, Microsoft Edge WebView2 Runtime (included with Windows 11) and, for recording, FFmpeg. To build: .NET 10 SDK.
 
-## Installation
+## Download (no build needed)
 
-BuzzPrint is built from source with one script. It takes about five minutes the first time.
+1. Download **`BuzzPrint-<version>-win-x64.zip`** from the [latest release](https://github.com/ChristianBuzzetti/BuzzPrint/releases/latest).
+2. Extract it anywhere, for example `C:\Apps`. Avoid running it from inside the zip.
+3. Open `BuzzPrint\BuzzPrint.exe`.
+
+Nothing else to install: .NET is included. If FFmpeg (for recording) or WebView2 (for Boberto) is missing, BuzzPrint offers to download it when it's needed.
+
+The app isn't code-signed, so the first time Windows SmartScreen may show *"Windows protected your PC"*: click **More info → Run anyway**.
+
+## Installation from source
+
+Prefer to build it yourself? It takes about five minutes the first time.
 
 **1. Install the tools** (once). Open **PowerShell** and run:
 
