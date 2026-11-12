@@ -1,0 +1,99 @@
+<Window x:Class="BuzzPrint.EditorWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:BuzzPrint" Style="{StaticResource {x:Type Window}}" TextOptions.TextFormattingMode="Display" Title="{local:T 'Editor · BuzzPrint'}" Width="1440" Height="920" MinWidth="980" MinHeight="600" WindowStartupLocation="CenterScreen">
+  <Window.Resources>
+    <!-- Tool segment: Studio's segmented item. The selected tool is a raised plate with the accent ring and glyph. -->
+    <Style x:Key="ToolButton" TargetType="Button" BasedOn="{StaticResource UiControl}">
+      <Setter Property="Width" Value="33"/><Setter Property="Height" Value="32"/><Setter Property="Margin" Value="1,0"/><Setter Property="Cursor" Value="Hand"/><Setter Property="Foreground" Value="{DynamicResource Muted}"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="FontFamily" Value="Segoe UI Symbol"/><Setter Property="FontSize" Value="14"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="Frame" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource ControlRadius}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+        <ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Frame" Property="Background" Value="{DynamicResource AlternateRow}"/><Setter Property="Foreground" Value="{DynamicResource Ink}"/></Trigger></ControlTemplate.Triggers>
+      </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="TrayItem" TargetType="ListBoxItem">
+      <Setter Property="Margin" Value="0,0,10,0"/><Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem">
+        <Grid><Border x:Name="Frame" Background="{DynamicResource Canvas}" BorderBrush="{DynamicResource FaintBorder}" BorderThickness="1" CornerRadius="{DynamicResource ControlRadius}" Padding="4"><ContentPresenter/></Border><Border x:Name="Bar" Height="3" VerticalAlignment="Bottom" Background="{DynamicResource Accent}" Visibility="Hidden"/></Grid>
+        <ControlTemplate.Triggers>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Frame" Property="BorderBrush" Value="{DynamicResource StrongBorder}"/></Trigger>
+          <Trigger Property="IsSelected" Value="True"><Setter TargetName="Frame" Property="BorderBrush" Value="{DynamicResource AccentRing}"/><Setter TargetName="Frame" Property="Background" Value="{DynamicResource AccentTint}"/><Setter TargetName="Bar" Property="Visibility" Value="Visible"/></Trigger>
+        </ControlTemplate.Triggers>
+      </ControlTemplate></Setter.Value></Setter>
+    </Style>
+  </Window.Resources>
+  <DockPanel>
+    <!-- Header: same topbar as the library (brand, ok dot, edge bar) carrying the open capture's facts. -->
+    <Border DockPanel.Dock="Top" Background="{DynamicResource Header}" BorderBrush="{DynamicResource TopbarRule}" BorderThickness="0,0,0,1" Padding="20,10,16,8">
+      <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <local:BobertoMark x:Name="BrandMark" Tile="{DynamicResource Accent}" Width="30" Height="30" Margin="0,0,10,0" VerticalAlignment="Center" ToolTip="Boberto"/>
+          <TextBlock Text="{local:T 'BUZZPRINT'}" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="18" Foreground="{DynamicResource Muted}" VerticalAlignment="Center"/>
+          <Grid Width="12" Height="12" Margin="8,2,0,0" VerticalAlignment="Center"><Ellipse Width="12" Height="12" Fill="{DynamicResource OkGlow}"/><Ellipse Width="6" Height="6" Fill="{DynamicResource Ok}"/></Grid>
+          <Border BorderBrush="{DynamicResource FaintBorder}" BorderThickness="1,0,0,0" Margin="16,2,0,2" Padding="14,0,0,0" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="{local:T '◤ EDITOR'}" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" Foreground="{DynamicResource Accent}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+              <TextBlock x:Name="DocTitle" FontWeight="SemiBold" FontSize="{DynamicResource SectionFontSize}" VerticalAlignment="Center" MaxWidth="420" TextTrimming="CharacterEllipsis"/>
+              <TextBlock x:Name="DocMeta" FontFamily="{DynamicResource MonoFont}" FontSize="{DynamicResource SmallFontSize}" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="14,2,0,0"/>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+          <Border x:Name="DirtyChip" Visibility="Collapsed" Background="{DynamicResource AccentTint}" BorderBrush="{DynamicResource AccentRing}" BorderThickness="1" Padding="10,4" CornerRadius="{DynamicResource ControlRadius}" VerticalAlignment="Center"><TextBlock Text="{local:T 'SIN GUARDAR'}" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="{DynamicResource SmallFontSize}" Foreground="{DynamicResource Accent}"/></Border>
+          <Button Style="{StaticResource PillButton}" Click="PersonalizeClick" ToolTip="{local:T 'Personalizar: paleta, tipografía, interfaz y Boberto'}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource GlyphText}" Text="&#xE713;" Margin="0,0,7,0"/><TextBlock Text="{local:T 'Personalizar'}" VerticalAlignment="Center"/></StackPanel></Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+    <Rectangle DockPanel.Dock="Top" Height="2" Fill="{DynamicResource EdgeBar}" Opacity="0.75"/>
+    <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource StrongBorder}" BorderThickness="0,0,0,1" Background="{DynamicResource SubbarHairlines}" Padding="{DynamicResource ToolbarPadding}">
+      <StackPanel x:Name="Toolbar" Orientation="Horizontal" ClipToBounds="True">
+        <Button Background="{DynamicResource Accent}" Foreground="{DynamicResource OnAccent}" BorderBrush="{DynamicResource Accent}" Click="CopyClick" ToolTip="{local:T 'Copiar la imagen anotada al portapapeles'}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource GlyphText}" Text="&#xE8C8;" FontSize="12" Margin="0,0,7,0"/><TextBlock Text="{local:T 'Copiar'}" FontWeight="SemiBold" VerticalAlignment="Center"/><TextBlock Text="{local:T 'Ctrl C'}" FontFamily="{DynamicResource MonoFont}" FontSize="{DynamicResource SmallFontSize}" Opacity="0.75" Margin="10,0,0,0" VerticalAlignment="Center"/></StackPanel></Button>
+        <Button Click="SaveClick" ToolTip="{local:T 'Guardar · Ctrl+S'}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource GlyphText}" Text="&#xE74E;" FontSize="12" Margin="0,0,7,0"/><TextBlock Text="{local:T 'Guardar'}" VerticalAlignment="Center"/></StackPanel></Button>
+        <Button Click="ExportClick" ToolTip="{local:T 'Exportar una copia como PNG, JPG o BMP'}" Padding="9,0"><TextBlock Style="{StaticResource GlyphText}" Text="&#xEDE1;" FontSize="13" Margin="0"/></Button>
+        <Border Width="1" Height="22" Background="{DynamicResource FaintBorder}" Margin="6,0,10,0"/>
+        <Button Click="UndoClick" ToolTip="{local:T 'Deshacer · Ctrl+Z'}" Padding="9,0"><TextBlock Style="{StaticResource GlyphText}" Text="&#xE7A7;" FontSize="13" Margin="0"/></Button>
+        <Button Click="RedoClick" ToolTip="{local:T 'Rehacer · Ctrl+Y'}" Padding="9,0"><TextBlock Style="{StaticResource GlyphText}" Text="&#xE7A6;" FontSize="13" Margin="0"/></Button>
+        <Border Width="1" Height="22" Background="{DynamicResource FaintBorder}" Margin="6,0,10,0"/>
+        <Border x:Name="ToolStrip" Padding="2" BorderThickness="1" BorderBrush="{DynamicResource FaintBorder}" Background="{DynamicResource Header}" CornerRadius="{DynamicResource StripRadius}" Margin="0,0,10,0"><StackPanel x:Name="Tools" Orientation="Horizontal"/></Border>
+        <Border Padding="4,2" BorderThickness="1" BorderBrush="{DynamicResource FaintBorder}" Background="{DynamicResource Header}" CornerRadius="{DynamicResource StripRadius}" Margin="0,0,10,0"><StackPanel x:Name="Swatches" Orientation="Horizontal" VerticalAlignment="Center"/></Border>
+        <TextBlock Text="{local:T 'GROSOR'}" Style="{StaticResource SectionLabel}" Margin="2,0,6,0"/>
+        <ComboBox x:Name="WidthBox" Width="70" SelectionChanged="WidthChanged" Margin="0,0,10,0"/>
+        <TextBlock Text="{local:T 'TEXTO'}" Style="{StaticResource SectionLabel}" Margin="0,0,6,0"/>
+        <ComboBox x:Name="FontBox" Width="70" SelectionChanged="FontChanged"/>
+      </StackPanel>
+    </Border>
+    <Border DockPanel.Dock="Bottom" Background="{DynamicResource Header}">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Top"><Border Height="1" Background="{DynamicResource AccentWeak}"/><Border Height="1" Margin="0,2,0,0" Background="{DynamicResource AccentRule}"/><Border Height="1" Margin="0,1,0,0" Background="{DynamicResource TopbarGlow}"/></StackPanel>
+        <Grid Margin="16,6,14,7"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <TextBlock x:Name="StatusText" Text="{local:T 'Listo'}" Foreground="{DynamicResource Muted}" FontFamily="{DynamicResource MonoFont}" FontSize="{DynamicResource SmallFontSize}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock x:Name="ToolText" FontFamily="{DynamicResource MonoFont}" FontSize="{DynamicResource SmallFontSize}" Foreground="{DynamicResource Muted}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+            <Border BorderBrush="{DynamicResource FaintBorder}" BorderThickness="1,0,0,0" Margin="0,2,2,2"/>
+            <Button Style="{StaticResource StatusSegment}" Click="FitClick" ToolTip="{local:T 'Ajustar a la ventana · Ctrl+0'}"><TextBlock Text="{local:T 'AJUSTAR'}"/></Button>
+            <Button Style="{StaticResource StatusSegment}" Click="ActualClick" ToolTip="{local:T 'Tamaño real · Ctrl+1'}"><TextBlock Text="1:1"/></Button>
+            <Button Style="{StaticResource StatusSegment}" Click="ZoomOutClick" ToolTip="{local:T 'Alejar · Ctrl+-'}"><TextBlock Text="−"/></Button>
+            <TextBlock x:Name="ZoomText" FontFamily="{DynamicResource MonoFont}" FontSize="{DynamicResource SmallFontSize}" FontWeight="SemiBold" Foreground="{DynamicResource Accent}" VerticalAlignment="Center" Margin="4,0" MinWidth="40" TextAlignment="Center"/>
+            <Button Style="{StaticResource StatusSegment}" Click="ZoomInClick" ToolTip="{local:T 'Acercar · Ctrl++'}"><TextBlock Text="+"/></Button>
+          </StackPanel>
+        </Grid>
+      </DockPanel>
+    </Border>
+    <ContentControl DockPanel.Dock="Bottom" Style="{StaticResource NeoCard}" Margin="16,0,16,12" Height="150">
+      <DockPanel>
+        <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource FaintBorder}" BorderThickness="0,0,0,1" Padding="16,7,14,6"><Grid><StackPanel Orientation="Horizontal"><TextBlock Text="&#x259A;" Foreground="{DynamicResource Accent}" FontSize="10" Margin="0,0,7,0" VerticalAlignment="Center"/><TextBlock Style="{StaticResource SectionLabel}" Text="{local:T 'CAPTURAS'}"/></StackPanel><TextBlock Text="{local:T 'CLIC  EDITAR   ·   CLIC DERECHO  COPIAR'}" HorizontalAlignment="Right" FontFamily="{DynamicResource MonoFont}" FontSize="{DynamicResource SmallFontSize}" Foreground="{DynamicResource Muted}"/></Grid></Border>
+        <ListBox x:Name="Tray" Background="Transparent" BorderThickness="0" Padding="12,10,12,6" ItemContainerStyle="{StaticResource TrayItem}" ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.HorizontalScrollBarVisibility="Auto" SelectionChanged="TraySelectionChanged" PreviewMouseRightButtonUp="TrayRightClick">
+          <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+          <ListBox.ItemTemplate><DataTemplate><Image Source="{Binding Thumb}" Width="124" Height="70" Stretch="Uniform" ToolTip="{Binding Title}" RenderOptions.BitmapScalingMode="HighQuality"/></DataTemplate></ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </ContentControl>
+    <ContentControl Style="{StaticResource NeoCard}" Margin="16,12,16,12">
+      <ScrollViewer x:Name="Scroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="{DynamicResource CanvasGrid}" Margin="2" PreviewMouseWheel="ScrollerWheel" SizeChanged="ScrollerSizeChanged">
+        <Grid x:Name="Stage" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="28">
+          <Grid.LayoutTransform><ScaleTransform x:Name="Zoom" ScaleX="1" ScaleY="1"/></Grid.LayoutTransform>
+          <Border x:Name="Shadow" Background="Black" Opacity="0.35" Margin="0,6,-6,-6"/>
+          <Image x:Name="View" Stretch="Fill" RenderOptions.BitmapScalingMode="HighQuality" SnapsToDevicePixels="True"/>
+          <Canvas x:Name="Overlay" Background="Transparent" ClipToBounds="False" MouseLeftButtonDown="OverlayDown" MouseMove="OverlayMove" MouseLeftButtonUp="OverlayUp"/>
+          <Border x:Name="Frame" BorderBrush="{DynamicResource AccentCardOuter}" BorderThickness="1" Margin="-1" IsHitTestVisible="False"/>
+        </Grid>
+      </ScrollViewer>
+    </ContentControl>
+  </DockPanel>
+</Window>

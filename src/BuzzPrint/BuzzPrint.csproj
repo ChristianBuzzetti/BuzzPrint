@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>BuzzPrint</AssemblyName>
+    <RootNamespace>BuzzPrint</RootNamespace>
+    <Product>BuzzPrint</Product>
+    <Version>0.3.0</Version>
+    <Authors>Christian Buzzetti</Authors>
+    <Description>BuzzPrint: capturas de pantalla con biblioteca, menú rápido y editor, con el aspecto de DBMON.</Description>
+    <ApplicationIcon>Assets\buzzprint.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+    <NoWarn>$(NoWarn);CA1416;WFO1000</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- WPF owns the UI; Windows Forms is used only for the capture overlay, clipboard, tray icon and hotkey window. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Assets/*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Resource Include="Assets/Fonts/*.ttf" />
+    <Resource Include="Assets/boberto.png" />
+    <Resource Include="Assets/buzzprint.ico" />
+    <Resource Include="Assets/buzzprint.png" />
+    <Content Include="Assets/Fonts/*.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Assets/Boberto/**/*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Assets/Fonts/Inter-Regular.ttf" TargetPath="Assets/Boberto/fonts/Inter-Regular.ttf" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
