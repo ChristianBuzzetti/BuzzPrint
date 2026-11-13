@@ -250,7 +250,14 @@ public partial class MainWindow : Window
                 Group = GroupOf(it)
             });
         }
-        if (groupKey != "none") view.GroupDescriptions.Add(new System.Windows.Data.PropertyGroupDescription(nameof(CaptureCard.Group)));
+        // Grouping on: group headers. Off: no GroupStyle at all, or WPF keeps the per-group layout (one card per row).
+        if (groupStyle == null && Library.GroupStyle.Count > 0) groupStyle = Library.GroupStyle[0];
+        if (groupKey != "none")
+        {
+            if (Library.GroupStyle.Count == 0 && groupStyle != null) Library.GroupStyle.Add(groupStyle);
+            view.GroupDescriptions.Add(new System.Windows.Data.PropertyGroupDescription(nameof(CaptureCard.Group)));
+        }
+        else Library.GroupStyle.Clear();
         foreach (var c in cards) if (keep.Contains(c.Item.Id)) Library.SelectedItems.Add(c);
         EmptyState.Visibility = all.Count == 0 ? Visibility.Visible : Visibility.Hidden;   // Hidden keeps its size, so the stage Boberto loads in the background
         EmptyTitle.Text = L.T(recordings ? "Todavía no hay grabaciones" : "Todavía no hay capturas");
@@ -264,6 +271,7 @@ public partial class MainWindow : Window
     string dayKey = "any", sectionKey = "all", groupKey = Store.Settings.LibraryGroupBy;
     internal void ShotView(string group, string section = "all") { groupKey = group; sectionKey = section; Reload(); }
     bool fillingFilters;
+    GroupStyle? groupStyle;
 
     static bool DayMatches(DateTime when, string key)
     {

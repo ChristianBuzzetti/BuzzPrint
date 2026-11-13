@@ -283,7 +283,7 @@ static class LocEn
         ["auto "] = "auto ",
         [" · acento propio "] = " · custom accent ",
         ["PALETA DE COLOR"] = "COLOR PALETTE",
-        ["Las 19 paletas de DBMON. Cada una define superficies, tinta y su propio acento."] = "DBMON's 19 palettes. Each one defines surfaces, ink and its own accent.",
+        ["23 paletas, 17 oscuras y 6 claras. Cada una define superficies, tinta y su propio acento."] = "23 palettes, 17 dark and 6 light. Each one defines surfaces, ink and its own accent.",
         ["Oscuras"] = "Dark",
         ["Claras"] = "Light",
         ["Auto sigue a la paleta. Elegí uno predefinido o mezclá el tuyo; en paletas claras un acento brillante se oscurece hasta que se lee como texto."] = "Auto follows the palette. Pick a preset or mix your own; on light palettes a bright accent is darkened until it reads as text.",

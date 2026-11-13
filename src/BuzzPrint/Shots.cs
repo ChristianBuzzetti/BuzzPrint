@@ -76,6 +76,7 @@ static class Shots
             var personalize = new PersonalizationWindow(App.Current.Appearance, App.Current.ApplyAppearance) { Owner = main };
             personalize.Show();
             await Task.Delay(6000);
+            log.Add("personalize visible=" + personalize.IsVisible + " loaded=" + personalize.IsLoaded + " size=" + personalize.ActualWidth + "x" + personalize.ActualHeight + " state=" + personalize.WindowState + " main=" + main.WindowState + "/" + main.IsVisible);
             Save(personalize, Path.Combine(dir, "04-personalize.png"), log);
             personalize.Sections.SelectedIndex = 2;
             await Task.Delay(800);
@@ -157,7 +158,7 @@ static class Shots
             await Task.Delay(1500);
             Save(main, Path.Combine(dir, "08-recordings.png"), log);
 
-            App.Current.ApplyAppearance(App.Current.Appearance with { ThemeId = "light" });
+            App.Current.ApplyAppearance(App.Current.Appearance with { ThemeId = "glaciar" });
             EditorWindow.Instance?.Discard();
             EditorWindow.Instance?.Close();
             main.Activate();
