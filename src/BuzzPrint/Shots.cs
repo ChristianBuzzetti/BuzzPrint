@@ -50,6 +50,14 @@ static class Shots
             main.ShotView("day", "Proyecto DBMON");
             await Task.Delay(1200);
             Save(main, Path.Combine(dir, "01c-library-day-filtered.png"), log);
+            // Rename and delete a section, as the Sections menu does (without the confirmation dialogs).
+            Store.RenameSection("Boberto", "Mascota");
+            log.Add("rename: sections=" + string.Join("|", Store.SectionNames()) + " in Mascota=" + Store.All().Count(x => x.Section == "Mascota") + " in Boberto=" + Store.All().Count(x => x.Section == "Boberto"));
+            main.DeleteSection("Mascota", ask: false);
+            log.Add("delete: sections=" + string.Join("|", Store.SectionNames()) + " in Mascota=" + Store.All().Count(x => x.Section == "Mascota") + " total=" + Store.All().Count);
+            main.ShotView("section");
+            await Task.Delay(1200);
+            Save(main, Path.Combine(dir, "01d-library-after-delete.png"), log);
             main.ShotView("none");
 
             EditorWindow.Open(Store.All().Skip(1).First());

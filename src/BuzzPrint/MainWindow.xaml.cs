@@ -398,33 +398,77 @@ public partial class MainWindow : Window
         StatusText.Text = L.F("Sección «{0}» lista", name);
     }
 
-    string? CurrentSection()
+    internal void RenameSection(string from)
     {
-        if (sectionKey is "all" or "none")
-        {
-            PromptWindow.Info(this, L.T("Secciones"), L.T("Elegí la sección en el filtro SECCIÓN y volvé a intentar."));
-            return null;
-        }
-        return sectionKey;
-    }
-
-    void RenameSectionClick(object sender, RoutedEventArgs e)
-    {
-        if (CurrentSection() is not string from) return;
         var to = PromptWindow.Ask(this, L.T("Renombrar sección"), L.T("Las capturas de la sección se mueven al nombre nuevo."), from);
         if (string.IsNullOrWhiteSpace(to) || to.Trim() == from) return;
         Store.RenameSection(from, to.Trim());
-        sectionKey = to.Trim();
+        if (sectionKey == from) sectionKey = to.Trim();
         Reload();
+        StatusText.Text = L.F("Sección «{0}» renombrada a «{1}»", from, to.Trim());
     }
 
-    void DeleteSectionClick(object sender, RoutedEventArgs e)
+    internal void DeleteSection(string name, bool ask = true)
     {
-        if (CurrentSection() is not string name) return;
-        if (!PromptWindow.Confirm(this, L.T("Eliminar sección"), L.F("Se elimina la sección «{0}». Sus capturas quedan en la biblioteca, sin sección.", name), L.T("Eliminar"))) return;
+        int n = Store.All().Concat(Store.Recordings()).Count(x => x.Section == name);
+        if (ask && !PromptWindow.Confirm(this, L.T("Eliminar sección"), L.F("Se elimina la sección «{0}». Sus capturas quedan en la biblioteca, sin sección.", name) + (n > 0 ? " (" + L.Count(n, "captura", "capturas") + ")" : ""), L.T("Eliminar"))) return;
         Store.DeleteSection(name);
-        sectionKey = "all";
+        if (sectionKey == name) sectionKey = "all";
         Reload();
+        StatusText.Text = L.F("Sección «{0}» eliminada", name);
+    }
+
+    void SelectSection(string name)
+    {
+        Library.SelectedItems.Clear();
+        foreach (var c in cards.Where(c => c.Item.Section == name)) Library.SelectedItems.Add(c);
+        Library.Focus();
+    }
+
+    /// <summary>Each section with Rename / Delete / Select, then "New section…". Used by the Sections button,
+    /// the Library menu and the section group headers.</summary>
+    void FillSectionsMenu(ItemsControl menu)
+    {
+        menu.Items.Clear();
+        var names = Store.SectionNames();
+        MenuItem Item(string header, Action click) { var m = new MenuItem { Header = header }; m.Click += (_, _) => click(); return m; }
+        foreach (var name in names)
+        {
+            int n = Store.All().Concat(Store.Recordings()).Count(x => x.Section == name);
+            var sub = new MenuItem { Header = name, InputGestureText = n.ToString() };
+            sub.Items.Add(Item(L.T("Ver solo esta sección"), () => { sectionKey = name; Reload(); }));
+            sub.Items.Add(Item(L.T("Seleccionar sus capturas"), () => SelectSection(name)));
+            sub.Items.Add(new Separator());
+            sub.Items.Add(Item(L.T("Renombrar…"), () => RenameSection(name)));
+            var del = Item(L.T("Eliminar…"), () => DeleteSection(name));
+            del.SetResourceReference(ForegroundProperty, "ErrorInk");
+            sub.Items.Add(del);
+            menu.Items.Add(sub);
+        }
+        if (names.Count == 0) menu.Items.Add(new MenuItem { Header = L.T("Todavía no hay secciones"), IsEnabled = false });
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Item(L.T("Nueva sección…"), () => NewSectionClick(this, new RoutedEventArgs())));
+    }
+
+    void SectionsButtonClick(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu { PlacementTarget = (UIElement)sender, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        FillSectionsMenu(menu);
+        menu.IsOpen = true;
+    }
+
+    void SectionsMenuOpened(object sender, RoutedEventArgs e) { if (e.OriginalSource == sender) FillSectionsMenu((MenuItem)sender); }
+
+    // Right-click on a group header (grouped by section): that section's actions.
+    void GroupHeaderMenu(object sender, ContextMenuEventArgs e)
+    {
+        if (groupKey != "section" || sender is not FrameworkElement { DataContext: System.Windows.Data.CollectionViewGroup g } el || g.Name is not string name || name == L.T("Sin sección")) { e.Handled = true; return; }
+        var menu = new ContextMenu();
+        MenuItem Item(string header, Action click) { var m = new MenuItem { Header = header }; m.Click += (_, _) => click(); return m; }
+        menu.Items.Add(Item(L.T("Seleccionar sus capturas"), () => SelectSection(name)));
+        menu.Items.Add(Item(L.T("Renombrar…"), () => RenameSection(name)));
+        var del = Item(L.T("Eliminar…"), () => DeleteSection(name)); del.SetResourceReference(ForegroundProperty, "ErrorInk"); menu.Items.Add(del);
+        el.ContextMenu = menu;
     }
 
     // The empty library hosts a second, live Boberto (the engine's peana) with the same Studio look and gestures.

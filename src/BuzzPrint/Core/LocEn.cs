@@ -470,5 +470,14 @@ static class LocEn
         ["FFmpeg listo"] = "FFmpeg ready",
         ["Ya podés grabar video y audio."] = "You can record video and audio now.",
         ["Revisar componentes…"] = "Check components…",
+        // ---- library, editor and components
+        ["Sección «{0}» renombrada a «{1}»"] = "Section “{0}” renamed to “{1}”",
+        ["Sección «{0}» eliminada"] = "Section “{0}” deleted",
+        ["Ver solo esta sección"] = "Show only this section",
+        ["Seleccionar sus capturas"] = "Select its captures",
+        ["Renombrar…"] = "Rename…",
+        ["Eliminar…"] = "Delete…",
+        ["Todavía no hay secciones"] = "No sections yet",
+        ["Crear, renombrar o eliminar secciones"] = "Create, rename or delete sections",
     };
 }

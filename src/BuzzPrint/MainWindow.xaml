@@ -85,9 +85,7 @@
                 <MenuItem Header="{local:T 'Seleccionar las de hoy'}" Click="SelectTodayClick"/>
                 <MenuItem Header="{local:T 'Exportar las de hoy…'}" Click="ExportTodayClick"/>
                 <Separator/>
-                <MenuItem Header="{local:T 'Nueva sección…'}" Click="NewSectionClick"/>
-                <MenuItem Header="{local:T 'Renombrar sección…'}" Click="RenameSectionClick"/>
-                <MenuItem Header="{local:T 'Eliminar sección…'}" Click="DeleteSectionClick"/>
+                <MenuItem Header="{local:T 'Secciones'}" SubmenuOpened="SectionsMenuOpened"><MenuItem Header="…"/></MenuItem>
                 <MenuItem Header="{local:T 'Mostrar en carpeta'}" Click="RevealClick"/>
                 <MenuItem Header="{local:T 'Abrir carpeta de capturas'}" Click="FolderClick"/>
               </MenuItem>
@@ -212,7 +210,7 @@
           </Border>
           <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource FaintBorder}" BorderThickness="0,0,0,1" Padding="14,8,16,8">
             <DockPanel>
-              <Button DockPanel.Dock="Right" Click="NewSectionClick" ToolTip="{local:T 'Crear una sección para agrupar capturas a tu gusto'}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource GlyphText}" Text="&#xE710;" FontSize="11" Margin="0,0,7,0"/><TextBlock Text="{local:T 'Nueva sección'}" VerticalAlignment="Center"/></StackPanel></Button>
+              <Button DockPanel.Dock="Right" Click="SectionsButtonClick" ToolTip="{local:T 'Crear, renombrar o eliminar secciones'}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource GlyphText}" Text="&#xE8FD;" FontSize="11" Margin="0,0,7,0"/><TextBlock Text="{local:T 'Secciones'}" VerticalAlignment="Center"/><TextBlock Style="{StaticResource GlyphText}" Text="&#xE70D;" FontSize="9" Margin="8,0,0,0"/></StackPanel></Button>
               <WrapPanel VerticalAlignment="Center">
                 <TextBlock Text="{local:T 'DÍA'}" Style="{StaticResource SectionLabel}" Margin="0,0,8,0"/><ComboBox x:Name="DayFilter" Width="190" Margin="0,0,18,0" SelectionChanged="SubFilterChanged"/>
                 <TextBlock Text="{local:T 'SECCIÓN'}" Style="{StaticResource SectionLabel}" Margin="0,0,8,0"/><ComboBox x:Name="SectionFilter" Width="200" Margin="0,0,18,0" SelectionChanged="SubFilterChanged"/>
@@ -230,7 +228,7 @@
                       <Setter Property="Template"><Setter.Value>
                         <ControlTemplate TargetType="GroupItem">
                           <DockPanel Margin="0,0,14,6">
-                            <ToggleButton x:Name="Fold" DockPanel.Dock="Top" IsChecked="True" Cursor="Hand" Focusable="False" Margin="0,2,0,8">
+                            <ToggleButton x:Name="Fold" ContextMenuOpening="GroupHeaderMenu" ContextMenu="{x:Null}" DockPanel.Dock="Top" IsChecked="True" Cursor="Hand" Focusable="False" Margin="0,2,0,8">
                               <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
                                 <Border Background="Transparent" BorderBrush="{DynamicResource AccentRowRule}" BorderThickness="0,0,0,1" Padding="2,4,2,6">
                                   <StackPanel Orientation="Horizontal">
