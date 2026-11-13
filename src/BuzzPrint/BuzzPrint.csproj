@@ -7,7 +7,7 @@
     <AssemblyName>BuzzPrint</AssemblyName>
     <RootNamespace>BuzzPrint</RootNamespace>
     <Product>BuzzPrint</Product>
-    <Version>0.4.0</Version>
+    <Version>0.4.1</Version>
     <Authors>Christian Buzzetti</Authors>
     <Description>BuzzPrint: capturas de pantalla con biblioteca, menú rápido y editor, con el aspecto de DBMON.</Description>
     <ApplicationIcon>Assets\buzzprint.ico</ApplicationIcon>
