@@ -8,7 +8,7 @@ namespace BuzzPrint;
 // Captures themselves live in Pictures\BuzzPrint so they are easy to find and back up.
 public static class DataFolder
 {
-    public const string Name = "BuzzPrint";
+    public const string Name = AppInfo.DataFolderName;
     public static string Root => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), Name);
     public static string File(string name) => Path.Combine(Root, name);
 }

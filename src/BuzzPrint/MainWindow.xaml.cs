@@ -39,6 +39,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Title = AppInfo.Name;
         Library.ItemsSource = cards;
         CopyToggle.IsChecked = Store.Settings.CopyAfterCapture;
         EditorToggle.IsChecked = Store.Settings.OpenEditorAfterCapture;
@@ -60,7 +61,13 @@ public partial class MainWindow : Window
         HeaderLeft.SizeChanged += (_, _) => SizeBobertoBand();
         Closing += (_, e) => { if (!App.Current.Exiting && !App.IsShot) { e.Cancel = true; Hide(); } };
         Closed += (_, _) => { emptyBoberto?.Dispose(); emptyBoberto = null; if (bobertoDock != null) { BobertoHost.Content = null; bobertoDock.Dispose(); bobertoDock = null; } };
-        Store.Changed += (_, _) => Dispatcher.BeginInvoke(Reload);
+        Store.Changed += (_, _) => Dispatcher.BeginInvoke(() => { Reload(); OcrIndex.Refresh(); });
+        // Text inside captures (OCR, Windows' own engine, offline): indexed in the background for the search.
+        OcrIndex.Updated += () => Dispatcher.BeginInvoke(() => { if (Search.Text.Trim().Length > 0) Reload(); });
+        OcrIndex.Progress += (done, total) => Dispatcher.BeginInvoke(() =>
+            StatusText.Text = total > 0 ? L.F("Leyendo el texto de las capturas… {0}/{1}", done, total) : L.T("Texto de las capturas listo para buscar"));
+        CtxCopyText.Visibility = MenuCopyText.Visibility = Ocr.Supported ? Visibility.Visible : Visibility.Collapsed;
+        Dispatcher.BeginInvoke(OcrIndex.Refresh, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         PreviewKeyDown += OnKey;
 
         OnAppearance(appearance);
@@ -230,12 +237,14 @@ public partial class MainWindow : Window
         shown = tabList.Where(x => DayMatches(x.Created, dayKey));
         if (sectionKey == "none") shown = shown.Where(x => x.Section.Length == 0);
         else if (sectionKey != "all") shown = shown.Where(x => x.Section == sectionKey);
-        if (q.Length > 0) shown = shown.Where(it => it.Display.ToLowerInvariant().Contains(q) || it.Source.ToLowerInvariant().Contains(q) || it.Section.ToLowerInvariant().Contains(q) || it.Id.Contains(q));
+        string rawQ = Search.Text.Trim();
+        if (q.Length > 0) shown = shown.Where(it => it.Display.ToLowerInvariant().Contains(q) || it.Source.ToLowerInvariant().Contains(q) || it.Section.ToLowerInvariant().Contains(q) || it.Id.Contains(q) || OcrIndex.Matches(it, rawQ));
         var list = Arrange(shown).ToList();
         bool compact = appearance.Compact;
         double w = compact ? 210 : 260, th = compact ? 120 : 150;
         CtxCopy.Header = L.T(recordings ? "Copiar archivo" : "Copiar imagen");
         CtxExport.Visibility = CtxStitch.Visibility = recordings ? Visibility.Collapsed : Visibility.Visible;
+        CtxCopyText.Visibility = recordings || !Ocr.Supported ? Visibility.Collapsed : Visibility.Visible;
         CtxEdit.Header = L.T(recordings ? "Reproducir" : "Editar y anotar");
         cards.Clear();
         foreach (var it in list)
@@ -537,6 +546,7 @@ public partial class MainWindow : Window
         bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
         bool shift = (Keyboard.Modifiers & ModifierKeys.Shift) != 0;
         if (ctrl && shift && e.Key == Key.C) { CopyStitchedClick(this, e); e.Handled = true; }
+        else if (ctrl && shift && e.Key == Key.T) { CopyTextClick(this, e); e.Handled = true; }
         else if (ctrl && e.Key == Key.C) { CopyClick(this, e); e.Handled = true; }
         else if (ctrl && e.Key == Key.E) { ExportClick(this, e); e.Handled = true; }
         else if (ctrl && e.Key == Key.F) { FocusSearchClick(this, e); e.Handled = true; }
@@ -638,6 +648,27 @@ public partial class MainWindow : Window
     {
         var it = Selected.FirstOrDefault();
         if (it != null && Store.CopyToClipboard(it)) StatusText.Text = L.T(it.IsRecording ? "Archivo copiado" : "Copiada al portapapeles") + " · " + it.Display;
+    }
+    /// <summary>Copies the text inside the selected captures (read by Windows OCR, cached), one capture after another.</summary>
+    async void CopyTextClick(object sender, RoutedEventArgs e)
+    {
+        var sel = Selected.Where(x => !x.IsRecording).ToList();
+        if (sel.Count == 0 || !Ocr.Supported) return;
+        StatusText.Text = L.T("Leyendo el texto…");
+        var parts = new List<string>();
+        foreach (var it in sel)
+        {
+            var r = await Ocr.GetAsync(it);
+            if (r == null) continue;
+            OcrIndex.Remember(it, r);
+            if (r.Text.Trim().Length > 0) parts.Add(sel.Count > 1 ? it.Display + Environment.NewLine + r.Text.Trim() : r.Text.Trim());
+        }
+        if (parts.Count == 0) { StatusText.Text = L.T("No se encontró texto en la captura"); return; }
+        string all = string.Join(Environment.NewLine + Environment.NewLine, parts).Replace("\n", Environment.NewLine).Replace("\r\r", "\r");
+        try { Clipboard.SetText(all); }
+        catch (System.Runtime.InteropServices.COMException ex) { StatusText.Text = L.T("No se pudo copiar: ") + ex.Message; return; }
+        int words = all.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
+        StatusText.Text = L.F("Texto copiado · {0} palabras", words);
     }
     void CopyFileClick(object sender, RoutedEventArgs e) { var it = Selected.FirstOrDefault(); if (it != null) { Store.CopyFileToClipboard(it); StatusText.Text = L.T("Archivo copiado") + " · " + it.Path; } }
     void EditClick(object sender, RoutedEventArgs e)

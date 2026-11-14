@@ -36,7 +36,7 @@
                   <TextBlock DockPanel.Dock="Left" Style="{StaticResource GlyphText}" Text="&#xE721;" Foreground="{DynamicResource Muted}"/>
                   <Grid>
                     <TextBox x:Name="Search" BorderThickness="0" Background="Transparent" Padding="0,7" TextChanged="SearchChanged" ToolTip="{local:T 'Filtrar capturas por nombre o ventana'}"/>
-                    <TextBlock Text="{local:T 'Buscar capturas…'}" IsHitTestVisible="False" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="2,0,0,0">
+                    <TextBlock Text="{local:T 'Buscar capturas o texto dentro…'}" IsHitTestVisible="False" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="2,0,0,0">
                       <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=Search}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
                     </TextBlock>
                   </Grid>
@@ -70,6 +70,7 @@
               <MenuItem Header="{local:T 'Edición'}" Tag="&#xE70F;">
                 <MenuItem Header="{local:T 'Copiar imagen'}" InputGestureText="Ctrl+C" Click="CopyClick"/>
                 <MenuItem Header="{local:T 'Copiar como archivo'}" Click="CopyFileClick"/>
+                <MenuItem x:Name="MenuCopyText" Header="{local:T 'Copiar el texto de la imagen'}" InputGestureText="Ctrl+Shift+T" Click="CopyTextClick"/>
                 <MenuItem Header="{local:T 'Editar y anotar'}" InputGestureText="Enter" Click="EditClick"/>
                 <MenuItem Header="{local:T 'Renombrar'}" InputGestureText="F2" Click="RenameClick"/>
                 <MenuItem Header="{local:T 'Fijar / soltar'}" InputGestureText="Ctrl+P" Click="PinClick"/>
@@ -254,6 +255,7 @@
                 <ContextMenu>
                   <MenuItem x:Name="CtxCopy" Header="{local:T 'Copiar imagen'}" InputGestureText="Ctrl+C" Click="CopyClick"/>
                   <MenuItem Header="{local:T 'Copiar como archivo'}" Click="CopyFileClick"/>
+                  <MenuItem x:Name="CtxCopyText" Header="{local:T 'Copiar el texto de la imagen'}" InputGestureText="Ctrl+Shift+T" Click="CopyTextClick"/>
                   <MenuItem x:Name="CtxEdit" Header="{local:T 'Editar y anotar'}" InputGestureText="Enter" Click="EditClick"/>
                   <MenuItem Header="{local:T 'Renombrar'}" InputGestureText="F2" Click="RenameClick"/>
                   <MenuItem Header="{local:T 'Fijar / soltar'}" InputGestureText="Ctrl+P" Click="PinClick"/>

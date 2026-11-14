@@ -96,7 +96,9 @@ namespace BuzzPrint
         {
             LoadSettings();
             ApplyFolders();
-            ImportFromSnagAI();
+#if !PREVIEW
+            ImportFromSnagAI();   // the preview shares the library and never copies files in bulk
+#endif
         }
 
         /// <summary>Captures and recordings folders from the settings (empty = Pictures / Videos defaults).</summary>

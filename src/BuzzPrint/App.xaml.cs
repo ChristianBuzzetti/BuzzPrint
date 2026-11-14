@@ -43,11 +43,11 @@ public partial class App : Application
 
         if (!IsShot && iconDir == null && Array.IndexOf(e.Args, "--fetch-ffmpeg") < 0)
         {
-            mutex = new Mutex(false, "BuzzPrint_single_instance");
+            mutex = new Mutex(false, AppInfo.Id + "_single_instance");
             bool owned;
             // A language switch relaunches the app: the new process waits for the old one to let go.
             try { owned = mutex.WaitOne(Array.IndexOf(e.Args, "--relaunch") >= 0 ? 8000 : 0); } catch (AbandonedMutexException) { owned = true; }
-            var showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, "BuzzPrint_show");
+            var showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, AppInfo.Id + "_show");
             if (!owned) { showSignal.Set(); Shutdown(); return; }
             ThreadPool.RegisterWaitForSingleObject(showSignal, (_, _) => Dispatcher.BeginInvoke(ShowMain), null, -1, false);
         }
@@ -211,7 +211,7 @@ public partial class App : Application
     // ------------------------------------------------------------------ tray
     void SetupTray()
     {
-        tray = new WinForms.NotifyIcon { Text = "BuzzPrint", Visible = true };
+        tray = new WinForms.NotifyIcon { Text = AppInfo.Name, Visible = true };
         ApplyMarkIcon();
         tray.MouseUp += (_, e) =>
         {
@@ -288,7 +288,8 @@ public partial class App : Application
     {
         var st = Store.Settings;
         string fails = "";
-        if (hotkeys!.Register(1, st.HotkeyCapture)) CaptureHotkeyText = st.HotkeyCapture;
+        hotkeys!.Unregister(CapturePrimaryRetryId);
+        if (hotkeys.Register(1, st.HotkeyCapture)) CaptureHotkeyText = st.HotkeyCapture;
         else if (hotkeys.Register(1, st.HotkeyCaptureAlt))
         {
             CaptureHotkeyText = st.HotkeyCaptureAlt;
@@ -299,13 +300,62 @@ public partial class App : Application
         if (!hotkeys.Register(3, st.HotkeyPick)) fails += L.F("No se pudo registrar {0}.", st.HotkeyPick) + "\n";
         if (!hotkeys.Register(4, st.HotkeyRecord)) fails += L.F("No se pudo registrar {0}.", st.HotkeyRecord) + "\n";
         if (fails.Length > 0) Toast(L.T("Atajos de teclado"), fails.Trim());
+        StartHotkeyRetry();
+    }
+
+    // A key can be taken by another app when BuzzPrint starts (the other BuzzPrint build, the Snipping Tool) and be
+    // freed later. Every few seconds, try again to get the keys still missing: Print Screen (while on the fallback
+    // shortcut) and any that failed. Once a key is free BuzzPrint takes it, so Windows never falls back to Snipping.
+    System.Windows.Threading.DispatcherTimer? hotkeyRetry;
+    const int CapturePrimaryRetryId = 11;
+    bool otherBuildWasRunning;
+
+    /// <summary>True while the other build (stable when this is the preview, and the other way round) is open.</summary>
+    static bool OtherBuildRunning()
+    {
+        string other = (AppInfo.IsPreview ? "BuzzPrint" : "BuzzPrintPreview") + "_single_instance";
+        if (!Mutex.TryOpenExisting(other, out var m)) return false;
+        m.Dispose();
+        return true;
+    }
+
+    void StartHotkeyRetry()
+    {
+        hotkeyRetry?.Stop();
+        otherBuildWasRunning = OtherBuildRunning();
+        hotkeyRetry = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+        hotkeyRetry.Tick += (_, _) =>
+        {
+            if (hotkeys == null) { hotkeyRetry.Stop(); return; }
+            // Windows lets two apps register Print Screen without modifiers, and when the other BuzzPrint (stable or
+            // preview) closes, our copy stops receiving it and the key goes to the Snipping Tool. Re-register
+            // everything as soon as the other build is gone.
+            bool otherRunning = OtherBuildRunning();
+            if (otherBuildWasRunning && !otherRunning) { otherBuildWasRunning = false; RegisterHotkeys(); return; }
+            otherBuildWasRunning = otherRunning;
+            var st = Store.Settings;
+            if (CaptureHotkeyText != st.HotkeyCapture)
+            {
+                // Try the primary key under a spare id first, so the fallback keeps working if it is still taken.
+                if (hotkeys.Register(CapturePrimaryRetryId, st.HotkeyCapture))
+                {
+                    hotkeys.Unregister(1);
+                    CaptureHotkeyText = st.HotkeyCapture;
+                    main?.RefreshShortcuts();
+                    Toast(L.T("Atajos de teclado"), L.F("{0} quedó libre: ya captura con {0}.", st.HotkeyCapture));
+                }
+            }
+            foreach (var (id, key) in new[] { (2, st.HotkeyFull), (3, st.HotkeyPick), (4, st.HotkeyRecord) })
+                if (!hotkeys.IsRegistered(id)) hotkeys.Register(id, key);
+        };
+        hotkeyRetry.Start();
     }
 
     internal void OnHotkey(int id)
     {
         switch (id)
         {
-            case 1: Capture(CaptureMode.Region, null); break;
+            case 1: case CapturePrimaryRetryId: Capture(CaptureMode.Region, null); break;
             case 2: Capture(CaptureMode.Full, null); break;
             case 3: QuickPickWindow.Toggle(Native.GetForegroundWindow()); break;
             case 4: if (Recorder.Current != null) StopRecording(true); else StartRecording(RecordKind.Video, null); break;
@@ -465,12 +515,12 @@ public partial class App : Application
     const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     public static bool StartupEnabled
     {
-        get { using var k = Registry.CurrentUser.OpenSubKey(RunKey); return k?.GetValue("BuzzPrint") != null; }
+        get { using var k = Registry.CurrentUser.OpenSubKey(RunKey); return k?.GetValue(AppInfo.Id) != null; }
         set
         {
             using var k = Registry.CurrentUser.CreateSubKey(RunKey);
-            if (value) k.SetValue("BuzzPrint", "\"" + Environment.ProcessPath + "\" --tray");
-            else k.DeleteValue("BuzzPrint", false);
+            if (value) k.SetValue(AppInfo.Id, "\"" + Environment.ProcessPath + "\" --tray");
+            else k.DeleteValue(AppInfo.Id, false);
         }
     }
 
@@ -481,17 +531,33 @@ public partial class App : Application
 /// <summary>Hidden window that receives WM_HOTKEY.</summary>
 sealed class HotkeyWindow : WinForms.NativeWindow, IDisposable
 {
-    readonly List<int> ids = [];
+    readonly HashSet<int> ids = [];   // ids registered right now
     public HotkeyWindow() { CreateHandle(new WinForms.CreateParams()); }
 
     public bool Register(int id, string spec)
     {
+        Unregister(id);
         if (!Parse(spec, out uint mods, out WinForms.Keys key)) return false;
-        Native.UnregisterHotKey(Handle, id);
-        if (!Native.RegisterHotKey(Handle, id, mods | Native.MOD_NOREPEAT, (uint)key)) return false;
+        bool ok = Native.RegisterHotKey(Handle, id, mods | Native.MOD_NOREPEAT, (uint)key);
+        Log(id, spec, ok, ok ? 0 : System.Runtime.InteropServices.Marshal.GetLastWin32Error());
+        if (!ok) return false;
         ids.Add(id);
         return true;
     }
+
+    public void Unregister(int id) { Native.UnregisterHotKey(Handle, id); ids.Remove(id); }
+
+    // Last results in LocalAppData\<app>\hotkeys.log (support: "why doesn't Print Screen work?"). 1409 = taken by another app.
+    static readonly Dictionary<string, bool> lastLogged = [];
+    static void Log(int id, string spec, bool ok, int error)
+    {
+        string k = id + "|" + spec;
+        if (lastLogged.TryGetValue(k, out bool prev) && prev == ok) return;   // only changes, not every retry
+        lastLogged[k] = ok;
+        try { System.IO.File.AppendAllText(DataFolder.File("hotkeys.log"), DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "  " + spec + "  " + (ok ? "OK" : "FAIL " + error) + Environment.NewLine); }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException) { }
+    }
+    public bool IsRegistered(int id) => ids.Contains(id);
 
     public static bool Parse(string spec, out uint mods, out WinForms.Keys key)
     {

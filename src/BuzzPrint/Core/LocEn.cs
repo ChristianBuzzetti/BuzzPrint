@@ -486,5 +486,15 @@ static class LocEn
         ["FFmpeg viene incluido con BuzzPrint pero no se encontró. Repará o reinstalá BuzzPrint desde Microsoft Store (Configuración → Aplicaciones → BuzzPrint → Opciones avanzadas → Reparar)."] = "FFmpeg comes with BuzzPrint but wasn't found. Repair or reinstall BuzzPrint from Microsoft Store (Settings → Apps → BuzzPrint → Advanced options → Repair).",
         ["Boberto, Boberto Studio y la vista previa de Personalizar usan Microsoft Edge WebView2, que no está en esta PC. Podés instalarlo desde la página oficial de Microsoft. Las capturas, la grabación y el editor funcionan igual sin él."] = "Boberto, Boberto Studio and the Personalize preview use Microsoft Edge WebView2, which isn't on this PC. You can install it from Microsoft's official page. Captures, recording and the editor work without it.",
         ["Abrir la página"] = "Open the page",
+
+        // ---- text inside captures (OCR)
+        ["Buscar capturas o texto dentro…"] = "Search captures or the text inside…",
+        ["Copiar el texto de la imagen"] = "Copy text from image",
+        ["Leyendo el texto…"] = "Reading the text…",
+        ["Leyendo el texto de las capturas… {0}/{1}"] = "Reading the text in captures… {0}/{1}",
+        ["Texto de las capturas listo para buscar"] = "Text in captures ready to search",
+        ["No se encontró texto en la captura"] = "No text found in the capture",
+        ["Texto copiado · {0} palabras"] = "Text copied · {0} words",
+        ["{0} quedó libre: ya captura con {0}."] = "{0} is free now: it captures again.",
     };
 }
