@@ -194,7 +194,10 @@ public static class Exporter
                     // Title on the left, the first capture filling the right side, an accent seam between them.
                     long split = (long)(SlideW * .45);
                     var (cw, ch) = Size(pages[0].Item);
-                    body.Append(PicFill(id++, split, 0, SlideW - split, SlideH, cw, ch));
+                    body.Append(Rect(id++, split, 0, SlideW - split, SlideH, fill));
+                    long pad = (long)(In * .45), bw = SlideW - split - 2 * pad, bh = SlideH - 2 * pad;
+                    var (fw, fh) = Fit(cw, ch, bw, bh);
+                    body.Append(PicRef(id++, split + pad + (bw - fw) / 2, pad + (bh - fh) / 2, fw, fh, pages[0].Title, "rId2", "<a:ln w=\"19050\"><a:solidFill><a:srgbClr val=\"FFFFFF\"/></a:solidFill></a:ln>"));
                     coverImage = true;
                     body.Append(Rect(id++, split, 0, Pt * 8, SlideH, o.Accent));
                     long hw = split - M - In / 2;
@@ -601,8 +604,10 @@ public static class Exporter
                     double bx, by, bw, bh;
                     if (W > H) { bx = W * .45; by = 0; bw = W - bx; bh = H; tx = M; textW = bx - 2 * M; y = H * .5 + 40; sy = H * .5 - 2; iy = H * .5 - 30; }
                     else { bx = 0; by = H * .52; bw = W; bh = H - by; tx = M; textW = W - 2 * M; y = H * .42; sy = y - 38; iy = sy - 28; }
-                    double sc = Math.Max(bw / cw, bh / ch), dw = cw * sc, dh = ch * sc;
-                    c.Append("q " + F(bx) + " " + F(by) + " " + F(bw) + " " + F(bh) + " re W n " + F(dw) + " 0 0 " + F(dh) + " " + F(bx + (bw - dw) / 2) + " " + F(by + (bh - dh) / 2) + " cm /Cv Do Q\n");
+                    c.Append(brand + " rg " + F(bx) + " " + F(by) + " " + F(bw) + " " + F(bh) + " re f\n");
+                    double pd = 24, sc = Math.Min((bw - 2 * pd) / cw, (bh - 2 * pd) / ch), dw = cw * sc, dh = ch * sc, dx = bx + (bw - dw) / 2, dy = by + (bh - dh) / 2;
+                    c.Append("q " + F(dw) + " 0 0 " + F(dh) + " " + F(dx) + " " + F(dy) + " cm /Cv Do Q\n");
+                    c.Append(white + " RG 1.5 w " + F(dx) + " " + F(dy) + " " + F(dw) + " " + F(dh) + " re S\n");
                     c.Append(accent + " rg " + (W > H ? F(bx) + " 0 4 " + F(H) : "0 " + F(by) + " " + F(W) + " 4") + " re f\n");
                     c.Append(accent + " rg " + F(tx) + " " + F(y + 40) + " 50 3 re f\n");
                     break;
@@ -907,12 +912,15 @@ public static class Exporter
             if (Tp.Cover == "hero")
             {
                 // The first capture as a wide image across the top, cropped to fill, an accent line under it.
+                g.FillRectangle(brandBrush, 0, 0, width + 2 * pad, heroH);
                 using (var hero = Store.LoadBitmap(pages[0].Item.Path))
                 {
-                    double box = (double)(width + 2 * pad) / heroH, imgR = (double)hero.Width / hero.Height;
-                    var src = imgR > box ? new D.Rectangle((int)((hero.Width - hero.Height * box) / 2), 0, (int)(hero.Height * box), hero.Height)
-                                         : new D.Rectangle(0, (int)((hero.Height - hero.Width / box) / 2), hero.Width, (int)(hero.Width / box));
-                    g.DrawImage(hero, new D.Rectangle(0, 0, width + 2 * pad, heroH), src, D.GraphicsUnit.Pixel);
+                    int hp = 22;
+                    double sc = Math.Min((width + 2 * pad - 2.0 * hp) / hero.Width, (heroH - 2.0 * hp) / hero.Height);
+                    int dw = (int)(hero.Width * sc), dh = (int)(hero.Height * sc), dx = (width + 2 * pad - dw) / 2, dy = (heroH - dh) / 2;
+                    g.DrawImage(hero, new D.Rectangle(dx, dy, dw, dh));
+                    using var frame = new D.Pen(D.Color.White, 2);
+                    g.DrawRectangle(frame, dx, dy, dw, dh);
                 }
                 g.FillRectangle(accentBrush, 0, heroH, width + 2 * pad, 5);
                 g.DrawString(o.Title, coverFont, ink, pad, heroH + 26);

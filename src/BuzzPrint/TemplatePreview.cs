@@ -44,7 +44,8 @@ public static class TemplatePreview
         switch (t.Cover)
         {
             case "hero":
-                Add(MockShot(70, 100, accent, s), 74, 0);
+                Rect(74, 0, 86, 100, fill);
+                var ms = MockShot(70, 44, accent, s); ms.BorderBrush = Brushes.White; ms.BorderThickness = new Thickness(.8); Add(ms, 82, 28);
                 Rect(72, 0, 2, 100, accent);
                 Rect(10, 34, 12, 1.4, accent);
                 var ht = Text(title, t.HeadingFont, 9.5 * s, t.Ink, true); ht.Width = 58 * s; ht.TextWrapping = TextWrapping.Wrap; ht.TextTrimming = TextTrimming.None; Add(ht, 10, 37);

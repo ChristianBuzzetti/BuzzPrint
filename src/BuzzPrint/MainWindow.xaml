@@ -173,11 +173,13 @@
               <RadioButton x:Name="NavEdited" Style="{StaticResource NavItem}" GroupName="NavLib" Tag="3" Checked="NavFilterChecked"><DockPanel><TextBlock x:Name="NavEditedCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE70F;"/><TextBlock Text="{local:T 'Editadas'}"/></DockPanel></RadioButton>
               <RadioButton x:Name="NavRecordings" Style="{StaticResource NavItem}" GroupName="NavLib" Tag="4" Checked="NavFilterChecked"><DockPanel><TextBlock x:Name="NavRecordingsCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE714;"/><TextBlock Text="{local:T 'Grabaciones'}"/></DockPanel></RadioButton>
               <TextBlock Style="{StaticResource NavLabel}" Text="{local:T 'SECCIONES'}"/>
+              <ScrollViewer MaxHeight="232" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly" Focusable="False">
               <ItemsControl x:Name="NavSections">
                 <ItemsControl.ItemTemplate><DataTemplate>
                   <RadioButton Style="{StaticResource NavItem}" GroupName="NavSection" IsChecked="{Binding IsActive, Mode=OneWay}" Tag="{Binding Key}" Click="NavSectionClick"><DockPanel><TextBlock Style="{StaticResource NavCount}" DockPanel.Dock="Right" Text="{Binding Count}"/><TextBlock Style="{StaticResource NavGlyph}" Text="{Binding Glyph}"/><TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/></DockPanel></RadioButton>
                 </DataTemplate></ItemsControl.ItemTemplate>
               </ItemsControl>
+              </ScrollViewer>
               <Button Style="{StaticResource NavAction}" Click="NewSectionClick"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE710;"/><TextBlock Text="{local:T 'Nueva sección'}"/></DockPanel></Button>
               <StackPanel x:Name="NavAiGroup" Visibility="Collapsed">
                 <TextBlock Style="{StaticResource NavLabel}" Text="{local:T 'INTELIGENCIA ARTIFICIAL'}"/>
