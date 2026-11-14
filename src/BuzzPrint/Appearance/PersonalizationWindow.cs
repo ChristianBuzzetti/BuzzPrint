@@ -476,7 +476,9 @@ public sealed class PersonalizationWindow:Window
             void PaintCustom(){if(IsCustom()){customDisc.Background=new SolidColorBrush(MarkStyle.ToColor(get(BobertoMark.Current)));plus.Text="";}else{customDisc.Background=hues;plus.Text="+";}plus.Foreground=Brushes.White;}
             PaintCustom();markRefresh.Add(PaintCustom);
             var popup=new System.Windows.Controls.Primitives.Popup {StaysOpen=false,AllowsTransparency=true,Placement=System.Windows.Controls.Primitives.PlacementMode.Bottom};
-            var picker=new CustomAccentPicker(hex=>{Pick(with(BobertoMark.Current,hex));popup.IsOpen=false;});
+            var picker=new CustomAccentPicker(hex=>Pick(with(BobertoMark.Current,hex)));   /* live while adjusting; the popup stays open */
+            picker.Applied+=()=>popup.IsOpen=false;
+            popup.KeyDown+=(_,e)=>{if(e.Key==Key.Escape){popup.IsOpen=false;e.Handled=true;}};
             popup.Child=picker;
             var customButton=Dot(customDisc,L.T("Color propio"),IsCustom,()=>{});
             customButton.Click+=(_,_)=>{string now=get(BobertoMark.Current);picker.Load(MarkStyle.IsHex(now)?now:"#A86B3C");popup.PlacementTarget=customButton;popup.IsOpen=true;};
@@ -515,6 +517,8 @@ public sealed class CustomAccentPicker:Border
     private readonly TextBlock contrast=new() {TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,8,0,0)};
     public string Current=>ColorFromHsv(hue,saturation,value).ToHex();
 
+    /// <summary>Raised by the Apply button, after the color is committed (dragging commits too, without closing anything).</summary>
+    public event Action? Applied;
     public CustomAccentPicker(Action<string> onCommit)
     {
         commit=onCommit;BorderThickness=new Thickness(1);Padding=new Thickness(14);SetResourceReference(BorderBrushProperty,"FaintBorder");SetResourceReference(BackgroundProperty,"Canvas");
@@ -527,7 +531,7 @@ public sealed class CustomAccentPicker:Border
         var left=new StackPanel {Margin=new Thickness(0,0,18,0)};left.Children.Add(field);left.Children.Add(rail);DockPanel.SetDock(left,Dock.Left);layout.Children.Add(left);
         var right=new StackPanel {HorizontalAlignment=HorizontalAlignment.Left};var caption=new TextBlock {Text=L.T("Acento propio"),FontWeight=FontWeights.SemiBold,Margin=new Thickness(0,0,0,8)};caption.SetResourceReference(TextBlock.ForegroundProperty,"Ink");right.Children.Add(caption);sample.HorizontalAlignment=HorizontalAlignment.Left;sample.SetResourceReference(BorderBrushProperty,"StrongBorder");right.Children.Add(sample);
         var hexRow=new StackPanel {Orientation=Orientation.Horizontal,Margin=new Thickness(0,10,0,0)};Hex.SetResourceReference(Control.FontFamilyProperty,"MonoFont");Hex.Padding=new Thickness(8,5,8,5);hexRow.Children.Add(Hex);
-        var apply=new Button {Content="Aplicar",Margin=new Thickness(6,0,0,0),MinHeight=0,Padding=new Thickness(12,4,12,4)};apply.SetResourceReference(BackgroundProperty,"Accent");apply.SetResourceReference(Control.ForegroundProperty,"OnAccent");apply.SetResourceReference(BorderBrushProperty,"Accent");apply.Click+=(_,_)=>CommitHex();hexRow.Children.Add(apply);right.Children.Add(hexRow);
+        var apply=new Button {Content=L.T("Aplicar"),Margin=new Thickness(6,0,0,0),MinHeight=0,Padding=new Thickness(12,4,12,4)};apply.SetResourceReference(BackgroundProperty,"Accent");apply.SetResourceReference(Control.ForegroundProperty,"OnAccent");apply.SetResourceReference(BorderBrushProperty,"Accent");apply.Click+=(_,_)=>{CommitHex();Applied?.Invoke();};hexRow.Children.Add(apply);right.Children.Add(hexRow);
         contrast.SetResourceReference(TextBlock.ForegroundProperty,"Muted");contrast.SetResourceReference(TextBlock.FontSizeProperty,"SmallFontSize");contrast.MaxWidth=230;right.Children.Add(contrast);layout.Children.Add(right);
         Hex.KeyDown+=(_,e)=> {if(e.Key==Key.Enter){CommitHex();e.Handled=true;}};
         Hex.TextChanged+=(_,_)=>{if(TryParse(Hex.Text,out var color)){SetFrom(color,updateHex:false);}};
