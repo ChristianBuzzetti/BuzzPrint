@@ -69,7 +69,34 @@ public sealed class AiBusy : IDisposable
         watchdog = new System.Windows.Threading.DispatcherTimer { Interval = Idle };
         watchdog.Tick += (_, _) => { watchdog.Stop(); Cancel(timedOut: true); };
         watchdog.Start();
+        countdown.Tick += (_, _) => CountdownTick();
+#if PREVIEW
+        Ai.AiClient.Waiting += OnWaiting;
+#endif
         veil.Show();
+    }
+
+    // A rate limit (free keys allow few requests per minute) is a wait, not a hang: show it as a countdown.
+    readonly System.Windows.Threading.DispatcherTimer countdown = new() { Interval = TimeSpan.FromSeconds(1) };
+    DateTime waitUntil;
+    string? beforeWait;
+    void OnWaiting(TimeSpan wait) => veil.Dispatcher.BeginInvoke(() =>
+    {
+        if (closed) return;
+        beforeWait ??= detail.Text;
+        waitUntil = DateTime.Now + wait;
+        CountdownTick();
+        countdown.Start();
+    });
+    void CountdownTick()
+    {
+        if (closed) { countdown.Stop(); return; }
+        int left = (int)Math.Ceiling((waitUntil - DateTime.Now).TotalSeconds);
+        watchdog.Stop(); watchdog.Start();   // waiting on the service is progress, not a hang
+        if (left > 0) { detail.Text = L.F("El servicio pidió esperar (límite de pedidos por minuto). Sigo en {0} s…", left); return; }
+        countdown.Stop();
+        detail.Text = beforeWait ?? detail.Text;
+        beforeWait = null;
     }
 
     public static AiBusy Show(Window owner, string text) => new(owner, text);
@@ -79,7 +106,7 @@ public sealed class AiBusy : IDisposable
     public CancellationToken Token => cts.Token;
 
     /// <summary>What the AI is doing now (progress like "3/10"); also restarts the idle timeout.</summary>
-    public string Text { set { detail.Text = value; if (!closed) { watchdog.Stop(); watchdog.Start(); } } }
+    public string Text { set { if (countdown.IsEnabled) beforeWait = value; else detail.Text = value; if (!closed) { watchdog.Stop(); watchdog.Start(); } } }
 
     void Cancel(bool timedOut)
     {
@@ -118,6 +145,10 @@ public sealed class AiBusy : IDisposable
         if (closed) return;
         closed = true;
         watchdog.Stop();
+        countdown.Stop();
+#if PREVIEW
+        Ai.AiClient.Waiting -= OnWaiting;
+#endif
         owner.LocationChanged -= Follow; owner.SizeChanged -= Follow; owner.StateChanged -= Follow; owner.Closed -= OwnerClosed;
         owner.IsEnabled = wasEnabled;
         veil.Close();

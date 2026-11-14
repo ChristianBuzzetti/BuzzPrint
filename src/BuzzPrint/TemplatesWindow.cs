@@ -7,7 +7,7 @@ namespace BuzzPrint;
 
 /// <summary>
 /// Document templates: pick one for exports, duplicate any into an editable copy, edit, rename or delete your own
-/// (up to <see cref="DocTemplates.MaxCustom"/>), or import a design from a Word, PowerPoint, PDF or image file.
+/// (up to <see cref="DocTemplates.MaxCustom"/>), or create one from scratch with the template editor.
 /// </summary>
 public sealed class TemplatesWindow : Window
 {
@@ -17,7 +17,7 @@ public sealed class TemplatesWindow : Window
     readonly Button edit = new() { Content = L.T("Editar"), MinWidth = 100, Margin = new Thickness(8, 0, 0, 0) };
     readonly Button delete = new() { Content = L.T("Eliminar"), MinWidth = 100, Margin = new Thickness(8, 0, 0, 0) };
     readonly Button duplicate = new() { Content = L.T("Duplicar"), MinWidth = 100, Margin = new Thickness(8, 0, 0, 0) };
-    readonly Button import = new() { Content = L.T("Importar desde archivo…"), MinWidth = 170, Margin = new Thickness(8, 0, 0, 0) };
+    readonly Button create = new() { Content = L.T("Crear plantilla"), MinWidth = 140, Margin = new Thickness(8, 0, 0, 0) };
     string selectedId;
     string? chosen;
 
@@ -34,7 +34,7 @@ public sealed class TemplatesWindow : Window
         var root = new DockPanel { Margin = new Thickness(24, 20, 24, 18) };
         var head = new StackPanel();
         var h = new TextBlock { Text = L.T("Plantillas de documento"), FontWeight = FontWeights.SemiBold }; h.SetResourceReference(TextBlock.FontSizeProperty, "TitleFontSize"); head.Children.Add(h);
-        var p = new TextBlock { Text = L.T("El diseño de los PowerPoint, Word, PDF e imágenes que exportás. Elegí una, duplicala para ajustarla a tu gusto o importá el diseño de un archivo tuyo."), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 14) };
+        var p = new TextBlock { Text = L.T("El diseño de los PowerPoint, Word, PDF e imágenes que exportás. Elegí una, duplicala para ajustarla, o creá la tuya con tus colores, tipografías y logo."), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 14) };
         p.SetResourceReference(TextBlock.ForegroundProperty, "Muted");
         head.Children.Add(p);
         var top = BobertoMark.WithBadge(head, 48); DockPanel.SetDock(top, Dock.Top); root.Children.Add(top);
@@ -46,7 +46,7 @@ public sealed class TemplatesWindow : Window
         var close = new Button { Content = L.T("Cerrar"), IsCancel = true, MinWidth = 100, Margin = new Thickness(8, 0, 0, 0) };
         close.Click += (_, _) => Close();
         foreach (var b in new[] { use, close }) { DockPanel.SetDock(b, Dock.Right); foot.Children.Add(b); }
-        foreach (var b in new[] { import, duplicate, edit, delete }) { DockPanel.SetDock(b, Dock.Right); foot.Children.Add(b); }
+        foreach (var b in new[] { create, duplicate, edit, delete }) { DockPanel.SetDock(b, Dock.Right); foot.Children.Add(b); }
         count.SetResourceReference(TextBlock.ForegroundProperty, "Muted");
         foot.Children.Add(count);
         DockPanel.SetDock(foot, Dock.Bottom); root.Children.Add(foot);
@@ -57,10 +57,7 @@ public sealed class TemplatesWindow : Window
         duplicate.Click += (_, _) => Duplicate();
         edit.Click += (_, _) => Edit();
         delete.Click += (_, _) => Delete();
-        import.Click += async (_, _) => await ImportAsync();
-#if !PREVIEW
-        import.Visibility = Visibility.Collapsed;
-#endif
+        create.Click += (_, _) => Create();
         PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) Close(); };
         Render();
     }
@@ -101,7 +98,7 @@ public sealed class TemplatesWindow : Window
         var sel = DocTemplates.Get(selectedId);
         int custom = all.Count(t => !t.BuiltIn);
         edit.IsEnabled = delete.IsEnabled = !sel.BuiltIn;
-        duplicate.IsEnabled = import.IsEnabled = custom < DocTemplates.MaxCustom;
+        duplicate.IsEnabled = create.IsEnabled = custom < DocTemplates.MaxCustom;
         count.Text = L.F("{0} de {1} plantillas propias", custom, DocTemplates.MaxCustom);
     }
 
@@ -140,39 +137,12 @@ public sealed class TemplatesWindow : Window
         Render();
     }
 
-    async Task ImportAsync()
+    void Create()
     {
-#if PREVIEW
-        var dlg = new Microsoft.Win32.OpenFileDialog { Title = L.T("Importar el diseño de un archivo"), Filter = L.T("Documentos e imágenes") + "|*.docx;*.pptx;*.pdf;*.png;*.jpg;*.jpeg|Word|*.docx|PowerPoint|*.pptx|PDF|*.pdf|" + L.T("Imágenes") + "|*.png;*.jpg;*.jpeg" };
-        if (dlg.ShowDialog(this) != true) return;
-        string file = dlg.FileName;
-        string ext = System.IO.Path.GetExtension(file).ToLowerInvariant();
-        bool aiReady = Store.Settings.AiEnabled && Ai.AiConnections.Active(Store.Settings) != null;
-        if (!aiReady && ext is not (".docx" or ".pptx"))
-        {
-            PromptWindow.Info(this, L.T("Importar el diseño de un archivo"), L.T("Para leer el diseño de un PDF o una imagen hace falta una conexión de IA. Configurala en IA → Configurar IA. Los Word y PowerPoint se pueden importar sin IA."));
-            return;
-        }
-        if (aiReady && !PromptWindow.Confirm(this, L.T("Importar el diseño de un archivo"),
-                L.F("BuzzPrint lee los colores y tipografías del archivo y le pide a {0} que arme la plantilla. Se envía la primera página como imagen (o, en Word y PowerPoint, el tema del documento), no el resto del contenido.", Ai.AiConnections.DisplayName(Ai.AiConnections.Active(Store.Settings)!)),
-                L.T("Importar"))) return;
-        DocTemplate result;
-        try
-        {
-            using var busy = AiBusy.Show(this, L.T("Interpretando el diseño del archivo…"));
-            result = await Ai.AiTemplate.InterpretAsync(file, aiReady, busy.Token);
-        }
-        catch (OperationCanceledException) { PromptWindow.Info(this, L.T("Importar el diseño de un archivo"), AiBusy.Stopped(this, L.T("Importar el diseño de un archivo"))); return; }
-        catch (Exception ex) when (ex is Ai.AiException or System.IO.IOException or System.IO.InvalidDataException or UnauthorizedAccessException or System.Xml.XmlException)
-        {
-            PromptWindow.Info(this, L.T("Importar el diseño de un archivo"), ex.Message);
-            return;
-        }
-        var edited = TemplateEditWindow.Edit(this, result, appAccent, L.T("Revisar la plantilla importada"), L.T("Esto es lo que se interpretó del archivo. Corregí lo que haga falta antes de guardarla."));
-        if (edited != null) Save(edited);
-#else
-        await Task.CompletedTask;
-#endif
+        var blank = DocTemplates.BuiltIns.First(b => b.Id == "executive").Copy();
+        blank.Id = ""; blank.Name = L.T("Mi plantilla"); blank.Description = L.T("Plantilla propia.");
+        var made = TemplateEditWindow.Edit(this, blank, appAccent, L.T("Crear plantilla"), L.T("Elegí colores, tipografías, portada, encabezados, pie y logo. La vista previa muestra cómo queda."));
+        if (made != null) Save(made);
     }
 
     /// <summary>Opens the manager; the template the person chose with "Use", or null.</summary>

@@ -106,22 +106,6 @@ public partial class App : Application
         }
 #endif
 #if PREVIEW
-        // --ai-template LOG FILE [noai]: interprets a document's design into a template (tests); writes the JSON to LOG.
-        if (Arg(e.Args, "--ai-template") is string templateLog)
-        {
-            int i = Array.IndexOf(e.Args, "--ai-template");
-            string file = i + 2 < e.Args.Length ? e.Args[i + 2] : "";
-            bool useAi = !e.Args.Contains("noai");
-            Dispatcher.BeginInvoke(async () =>
-            {
-                string result;
-                try { result = System.Text.Json.JsonSerializer.Serialize(await Ai.AiTemplate.InterpretAsync(file, useAi), new System.Text.Json.JsonSerializerOptions { WriteIndented = true }); }
-                catch (Exception ex) { result = "FAIL " + ex.GetType().Name + ": " + ex.Message; }
-                File.WriteAllText(templateLog, result);
-                Shutdown();
-            });
-            return;
-        }
         // --ai-feature LOG FEATURE PNG...: runs one AI feature on sample images with the active connection and writes
         // the result to LOG (tests and support; the images never enter the library).
         if (Arg(e.Args, "--ai-feature") is string featureLog)

@@ -163,24 +163,53 @@ public static class Exporter
         int n = 0;
         string bg = Tp.Page == "FFFFFF" ? "" : "<p:bg><p:bgPr><a:solidFill><a:srgbClr val=\"" + Tp.Page + "\"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>";
         string Slide(string body) => "<p:sld " + pNs + "><p:cSld>" + bg + "<p:spTree>" + grp + body + "</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>";
-        void Rels(int slide, string? image) => Entry(zip, "ppt/slides/_rels/slide" + slide + ".xml.rels", RootRelsHead + "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout\" Target=\"../slideLayouts/slideLayout1.xml\"/>" +
-            (image != null ? "<Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"../media/" + image + "\"/>" : "") + "</Relationships>");
+        void Rels(int slide, string? image, bool logo) => Entry(zip, "ppt/slides/_rels/slide" + slide + ".xml.rels", RootRelsHead + "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout\" Target=\"../slideLayouts/slideLayout1.xml\"/>" +
+            (image != null ? "<Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"../media/" + image + "\"/>" : "") +
+            (logo ? "<Relationship Id=\"rIdLogo\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"../media/logo.png\"/>" : "") + "</Relationships>");
         const long M = In / 2;
+        string? logo = Tp.LogoPath;
+        long logoW = 0, logoH = (long)(In * .55);
+        if (logo != null)
+        {
+            var (lw, lh) = ImageSize(logo);
+            logoW = logoH * lw / Math.Max(1, lh);
+            if (logoW > In * 2.2) { logoH = logoH * (long)(In * 2.2) / logoW; logoW = (long)(In * 2.2); }
+            Entry(zip, "ppt/media/logo.png", File.ReadAllBytes(logo));
+        }
+        string Logo(int id, long x, long y, long h) => PicRef(id, x, y, logoW * h / Math.Max(1, logoH), h, "Logo", "rIdLogo", "<a:ln><a:noFill/></a:ln>");
+        string brand = Tp.CoverFillHex(o.Accent);
         if (o.Cover)
         {
             n++;
             var body = new StringBuilder();
             int id = 2;
-            string fill = Tp.CoverFillHex(o.Accent), cink = Tp.CoverInk, intro = o.Intro.Trim();
+            string fill = brand, cink = Tp.CoverInk, intro = o.Intro.Trim();
             long tx = M + In / 4, tw = SlideW - 2 * M - In / 4;
-            string footColor = Tp.Faint;
+            string footColor = Tp.Faint, orgColor = Tp.Muted;
+            bool coverImage = false, logoOnFill = false, logoCentered = false;
             switch (Tp.Cover)
             {
+                case "hero":
+                {
+                    // Title on the left, the first capture filling the right side, an accent seam between them.
+                    long split = (long)(SlideW * .45);
+                    var (cw, ch) = Size(pages[0].Item);
+                    body.Append(PicFill(id++, split, 0, SlideW - split, SlideH, cw, ch));
+                    coverImage = true;
+                    body.Append(Rect(id++, split, 0, Pt * 8, SlideH, o.Accent));
+                    long hw = split - M - In / 2;
+                    body.Append(Rect(id++, M, (long)(In * 2.0), (long)(In * .7), Pt * 4, o.Accent));
+                    body.Append(Text(id++, M, (long)(In * 2.15), hw, (long)(In * 1.3), 3400, true, Tp.Ink, o.Title, "b"));
+                    body.Append(Text(id++, M, (long)(In * 3.5), hw, (long)(In * .5), 1500, false, Tp.Muted, Subtitle(pages.Count), "t"));
+                    if (intro.Length > 0) body.Append(Text(id++, M, (long)(In * 4.05), hw, (long)(In * 2.0), 1200, false, Tp.Muted, intro, "t"));
+                    break;
+                }
                 case "band":
                     body.Append(Rect(id++, 0, 0, SlideW, (long)(In * 3.2), fill));
                     body.Append(Text(id++, tx, (long)(In * 1.15), tw, (long)(In * 1.2), 4000, true, cink, o.Title, "b"));
                     body.Append(Text(id++, tx, (long)(In * 2.45), tw, (long)(In * .5), 1600, false, cink, Subtitle(pages.Count), "t"));
                     if (intro.Length > 0) body.Append(Text(id++, tx, (long)(In * 3.6), tw, (long)(In * 2.4), 1300, false, Tp.Muted, intro, "t"));
+                    logoOnFill = true;
                     break;
                 case "full":
                     body.Append(Rect(id++, 0, 0, SlideW, SlideH, fill));
@@ -188,13 +217,14 @@ public static class Exporter
                     body.Append(Text(id++, tx, (long)(In * 2.2), tw, (long)(In * 1.1), 4200, true, cink, o.Title, "b"));
                     body.Append(Text(id++, tx, (long)(In * 3.42), tw, (long)(In * .5), 1600, false, cink, Subtitle(pages.Count), "t"));
                     if (intro.Length > 0) body.Append(Text(id++, tx, (long)(In * 4.0), tw, (long)(In * 2.2), 1300, false, cink, intro, "t"));
-                    footColor = cink;
+                    footColor = orgColor = cink; logoOnFill = true;
                     break;
                 case "minimal":
                     body.Append(Text(id++, M, (long)(In * 2.1), SlideW - 2 * M, (long)(In * 1.2), 4000, true, Tp.Ink, o.Title, "b", "ctr"));
                     body.Append(Rect(id++, SlideW / 2 - In / 3, (long)(In * 3.42), In * 2 / 3, Pt * 2, o.Accent));
                     body.Append(Text(id++, M, (long)(In * 3.6), SlideW - 2 * M, (long)(In * .5), 1500, false, Tp.Muted, Subtitle(pages.Count), "t", "ctr"));
                     if (intro.Length > 0) body.Append(Text(id++, M + In, (long)(In * 4.25), SlideW - 2 * M - 2 * In, (long)(In * 2.0), 1300, false, Tp.Muted, intro, "t", "ctr"));
+                    logoCentered = true;
                     break;
                 default:
                     body.Append(Rect(id++, M, (long)(In * 2.35), (long)(Pt * 6), (long)(In * 1.55), o.Accent));
@@ -203,9 +233,40 @@ public static class Exporter
                     if (intro.Length > 0) body.Append(Text(id++, tx, (long)(In * 4.0), tw, (long)(In * 2.2), 1300, false, Tp.Muted, intro, "t"));
                     break;
             }
-            if (Tp.Footer.Length > 0) body.Append(Text(id++, M, SlideH - M - (long)(In * .3), SlideW - 2 * M, (long)(In * .3), 1000, false, footColor, Tp.Footer, "b"));
+            if (logo != null)
+            {
+                long lx = logoCentered ? SlideW / 2 - logoW / 2 : M, ly = M;
+                if (logoOnFill) body.Append(Box(id++, lx - In / 8, ly - In / 8, logoW + In / 4, logoH + In / 4, "FFFFFF"));
+                body.Append(Logo(id++, lx, ly, logoH));
+            }
+            if (Tp.Footer.Length > 0) body.Append(Text(id++, M, SlideH - M - (long)(In * .3), SlideW / 2 - M, (long)(In * .3), 1000, false, footColor, Tp.Footer, "b"));
+            if (Tp.Org.Length > 0)
+            {
+                long ox = Tp.Cover == "hero" ? M : SlideW / 2, ow = Tp.Cover == "hero" ? (long)(SlideW * .45) - M - In / 2 : SlideW / 2 - M;
+                body.Append(Text(id++, ox, SlideH - M - (long)(In * .35), ow, (long)(In * .35), 1200, true, orgColor, Tp.Org, "b", Tp.Cover == "hero" ? "l" : "r"));
+            }
             Entry(zip, "ppt/slides/slide" + n + ".xml", Slide(body.ToString()));
-            Rels(n, null);
+            Rels(n, coverImage ? "image1.png" : null, logo != null);
+        }
+        // The step mark (inline text, filled label or large number) at x; returns where the title starts.
+        long Step(StringBuilder body, ref int id, long x, long y, long h, int i, bool onBand)
+        {
+            if (!o.Numbers) return x;
+            switch (Tp.Steps)
+            {
+                case "pill":
+                {
+                    string label = StepLabel(i);
+                    long pw = (long)(In * (0.42 + 0.105 * label.Length)), ph = (long)(In * .42);
+                    body.Append(Pill(id++, x, y + (h - ph) / 2, pw, ph, label, onBand ? "FFFFFF" : o.Accent, onBand ? brand : "FFFFFF"));
+                    return x + pw + In / 6;
+                }
+                case "number":
+                    body.Append(Text(id++, x, y, (long)(In * 1.0), h, 3400, true, onBand ? "FFFFFF" : o.Accent, (i + 1).ToString("00"), "ctr"));
+                    return x + (long)(In * 1.0);
+                default:
+                    return x;
+            }
         }
         for (int i = 0; i < pages.Count; i++)
         {
@@ -216,47 +277,119 @@ public static class Exporter
             var (iw, ih) = Size(p.Item);
             var body = new StringBuilder();
             int id = 2;
-            string title = o.Captions ? p.Title.Trim() : "";
+            string title = o.Captions ? p.Title.Trim() : "", note = p.Note.Trim();
+            bool band = Tp.Header == "band", bar = Tp.FooterStyle == "bar", split = Tp.Layout == "split";
             bool head = o.Numbers || title.Length > 0;
-            long top = M;
-            if (Tp.TopRule) body.Append(Rect(id++, 0, 0, SlideW, Pt * 5, o.Accent));
-            if (head)
+            if (Tp.TopRule && !band) body.Append(Rect(id++, 0, 0, SlideW, Pt * 5, o.Accent));
+
+            // Footer: a colored bar (footer text, organization, page number) or small print.
+            long bottom;
+            if (bar)
             {
-                // Header: the step (inline text, a filled label or a large number) and the caption, on one line.
-                long hx = M;
-                if (o.Numbers && Tp.Steps == "pill")
-                {
-                    string label = StepLabel(i);
-                    long pw = (long)(In * (0.42 + 0.105 * label.Length));
-                    body.Append(Pill(id++, M, top + (long)(In * .07), pw, (long)(In * .42), label, o.Accent, "FFFFFF"));
-                    hx = M + pw + In / 6;
-                }
-                else if (o.Numbers && Tp.Steps == "number")
-                {
-                    body.Append(Text(id++, M, top - (long)(In * .12), (long)(In * 1.0), (long)(In * .75), 3400, true, o.Accent, (i + 1).ToString("00"), "ctr"));
-                    hx = M + (long)(In * 1.0);
-                }
-                var runs = new StringBuilder("<a:p>");
-                if (o.Numbers && Tp.Steps == "inline") runs.Append(Run(StepLabel(i) + (title.Length > 0 ? "   " : ""), 2000, true, o.Accent));
-                if (title.Length > 0) runs.Append(Run(title, 2000, true, Tp.Ink));
-                runs.Append("</a:p>");
-                body.Append(Shape(id++, hx, top, SlideW - M - hx, (long)(In * .55), runs.ToString(), "ctr"));
-                body.Append(Rect(id++, M, top + (long)(In * .62), SlideW - 2 * M, Pt, Tp.Rule));
-                top += (long)(In * .8);
+                long barH = (long)(In * .4);
+                body.Append(Rect(id++, 0, SlideH - barH, SlideW, barH, brand));
+                string left = string.Join("   ·   ", new[] { Tp.Footer, Tp.Org }.Where(x => x.Length > 0));
+                if (left.Length > 0) body.Append(Text(id++, M, SlideH - barH, SlideW - 2 * M - In, barH, 1000, true, "FFFFFF", left, "ctr"));
+                body.Append(Text(id++, SlideW - M - In, SlideH - barH, In, barH, 1000, true, "FFFFFF", (i + 1) + " / " + pages.Count, "ctr", "r"));
+                bottom = SlideH - barH - In / 10;
+                if (o.Meta) { body.Append(Text(id++, M, bottom - (long)(In * .28), SlideW - 2 * M, (long)(In * .28), 900, false, Tp.Faint, MetaLine(p), "ctr")); bottom -= (long)(In * .3); }
             }
-            string note = p.Note.Trim();
-            long footer = (long)(In * .4), noteH = note.Length > 0 ? (long)(In * (note.Length > 160 ? 1.0 : .62)) : 0;
-            long areaH = SlideH - top - M / 2 - footer - noteH, areaW = SlideW - 2 * M;
-            var (w, h) = Fit(iw, ih, areaW, areaH);
-            if (w > iw * In / 96 * 2) (w, h) = (iw * In / 96 * 2, ih * In / 96 * 2);   // tiny captures are not blown up past 2×
-            body.Append(Pic(id++, M + (areaW - w) / 2, top + (areaH - h) / 2, w, h, p.Title, o.Accent));
-            if (noteH > 0) body.Append(Text(id++, M, top + areaH + (long)(In * .08), areaW, noteH - (long)(In * .08), 1400, false, Tp.Ink, note, "t"));
-            string meta = (o.Meta ? MetaLine(p) : "");
-            body.Append(Text(id++, M, SlideH - M / 2 - footer + (long)(In * .1), areaW - In, footer - (long)(In * .1), 1000, false, Tp.Faint, meta, "ctr"));
-            body.Append(Text(id++, SlideW - M - In, SlideH - M / 2 - footer + (long)(In * .1), In, footer - (long)(In * .1), 1000, false, Tp.Faint, (i + 1) + " / " + pages.Count, "ctr", "r"));
+            else
+            {
+                long footer = (long)(In * .4);
+                body.Append(Text(id++, M, SlideH - M / 2 - footer + (long)(In * .1), SlideW - 2 * M - In, footer - (long)(In * .1), 1000, false, Tp.Faint, o.Meta ? MetaLine(p) : "", "ctr"));
+                body.Append(Text(id++, SlideW - M - In, SlideH - M / 2 - footer + (long)(In * .1), In, footer - (long)(In * .1), 1000, false, Tp.Faint, (i + 1) + " / " + pages.Count, "ctr", "r"));
+                bottom = SlideH - M / 2 - footer;
+            }
+
+            // Header: a colored band with the step and the title, or the title over a thin rule.
+            long top = M;
+            long logoRoom = logo != null ? logoW * (long)(In * .4) / Math.Max(1, logoH) + In / 4 : 0;
+            if (band)
+            {
+                long bandH = (long)(In * .9);
+                body.Append(Rect(id++, 0, 0, SlideW, bandH, brand));
+                long hx = Step(body, ref id, M, 0, bandH, i, true);
+                var runs = new StringBuilder("<a:p>");
+                if (o.Numbers && Tp.Steps == "inline") runs.Append(Run(StepLabel(i) + (title.Length > 0 ? "   " : ""), 2200, true, o.Accent == brand ? "FFFFFF" : o.Accent));
+                if (title.Length > 0) runs.Append(Run(title, 2200, true, "FFFFFF"));
+                runs.Append("</a:p>");
+                body.Append(Shape(id++, hx, 0, SlideW - M - hx - logoRoom, bandH, runs.ToString(), "ctr"));
+                if (logo != null)
+                {
+                    long lh = (long)(In * .4), lw = logoW * lh / Math.Max(1, logoH), lx = SlideW - M - lw, ly = (bandH - lh) / 2;
+                    body.Append(Box(id++, lx - In / 12, ly - In / 12, lw + In / 6, lh + In / 6, "FFFFFF"));
+                    body.Append(Logo(id++, lx, ly, lh));
+                }
+                top = bandH + In / 4;
+            }
+            else
+            {
+                if (logo != null) { long lh = (long)(In * .4); body.Append(Logo(id++, SlideW - M - logoW * lh / Math.Max(1, logoH), M + In / 16, lh)); }
+                if (head && !split)
+                {
+                    long hx = Step(body, ref id, M, top, (long)(In * .55), i, false);
+                    var runs = new StringBuilder("<a:p>");
+                    if (o.Numbers && Tp.Steps == "inline") runs.Append(Run(StepLabel(i) + (title.Length > 0 ? "   " : ""), 2000, true, o.Accent));
+                    if (title.Length > 0) runs.Append(Run(title, 2000, true, Tp.Ink));
+                    runs.Append("</a:p>");
+                    body.Append(Shape(id++, hx, top, SlideW - M - hx - logoRoom, (long)(In * .55), runs.ToString(), "ctr"));
+                    body.Append(Rect(id++, M, top + (long)(In * .62), SlideW - 2 * M, Pt, Tp.Rule));
+                    top += (long)(In * .8);
+                }
+            }
+
+            if (split)
+            {
+                // Text column on the left (step, title, note), the capture as large as fits on the right.
+                long colW = (long)(SlideW * .3), cy = top + (band ? 0 : In / 8);
+                if (!band && head)
+                {
+                    long hx = Step(body, ref id, M, cy, (long)(In * .5), i, false);
+                    if (o.Numbers && Tp.Steps == "inline") body.Append(Text(id++, M, cy, colW - In / 4, (long)(In * .4), 1400, true, o.Accent, StepLabel(i), "t"));
+                    if (o.Numbers) cy += (long)(In * .6);
+                    if (title.Length > 0)
+                    {
+                        long th = (long)(In * (title.Length > 60 ? 1.5 : title.Length > 30 ? 1.1 : .7));
+                        body.Append(Text(id++, M, cy, colW - In / 4, th, 2200, true, Tp.Ink, title, "t"));
+                        cy += th + In / 10;
+                    }
+                    body.Append(Rect(id++, M, cy, In / 2, Pt * 3, o.Accent));
+                    cy += In / 5;
+                }
+                if (note.Length > 0) body.Append(Text(id++, M, cy, colW - In / 4, bottom - cy, 1300, false, Tp.Ink, note, "t"));
+                long ax = M + colW, aw = SlideW - M - ax, ah = bottom - top;
+                var (w, h) = Fit(iw, ih, aw, ah);
+                if (w > iw * In / 96 * 2) (w, h) = (iw * In / 96 * 2, ih * In / 96 * 2);
+                body.Append(Pic(id++, ax + (aw - w) / 2, top + (ah - h) / 2, w, h, p.Title, o.Accent));
+            }
+            else
+            {
+                long noteH = note.Length > 0 ? (long)(In * (note.Length > 160 ? 1.0 : .62)) : 0;
+                long areaH = bottom - top - noteH, areaW = SlideW - 2 * M;
+                var (w, h) = Fit(iw, ih, areaW, areaH);
+                if (w > iw * In / 96 * 2) (w, h) = (iw * In / 96 * 2, ih * In / 96 * 2);   // tiny captures are not blown up past 2×
+                body.Append(Pic(id++, M + (areaW - w) / 2, top + (areaH - h) / 2, w, h, p.Title, o.Accent));
+                if (noteH > 0) body.Append(Text(id++, M, top + areaH + (long)(In * .08), areaW, noteH - (long)(In * .08), 1400, false, Tp.Ink, note, "t"));
+            }
             Entry(zip, "ppt/slides/slide" + n + ".xml", Slide(body.ToString()));
-            Rels(n, image);
+            Rels(n, image, logo != null);
         }
+    }
+
+    static (int w, int h) ImageSize(string path) { using var b = new D.Bitmap(path); return (b.Width, b.Height); }
+    static string Box(int id, long x, long y, long w, long h, string fill) =>
+        "<p:sp><p:nvSpPr><p:cNvPr id=\"" + id + "\" name=\"Box " + id + "\"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>" + Xfrm(x, y, w, h) + "<a:prstGeom prst=\"roundRect\"><a:avLst><a:gd name=\"adj\" fmla=\"val 12000\"/></a:avLst></a:prstGeom><a:solidFill><a:srgbClr val=\"" + fill + "\"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr></p:sp>";
+    static string PicRef(int id, long x, long y, long w, long h, string descr, string rid, string ln, string crop = "") =>
+        "<p:pic><p:nvPicPr><p:cNvPr id=\"" + id + "\" name=\"Picture " + id + "\" descr=\"" + X(descr) + "\"/><p:cNvPicPr><a:picLocks noChangeAspect=\"1\"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed=\"" + rid + "\"/>" + crop + "<a:stretch><a:fillRect/></a:stretch></p:blipFill>" +
+        "<p:spPr>" + Xfrm(x, y, w, h) + "<a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom>" + ln + "</p:spPr></p:pic>";
+    /// <summary>The slide's image cropped to fill the box (cover photo).</summary>
+    static string PicFill(int id, long x, long y, long w, long h, int iw, int ih)
+    {
+        double box = (double)w / h, img = (double)iw / ih;
+        string crop = img > box ? "<a:srcRect l=\"" + (int)((1 - box / img) / 2 * 100000) + "\" r=\"" + (int)((1 - box / img) / 2 * 100000) + "\"/>"
+                                : "<a:srcRect t=\"" + (int)((1 - img / box) / 2 * 100000) + "\" b=\"" + (int)((1 - img / box) / 2 * 100000) + "\"/>";
+        return PicRef(id, x, y, w, h, "Cover", "rId2", "<a:ln><a:noFill/></a:ln>", crop);
     }
 
     static string Xfrm(long x, long y, long w, long h) => "<a:xfrm><a:off x=\"" + x + "\" y=\"" + y + "\"/><a:ext cx=\"" + Math.Max(w, 1) + "\" cy=\"" + Math.Max(h, 1) + "\"/></a:xfrm>";
@@ -320,15 +453,20 @@ public static class Exporter
             _ => "<w:spacing w:after=\"480\"/><w:ind w:left=\"240\"/>",
         };
         string titleInk = filled ? Tp.CoverInk : Tp.Ink, subInk = filled ? Tp.CoverInk : Tp.Muted;
-        string h2Rule = Tp.TopRule ? "<w:pBdr><w:top w:val=\"single\" w:sz=\"18\" w:space=\"8\" w:color=\"" + o.Accent + "\"/></w:pBdr>" : "";
+        bool band = Tp.Header == "band", bar = Tp.FooterStyle == "bar";
+        string h2Rule = band ? "<w:shd w:val=\"clear\" w:color=\"auto\" w:fill=\"" + fill + "\"/><w:ind w:left=\"0\"/>"
+            : Tp.TopRule ? "<w:pBdr><w:top w:val=\"single\" w:sz=\"18\" w:space=\"8\" w:color=\"" + o.Accent + "\"/></w:pBdr>" : "";
+        string h2Ink = band ? "FFFFFF" : Tp.Ink;
+        string footPPr = bar ? "<w:shd w:val=\"clear\" w:color=\"auto\" w:fill=\"" + fill + "\"/>" : "";
+        string footInk = bar ? "FFFFFF" : Tp.Faint;
         Entry(zip, "word/styles.xml", "<w:styles xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii=\"" + bf + "\" w:hAnsi=\"" + bf + "\" w:cs=\"" + bf + "\"/><w:sz w:val=\"21\"/><w:szCs w:val=\"21\"/><w:lang w:val=\"" + lang + "\"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after=\"120\" w:line=\"276\" w:lineRule=\"auto\"/></w:pPr></w:pPrDefault></w:docDefaults>" +
             "<w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"Normal\"><w:name w:val=\"Normal\"/><w:qFormat/><w:rPr><w:color w:val=\"" + Tp.Ink + "\"/></w:rPr></w:style>" +
             "<w:style w:type=\"paragraph\" w:styleId=\"Title\"><w:name w:val=\"Title\"/><w:basedOn w:val=\"Normal\"/><w:next w:val=\"Normal\"/><w:qFormat/><w:pPr>" + titlePPr + "</w:pPr><w:rPr><w:rFonts w:ascii=\"" + hf + "\" w:hAnsi=\"" + hf + "\"/><w:color w:val=\"" + titleInk + "\"/><w:sz w:val=\"52\"/><w:szCs w:val=\"52\"/></w:rPr></w:style>" +
             "<w:style w:type=\"paragraph\" w:styleId=\"Subtitle\"><w:name w:val=\"Subtitle\"/><w:basedOn w:val=\"Normal\"/><w:next w:val=\"Normal\"/><w:qFormat/><w:pPr>" + subPPr + "</w:pPr><w:rPr><w:color w:val=\"" + subInk + "\"/><w:sz w:val=\"24\"/></w:rPr></w:style>" +
-            "<w:style w:type=\"paragraph\" w:styleId=\"Heading2\"><w:name w:val=\"heading 2\"/><w:basedOn w:val=\"Normal\"/><w:next w:val=\"Normal\"/><w:qFormat/><w:pPr><w:keepNext/>" + h2Rule + "<w:spacing w:before=\"240\" w:after=\"120\"/><w:outlineLvl w:val=\"1\"/></w:pPr><w:rPr><w:rFonts w:ascii=\"" + hf + "\" w:hAnsi=\"" + hf + "\"/><w:color w:val=\"" + Tp.Ink + "\"/><w:sz w:val=\"30\"/><w:szCs w:val=\"30\"/></w:rPr></w:style>" +
+            "<w:style w:type=\"paragraph\" w:styleId=\"Heading2\"><w:name w:val=\"heading 2\"/><w:basedOn w:val=\"Normal\"/><w:next w:val=\"Normal\"/><w:qFormat/><w:pPr><w:keepNext/>" + h2Rule + "<w:spacing w:before=\"240\" w:after=\"120\"/><w:outlineLvl w:val=\"1\"/></w:pPr><w:rPr><w:rFonts w:ascii=\"" + hf + "\" w:hAnsi=\"" + hf + "\"/><w:color w:val=\"" + h2Ink + "\"/><w:sz w:val=\"30\"/><w:szCs w:val=\"30\"/></w:rPr></w:style>" +
             "<w:style w:type=\"paragraph\" w:styleId=\"Caption\"><w:name w:val=\"caption\"/><w:basedOn w:val=\"Normal\"/><w:qFormat/><w:pPr><w:spacing w:before=\"60\" w:after=\"160\"/></w:pPr><w:rPr><w:color w:val=\"" + Tp.Faint + "\"/><w:sz w:val=\"17\"/></w:rPr></w:style>" +
-            "<w:style w:type=\"paragraph\" w:styleId=\"Footer\"><w:name w:val=\"footer\"/><w:basedOn w:val=\"Normal\"/><w:pPr><w:spacing w:after=\"0\"/></w:pPr><w:rPr><w:color w:val=\"" + Tp.Faint + "\"/><w:sz w:val=\"16\"/></w:rPr></w:style></w:styles>");
-        Entry(zip, "word/footer1.xml", "<w:ftr xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:p><w:pPr><w:pStyle w:val=\"Footer\"/><w:tabs><w:tab w:val=\"right\" w:pos=\"" + (o.Landscape ? 14570 : 9638) + "\"/></w:tabs></w:pPr><w:r><w:t xml:space=\"preserve\">" + X(Tp.Footer.Length > 0 ? Tp.Footer + "  ·  " + o.Title : o.Title) + "</w:t></w:r><w:r><w:tab/></w:r>" +
+            "<w:style w:type=\"paragraph\" w:styleId=\"Footer\"><w:name w:val=\"footer\"/><w:basedOn w:val=\"Normal\"/><w:pPr>" + footPPr + "<w:spacing w:after=\"0\"/></w:pPr><w:rPr><w:color w:val=\"" + footInk + "\"/><w:sz w:val=\"16\"/></w:rPr></w:style></w:styles>");
+        Entry(zip, "word/footer1.xml", "<w:ftr xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:p><w:pPr><w:pStyle w:val=\"Footer\"/><w:tabs><w:tab w:val=\"right\" w:pos=\"" + (o.Landscape ? 14570 : 9638) + "\"/></w:tabs></w:pPr><w:r><w:t xml:space=\"preserve\">" + X(string.Join("  ·  ", new[] { Tp.Footer, Tp.Org, o.Title }.Where(x => x.Length > 0))) + "</w:t></w:r><w:r><w:tab/></w:r>" +
             "<w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText xml:space=\"preserve\"> PAGE </w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r>" +
             "<w:r><w:t xml:space=\"preserve\"> / </w:t></w:r><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText xml:space=\"preserve\"> NUMPAGES </w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p></w:ftr>");
 
@@ -340,11 +478,35 @@ public static class Exporter
         string P(string style, string runs, string extra = "") => "<w:p><w:pPr><w:pStyle w:val=\"" + style + "\"/>" + extra + "</w:pPr>" + runs + "</w:p>";
         string R(string text, string? color = null, bool bold = false) => "<w:r>" + (color != null || bold ? "<w:rPr>" + (bold ? "<w:b/>" : "") + (color != null ? "<w:color w:val=\"" + color + "\"/>" : "") + "</w:rPr>" : "") + "<w:t xml:space=\"preserve\">" + X(text) + "</w:t></w:r>";
         string Lines(string text) => string.Join("<w:r><w:br/></w:r>", text.Replace("\r", "").Split('\n').Select(l => R(l)));
+        string Drawing(string rid, long w, long h, int docId, string name, string descr, string ln) =>
+            "<w:r><w:drawing><wp:inline distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\"><wp:extent cx=\"" + w + "\" cy=\"" + h + "\"/><wp:docPr id=\"" + docId + "\" name=\"" + X(name) + "\" descr=\"" + X(descr) + "\"/>" +
+            "<wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect=\"1\"/></wp:cNvGraphicFramePr><a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:pic><pic:nvPicPr><pic:cNvPr id=\"" + docId + "\" name=\"" + X(name) + "\"/><pic:cNvPicPr/></pic:nvPicPr>" +
+            "<pic:blipFill><a:blip r:embed=\"" + rid + "\"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"" + w + "\" cy=\"" + h + "\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom>" + ln + "</pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>";
+        if (Tp.LogoPath is string logoFile)
+        {
+            Entry(zip, "word/media/logo.png", File.ReadAllBytes(logoFile));
+            rels.Append("<Relationship Id=\"rIdLogo\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/logo.png\"/>");
+        }
         if (o.Cover)
         {
+            if (Tp.LogoPath is string lf)
+            {
+                var (lw, lh) = ImageSize(lf);
+                long h = 571500, w = h * lw / Math.Max(1, lh);   // 0.6 in high
+                if (w > 2011680) { h = h * 2011680 / w; w = 2011680; }
+                body.Append("<w:p><w:pPr><w:spacing w:after=\"480\"/>" + (Tp.Cover == "minimal" ? "<w:jc w:val=\"center\"/>" : "") + "</w:pPr>" + Drawing("rIdLogo", w, h, 9001, "Logo", "Logo", "<a:ln><a:noFill/></a:ln>") + "</w:p>");
+            }
             body.Append(P("Title", R(o.Title)));
             body.Append(P("Subtitle", R(Subtitle(pages.Count))));
+            if (Tp.Cover == "hero")
+            {
+                // The first capture, large, under the title.
+                var (cw, ch) = Size(pages[0].Item);
+                var (hw, hh) = Fit(cw, ch, textW, maxH / 2);
+                body.Append("<w:p><w:pPr><w:spacing w:after=\"240\"/></w:pPr>" + Drawing("rIdImg1", hw, hh, 9002, "Cover", pages[0].Title, "<a:ln w=\"28575\"><a:solidFill><a:srgbClr val=\"" + o.Accent + "\"/></a:solidFill></a:ln>") + "</w:p>");
+            }
             if (o.Intro.Trim().Length > 0) body.Append("<w:p>" + Lines(o.Intro.Trim()) + "</w:p>");
+            if (Tp.Org.Length > 0) body.Append("<w:p><w:pPr><w:spacing w:before=\"480\"/><w:jc w:val=\"right\"/></w:pPr>" + R(Tp.Org, Tp.Muted, true) + "</w:p>");
         }
         for (int i = 0; i < pages.Count; i++)
         {
@@ -359,9 +521,9 @@ public static class Exporter
             {
                 string step = !o.Numbers ? "" : Tp.Steps switch
                 {
-                    "pill" => "<w:r><w:rPr><w:b/><w:color w:val=\"FFFFFF\"/><w:shd w:val=\"clear\" w:color=\"auto\" w:fill=\"" + o.Accent + "\"/></w:rPr><w:t xml:space=\"preserve\"> " + X(StepLabel(i)) + " </w:t></w:r>" + R("  "),
-                    "number" => "<w:r><w:rPr><w:color w:val=\"" + o.Accent + "\"/><w:sz w:val=\"48\"/><w:szCs w:val=\"48\"/></w:rPr><w:t xml:space=\"preserve\">" + (i + 1).ToString("00") + "  </w:t></w:r>",
-                    _ => R(StepLabel(i) + (title.Length > 0 ? "  " : ""), o.Accent),
+                    "pill" => "<w:r><w:rPr><w:b/><w:color w:val=\"" + (band ? fill : "FFFFFF") + "\"/><w:shd w:val=\"clear\" w:color=\"auto\" w:fill=\"" + (band ? "FFFFFF" : o.Accent) + "\"/></w:rPr><w:t xml:space=\"preserve\"> " + X(StepLabel(i)) + " </w:t></w:r>" + R("  "),
+                    "number" => "<w:r><w:rPr><w:color w:val=\"" + (band ? "FFFFFF" : o.Accent) + "\"/><w:sz w:val=\"48\"/><w:szCs w:val=\"48\"/></w:rPr><w:t xml:space=\"preserve\">" + (i + 1).ToString("00") + "  </w:t></w:r>",
+                    _ => R(StepLabel(i) + (title.Length > 0 ? "  " : ""), band ? "FFFFFF" : o.Accent),
                 };
                 string runs = step + (title.Length > 0 ? R(title) : "");
                 body.Append(P("Heading2", runs, pageBreak));
@@ -404,23 +566,55 @@ public static class Exporter
         }
         string HexC(string hex) { var (r, g, b) = Rgb(hex); return C(r, g, b); }
         string ink = HexC(Tp.Ink), muted = HexC(Tp.Muted), faint = HexC(Tp.Faint), accent = C(ar, ag, ab), rule = HexC(Tp.Rule);
-        string fillC = HexC(Tp.CoverFillHex(o.Accent)), cink = HexC(Tp.CoverInk);
+        string brand = HexC(Tp.CoverFillHex(o.Accent)), cink = HexC(Tp.CoverInk), white = "1 1 1";
+
+        // Logo: one image object shared by every page.
+        int logoId = 0; double logoW = 0, logoH = 30;
+        if (Tp.LogoPath is string logoFile)
+        {
+            using var lb = Store.LoadBitmap(logoFile);
+            var (lid, lw, lh) = PdfBitmap(pdf, lb);
+            logoId = lid; logoW = logoH * lw / Math.Max(1, lh);
+            if (logoW > 150) { logoH = logoH * 150 / logoW; logoW = 150; }
+        }
+        string LogoAt(double x, double y, double h, bool onFill)
+        {
+            double w = logoW * h / logoH;
+            return (onFill ? white + " rg " + RoundRect(x - 5, y - 5, w + 10, h + 10, 4) + " f\n" : "") + "q " + F(w) + " 0 0 " + F(h) + " " + F(x) + " " + F(y) + " cm /Lg Do Q\n";
+        }
+        string LogoRes() => logoId > 0 ? " /Lg " + logoId + " 0 R" : "";
+
         if (o.Cover)
         {
             var c = new StringBuilder();
-            string titleInk = ink, subInk = muted, introInk = ink, footInk = faint;
-            bool centered = Tp.Cover == "minimal";
-            double y = H * .5 + 32, sy = H * .5 - 6, iy = H * .5 - 34, tx = M + 20;
+            string res = "";
+            string titleInk = ink, subInk = muted, introInk = ink, footInk = faint, orgInk = muted;
+            bool centered = Tp.Cover == "minimal", logoOnFill = false;
+            double y = H * .5 + 32, sy = H * .5 - 6, iy = H * .5 - 34, tx = M + 20, textW = W - 2 * M - 20;
             switch (Tp.Cover)
             {
+                case "hero":
+                {
+                    // The first capture fills one side (right in landscape, the top half in portrait), cropped to fit.
+                    var (cid, cw, ch) = PdfImage(pdf, pages[0].Item);
+                    res = " /Cv " + cid + " 0 R";
+                    double bx, by, bw, bh;
+                    if (W > H) { bx = W * .45; by = 0; bw = W - bx; bh = H; tx = M; textW = bx - 2 * M; y = H * .5 + 40; sy = H * .5 - 2; iy = H * .5 - 30; }
+                    else { bx = 0; by = H * .52; bw = W; bh = H - by; tx = M; textW = W - 2 * M; y = H * .42; sy = y - 38; iy = sy - 28; }
+                    double sc = Math.Max(bw / cw, bh / ch), dw = cw * sc, dh = ch * sc;
+                    c.Append("q " + F(bx) + " " + F(by) + " " + F(bw) + " " + F(bh) + " re W n " + F(dw) + " 0 0 " + F(dh) + " " + F(bx + (bw - dw) / 2) + " " + F(by + (bh - dh) / 2) + " cm /Cv Do Q\n");
+                    c.Append(accent + " rg " + (W > H ? F(bx) + " 0 4 " + F(H) : "0 " + F(by) + " " + F(W) + " 4") + " re f\n");
+                    c.Append(accent + " rg " + F(tx) + " " + F(y + 40) + " 50 3 re f\n");
+                    break;
+                }
                 case "band":
-                    c.Append(fillC + " rg 0 " + F(H * .55) + " " + F(W) + " " + F(H * .45) + " re f\n");
-                    titleInk = subInk = cink; y = H * .72 + 32; sy = H * .72 - 6; iy = H * .5;
+                    c.Append(brand + " rg 0 " + F(H * .55) + " " + F(W) + " " + F(H * .45) + " re f\n");
+                    titleInk = subInk = cink; y = H * .72 + 32; sy = H * .72 - 6; iy = H * .5; logoOnFill = true;
                     break;
                 case "full":
-                    c.Append(fillC + " rg 0 0 " + F(W) + " " + F(H) + " re f\n");
+                    c.Append(brand + " rg 0 0 " + F(W) + " " + F(H) + " re f\n");
                     if (Tp.CoverFillHex(o.Accent) != o.Accent) c.Append(accent + " rg " + F(tx) + " " + F(y + 40) + " 60 3 re f\n");
-                    titleInk = subInk = introInk = footInk = cink;
+                    titleInk = subInk = introInk = footInk = orgInk = cink; logoOnFill = true;
                     break;
                 case "minimal":
                     c.Append(accent + " rg " + F(W / 2 - 25) + " " + F(H * .5 + 8) + " 50 1.5 re f\n");
@@ -431,57 +625,105 @@ public static class Exporter
                     break;
             }
             double X0(string s, double size, string font) => centered ? (W - Width(s, size, font == "F2" ? headFam : bodyFam)) / 2 : tx;
-            foreach (var line in Wrap(o.Title, 30, W - 2 * M - 20, headFam).Take(2)) { c.Append(Txt("F2", 30, X0(line, 30, "F2"), y, titleInk, line)); y -= 36; }
+            foreach (var line in Wrap(o.Title, 28, textW, headFam).Take(3)) { c.Append(Txt("F2", 28, X0(line, 28, "F2"), y, titleInk, line)); y -= 34; sy = Math.Min(sy, y - 4); iy = Math.Min(iy, sy - 28); }
             string sub = Subtitle(pages.Count);
             c.Append(Txt("F1", 13, X0(sub, 13, "F1"), sy, subInk, sub));
-            foreach (var line in Wrap(o.Intro.Trim(), 11, W - 2 * M - 20, bodyFam).Take(14)) { if (line.Length == 0) continue; c.Append(Txt("F1", 11, X0(line, 11, "F1"), iy, introInk, line)); iy -= 15; }
+            foreach (var line in Wrap(o.Intro.Trim(), 11, textW, bodyFam).Take(12)) { if (line.Length == 0) continue; c.Append(Txt("F1", 11, X0(line, 11, "F1"), iy, introInk, line)); iy -= 15; }
+            if (logoId > 0)
+            {
+                double lx = centered ? W / 2 - logoW / 2 : M, ly = H - M - logoH;
+                c.Append(LogoAt(lx, ly, logoH, logoOnFill || (Tp.Cover == "hero" && W <= H)));
+            }
             if (Tp.Footer.Length > 0) c.Append(Txt("F1", 9, M, M - 10, footInk, Tp.Footer));
-            AddPage(c.ToString(), "");
+            if (Tp.Org.Length > 0) c.Append(Txt("F2", 10, W - M - Width(Tp.Org, 10, headFam), M - 10, orgInk, Tp.Org));
+            AddPage(c.ToString(), "/XObject <<" + res + LogoRes() + " >>");
         }
         for (int i = 0; i < pages.Count; i++)
         {
             var p = pages[i];
             var (img, iw, ih) = PdfImage(pdf, p.Item);
             var c = new StringBuilder();
-            double top = H - M;
+            double top = H - M, bottomY = M;
             string title = o.Captions ? p.Title.Trim() : "";
-            if (Tp.TopRule) c.Append(accent + " rg 0 " + F(H - 5) + " " + F(W) + " 5 re f\n");
-            if (o.Numbers || title.Length > 0)
+            bool band = Tp.Header == "band", bar = Tp.FooterStyle == "bar";
+            if (Tp.TopRule && !band) c.Append(accent + " rg 0 " + F(H - 5) + " " + F(W) + " 5 re f\n");
+
+            // Footer.
+            string num = (i + 1) + " / " + pages.Count;
+            if (bar)
             {
-                double hx = M;
+                double bh = 24;
+                c.Append(brand + " rg 0 0 " + F(W) + " " + F(bh) + " re f\n");
+                string left = string.Join("   ·   ", new[] { Tp.Footer, Tp.Org }.Where(x => x.Length > 0));
+                if (left.Length > 0) c.Append(Txt("F2", 8, M, 9, white, Clip(left, 8, W - 2 * M - 60, headFam)));
+                c.Append(Txt("F2", 8, W - M - Width(num, 8, headFam), 9, white, num));
+                bottomY = bh + 8;
+                if (o.Meta) { c.Append(Txt("F1", 8, M, bottomY, faint, Clip(MetaLine(p), 8, W - 2 * M, bodyFam))); bottomY += 14; }
+            }
+            else
+            {
+                if (o.Meta) c.Append(Txt("F1", 8, M, M - 6, faint, Clip(MetaLine(p), 8, W - 2 * M - 60, bodyFam)));
+                c.Append(Txt("F1", 8, W - M - Width(num, 8, bodyFam), M - 6, faint, num));
+                bottomY = M + 24;
+            }
+
+            // Header.
+            if (band)
+            {
+                double bh = 46;
+                c.Append(brand + " rg 0 " + F(H - bh) + " " + F(W) + " " + F(bh) + " re f\n");
+                double hx = M, by = H - bh / 2 - 5;
                 if (o.Numbers && Tp.Steps == "pill")
                 {
                     string label = StepLabel(i);
                     double pw = Width(label, 11, headFam) + 18;
-                    c.Append(accent + " rg " + RoundRect(M, top - 19, pw, 20, 10) + " f\n");
-                    c.Append(Txt("F2", 11, M + 9, top - 13, "1 1 1", label));
+                    c.Append(white + " rg " + RoundRect(M, H - bh / 2 - 10, pw, 20, 10) + " f\n");
+                    c.Append(Txt("F2", 11, M + 9, H - bh / 2 - 4, brand, label));
                     hx = M + pw + 10;
                 }
-                else if (o.Numbers && Tp.Steps == "number")
-                {
-                    c.Append(Txt("F2", 24, M, top - 21, accent, (i + 1).ToString("00")));
-                    hx = M + Width("00", 24, headFam) + 12;
-                }
-                c.Append("BT /F2 15 Tf " + F(hx) + " " + F(top - 15) + " Td ");
-                if (o.Numbers && Tp.Steps == "inline") c.Append(accent + " rg " + PdfWriter.Str(StepLabel(i) + (title.Length > 0 ? "   " : "")) + " Tj ");
-                if (title.Length > 0) c.Append(ink + " rg " + PdfWriter.Str(Clip(title, 15, W - M - hx - (o.Numbers && Tp.Steps == "inline" ? 70 : 0), headFam)) + " Tj ");
+                else if (o.Numbers && Tp.Steps == "number") { c.Append(Txt("F2", 22, M, H - bh / 2 - 8, white, (i + 1).ToString("00"))); hx = M + Width("00", 22, headFam) + 12; }
+                double logoRoom = logoId > 0 ? logoW * 20 / logoH + 20 : 0;
+                c.Append("BT /F2 15 Tf " + F(hx) + " " + F(by) + " Td ");
+                if (o.Numbers && Tp.Steps == "inline") c.Append(white + " rg " + PdfWriter.Str(StepLabel(i) + (title.Length > 0 ? "   " : "")) + " Tj ");
+                if (title.Length > 0) c.Append(white + " rg " + PdfWriter.Str(Clip(title, 15, W - M - hx - logoRoom - (o.Numbers && Tp.Steps == "inline" ? 70 : 0), headFam)) + " Tj ");
                 c.Append("ET\n");
-                c.Append(rule + " rg " + F(M) + " " + F(top - 26) + " " + F(W - 2 * M) + " 0.75 re f\n");
-                top -= 38;
+                if (logoId > 0) c.Append(LogoAt(W - M - logoW * 20 / logoH, H - bh / 2 - 10, 20, true));
+                top = H - bh - 16;
             }
+            else
+            {
+                if (logoId > 0) c.Append(LogoAt(W - M - logoW * 18 / logoH, H - M - 18, 18, false));
+                if (o.Numbers || title.Length > 0)
+                {
+                    double hx = M, logoRoom = logoId > 0 ? logoW * 18 / logoH + 16 : 0;
+                    if (o.Numbers && Tp.Steps == "pill")
+                    {
+                        string label = StepLabel(i);
+                        double pw = Width(label, 11, headFam) + 18;
+                        c.Append(accent + " rg " + RoundRect(M, top - 19, pw, 20, 10) + " f\n");
+                        c.Append(Txt("F2", 11, M + 9, top - 13, white, label));
+                        hx = M + pw + 10;
+                    }
+                    else if (o.Numbers && Tp.Steps == "number") { c.Append(Txt("F2", 24, M, top - 21, accent, (i + 1).ToString("00"))); hx = M + Width("00", 24, headFam) + 12; }
+                    c.Append("BT /F2 15 Tf " + F(hx) + " " + F(top - 15) + " Td ");
+                    if (o.Numbers && Tp.Steps == "inline") c.Append(accent + " rg " + PdfWriter.Str(StepLabel(i) + (title.Length > 0 ? "   " : "")) + " Tj ");
+                    if (title.Length > 0) c.Append(ink + " rg " + PdfWriter.Str(Clip(title, 15, W - M - hx - logoRoom - (o.Numbers && Tp.Steps == "inline" ? 70 : 0), headFam)) + " Tj ");
+                    c.Append("ET\n");
+                    c.Append(rule + " rg " + F(M) + " " + F(top - 26) + " " + F(W - 2 * M) + " 0.75 re f\n");
+                    top -= 38;
+                }
+            }
+
             var noteLines = Wrap(p.Note.Trim(), 10.5, W - 2 * M, bodyFam).Take(8).ToList();
-            double footer = 24, noteH = noteLines.Count > 0 ? noteLines.Count * 14 + 10 : 0;
-            double areaH = top - M - footer - noteH, areaW = W - 2 * M;
+            double noteH = noteLines.Count > 0 ? noteLines.Count * 14 + 10 : 0;
+            double areaH = top - bottomY - noteH, areaW = W - 2 * M;
             double s = Math.Min(Math.Min(areaW / iw, areaH / ih), 1.5);   // 1 px = 0.75 pt at 96 dpi; allow up to 2× for small captures
-            double w = iw * s, h = ih * s, x = M + (areaW - w) / 2, y = top - (areaH + h) / 2;
-            c.Append("q " + F(w) + " 0 0 " + F(h) + " " + F(x) + " " + F(y) + " cm /Im" + i + " Do Q\n");
-            if (Tp.Frame != "none") c.Append(HexC(Tp.FrameHex(o.Accent)) + " RG " + (Tp.Frame == "accent" ? "1.2" : "0.5") + " w " + F(x) + " " + F(y) + " " + F(w) + " " + F(h) + " re S\n");
+            double w = iw * s, h = ih * s, x = M + (areaW - w) / 2, yy = top - (areaH + h) / 2;
+            c.Append("q " + F(w) + " 0 0 " + F(h) + " " + F(x) + " " + F(yy) + " cm /Im" + i + " Do Q\n");
+            if (Tp.Frame != "none") c.Append(HexC(Tp.FrameHex(o.Accent)) + " RG " + (Tp.Frame == "accent" ? "1.2" : "0.5") + " w " + F(x) + " " + F(yy) + " " + F(w) + " " + F(h) + " re S\n");
             double ny = top - areaH - 16;
             foreach (var line in noteLines) { c.Append(Txt("F1", 10.5, M, ny, ink, line)); ny -= 14; }
-            if (o.Meta) c.Append(Txt("F1", 8, M, M - 6, faint, Clip(MetaLine(p), 8, W - 2 * M - 60, bodyFam)));
-            string num = (i + 1) + " / " + pages.Count;
-            c.Append(Txt("F1", 8, W - M - Width(num, 8, bodyFam), M - 6, faint, num));
-            AddPage(c.ToString(), "/XObject << /Im" + i + " " + img + " 0 R >>");
+            AddPage(c.ToString(), "/XObject << /Im" + i + " " + img + " 0 R" + LogoRes() + " >>");
         }
         pdf.Set(pagesId, "<< /Type /Pages /Kids [" + string.Join(" ", kids.Select(k => k + " 0 R")) + "] /Count " + kids.Count + " >>");
         int catalog = pdf.Add("<< /Type /Catalog /Pages " + pagesId + " 0 R >>");
@@ -492,6 +734,11 @@ public static class Exporter
     static (int id, int w, int h) PdfImage(PdfWriter pdf, CaptureItem it)
     {
         using var src = Store.LoadBitmap(it.Path);
+        return PdfBitmap(pdf, src);
+    }
+
+    static (int id, int w, int h) PdfBitmap(PdfWriter pdf, D.Bitmap src)
+    {
         int w = src.Width, h = src.Height;
         using var rgb = new D.Bitmap(w, h, DI.PixelFormat.Format24bppRgb);
         using (var g = D.Graphics.FromImage(rgb)) { g.Clear(D.Color.White); g.DrawImageUnscaled(src, 0, 0); }
@@ -622,7 +869,8 @@ public static class Exporter
         using var metaFont = new D.Font(Tp.BodyFont, 12f, D.GraphicsUnit.Pixel);
         using var coverFont = new D.Font(Tp.HeadingFont, 30f, D.FontStyle.Bold, D.GraphicsUnit.Pixel);
         bool filledCover = o.Cover && Tp.Cover is "band" or "full";
-        int total = pad, coverH = o.Cover ? (filledCover ? 150 : 96) : 0;
+        int heroH = Math.Min(380, (int)(width * .36));
+        int total = pad, coverH = o.Cover ? (filledCover ? 150 : Tp.Cover == "hero" ? heroH + 120 : 96) + (Tp.Org.Length > 0 ? 18 : 0) : 0;
         total += coverH;
         for (int i = 0; i < pages.Count; i++)
         {
@@ -651,9 +899,26 @@ public static class Exporter
         using var coverInk = new D.SolidBrush(Hex(Tp.CoverInk));
         using var white = new D.SolidBrush(D.Color.White);
         int y = pad;
+        using var brandBrush = new D.SolidBrush(Hex(Tp.CoverFillHex(o.Accent)));
+        D.Bitmap? logoBmp = Tp.LogoPath is string lp ? Store.LoadBitmap(lp) : null;
+        try {
         if (o.Cover)
         {
-            if (filledCover)
+            if (Tp.Cover == "hero")
+            {
+                // The first capture as a wide image across the top, cropped to fill, an accent line under it.
+                using (var hero = Store.LoadBitmap(pages[0].Item.Path))
+                {
+                    double box = (double)(width + 2 * pad) / heroH, imgR = (double)hero.Width / hero.Height;
+                    var src = imgR > box ? new D.Rectangle((int)((hero.Width - hero.Height * box) / 2), 0, (int)(hero.Height * box), hero.Height)
+                                         : new D.Rectangle(0, (int)((hero.Height - hero.Width / box) / 2), hero.Width, (int)(hero.Width / box));
+                    g.DrawImage(hero, new D.Rectangle(0, 0, width + 2 * pad, heroH), src, D.GraphicsUnit.Pixel);
+                }
+                g.FillRectangle(accentBrush, 0, heroH, width + 2 * pad, 5);
+                g.DrawString(o.Title, coverFont, ink, pad, heroH + 26);
+                g.DrawString(Subtitle(pages.Count), metaFont, muted, pad + 2, heroH + 72);
+            }
+            else if (filledCover)
             {
                 using var fill = new D.SolidBrush(Hex(Tp.CoverFillHex(o.Accent)));
                 g.FillRectangle(fill, 0, 0, width + 2 * pad, pad + coverH - 24);
@@ -673,33 +938,49 @@ public static class Exporter
                 g.DrawString(o.Title, coverFont, ink, pad + 18, y);
                 g.DrawString(Subtitle(pages.Count), metaFont, muted, pad + 20, y + 46);
             }
+            if (logoBmp != null)
+            {
+                int lh = 40, lw = logoBmp.Width * lh / Math.Max(1, logoBmp.Height);
+                int lx = pad + width - lw, ly = pad;
+                if (filledCover || Tp.Cover == "hero") using (var path = RoundedPath(lx - 8, ly - 8, lw + 16, lh + 16, 6)) g.FillPath(white, path);
+                g.DrawImage(logoBmp, new D.Rectangle(lx, ly, lw, lh));
+            }
+            if (Tp.Org.Length > 0)
+            {
+                using var orgFont = new D.Font(Tp.HeadingFont, 13f, D.FontStyle.Bold, D.GraphicsUnit.Pixel);
+                g.DrawString(Tp.Org, orgFont, filledCover && Tp.Cover == "full" ? coverInk : muted, new D.RectangleF(pad, pad + coverH - 26, width, 20), new D.StringFormat { Alignment = D.StringAlignment.Far });
+            }
             y += coverH;
         }
         for (int i = 0; i < pages.Count; i++)
         {
             var p = pages[i];
             string title = o.Captions ? p.Title.Trim() : "";
+            bool bandHead = Tp.Header == "band";
             if (o.Numbers || title.Length > 0)
             {
                 float x = pad;
+                if (bandHead) { g.FillRectangle(brandBrush, 0, y, width + 2 * pad, headH - 4); x += 10; }
+                var headInk = bandHead ? (D.Brush)white : ink;
+                var stepInk = bandHead ? (D.Brush)white : accentBrush;
                 if (o.Numbers && Tp.Steps == "pill")
                 {
                     string label = StepLabel(i);
                     var size = g.MeasureString(label, titleFont);
-                    using (var path = RoundedPath(x, y + 6, size.Width + 16, 26, 13)) g.FillPath(accentBrush, path);
-                    g.DrawString(label, titleFont, white, x + 8, y + 9);
+                    using (var path = RoundedPath(x, y + 6, size.Width + 16, 26, 13)) g.FillPath(bandHead ? white : accentBrush, path);
+                    g.DrawString(label, titleFont, bandHead ? brandBrush : white, x + 8, y + 9);
                     x += size.Width + 28;
                 }
                 else if (o.Numbers && Tp.Steps == "number")
                 {
                     using var big = new D.Font(Tp.HeadingFont, 24f, D.FontStyle.Bold, D.GraphicsUnit.Pixel);
                     string n2 = (i + 1).ToString("00");
-                    g.DrawString(n2, big, accentBrush, x, y + 2);
+                    g.DrawString(n2, big, stepInk, x, y + 2);
                     x += g.MeasureString(n2, big).Width + 8;
                 }
-                else if (o.Numbers) { string step = StepLabel(i) + "   "; g.DrawString(step, titleFont, accentBrush, x, y + 8); x += g.MeasureString(step, titleFont).Width; }
-                if (title.Length > 0) g.DrawString(title, titleFont, ink, new D.RectangleF(x, y + 8, width - (x - pad), 24), new D.StringFormat { Trimming = D.StringTrimming.EllipsisCharacter, FormatFlags = D.StringFormatFlags.NoWrap });
-                g.DrawLine(rule, pad, y + headH - 6, pad + width, y + headH - 6);
+                else if (o.Numbers) { string step = StepLabel(i) + "   "; g.DrawString(step, titleFont, stepInk, x, y + 8); x += g.MeasureString(step, titleFont).Width; }
+                if (title.Length > 0) g.DrawString(title, titleFont, headInk, new D.RectangleF(x, y + 8, width - (x - pad), 24), new D.StringFormat { Trimming = D.StringTrimming.EllipsisCharacter, FormatFlags = D.StringFormatFlags.NoWrap });
+                if (!bandHead) g.DrawLine(rule, pad, y + headH - 6, pad + width, y + headH - 6);
                 y += headH;
             }
             using (var img = Store.LoadBitmap(p.Item.Path))
@@ -716,6 +997,8 @@ public static class Exporter
             if (note.Length > 0) { var r = new D.RectangleF(pad, y + 6, width, 4000); var sz = g.MeasureString(note, noteFont, width); g.DrawString(note, noteFont, noteBrush, r); y += (int)Math.Ceiling(sz.Height) + 10; }
             y += gap;
         }
+        }
+        finally { logoBmp?.Dispose(); }
         return bmp;
     }
 }

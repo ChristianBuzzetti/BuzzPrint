@@ -76,7 +76,10 @@ public sealed class TemplateEditWindow : Window
 
         form.Children.Add(Label(L.T("DISEÑO"), 16));
         var layout = new WrapPanel();
-        layout.Children.Add(Choice(L.T("Portada"), t.Cover, [("bar", L.T("Barra de acento")), ("band", L.T("Banda superior")), ("full", L.T("A todo color")), ("minimal", L.T("Minimalista"))], v => t.Cover = v));
+        layout.Children.Add(Choice(L.T("Portada"), t.Cover, [("hero", L.T("Con imagen")), ("bar", L.T("Barra de acento")), ("band", L.T("Banda superior")), ("full", L.T("A todo color")), ("minimal", L.T("Minimalista"))], v => t.Cover = v));
+        layout.Children.Add(Choice(L.T("Títulos de cada paso"), t.Header, [("rule", L.T("Sobre una línea")), ("band", L.T("En una banda de color"))], v => t.Header = v));
+        layout.Children.Add(Choice(L.T("Pie de página"), t.FooterStyle, [("text", L.T("Texto chico")), ("bar", L.T("Barra de color con número"))], v => t.FooterStyle = v));
+        layout.Children.Add(Choice(L.T("Distribución en PowerPoint"), t.Layout, [("stack", L.T("Captura debajo del título")), ("split", L.T("Texto al costado de la captura"))], v => t.Layout = v));
         layout.Children.Add(Choice(L.T("Pasos"), t.Steps, [("inline", L.T("Texto de acento")), ("pill", L.T("Etiqueta")), ("number", L.T("Número grande"))], v => t.Steps = v));
         string frameKind = t.Frame is "none" or "accent" ? t.Frame : "color";
         layout.Children.Add(Choice(L.T("Marco de las capturas"), frameKind, [("color", L.T("Gris fino")), ("accent", L.T("Color de acento")), ("none", L.T("Sin marco"))], v => t.Frame = v == "color" ? "D1D5DB" : v));
@@ -84,9 +87,32 @@ public sealed class TemplateEditWindow : Window
         var rule = new CheckBox { Content = L.T("Línea de acento arriba de cada página"), IsChecked = t.TopRule, Margin = new Thickness(0, 8, 0, 0) };
         rule.Click += (_, _) => { t.TopRule = rule.IsChecked == true; Refresh(); };
         form.Children.Add(rule);
-        form.Children.Add(Label(L.T("PIE DE PÁGINA"), 16));
-        form.Children.Add(Field(t.Footer, v => t.Footer = v));
-        form.Children.Add(Muted(L.T("Por ejemplo el nombre de tu empresa o equipo. Vacío = sin pie."), new Thickness(0, 4, 0, 0)));
+        form.Children.Add(Label(L.T("MARCA"), 16));
+        var brand = new WrapPanel();
+        var footCol = new StackPanel { Width = 196, Margin = new Thickness(0, 0, 12, 8) };
+        footCol.Children.Add(new TextBlock { Text = L.T("Texto del pie"), Margin = new Thickness(0, 0, 0, 4) });
+        footCol.Children.Add(Field(t.Footer, v => t.Footer = v));
+        var orgCol = new StackPanel { Width = 196, Margin = new Thickness(0, 0, 12, 8) };
+        orgCol.Children.Add(new TextBlock { Text = L.T("Organización o área"), Margin = new Thickness(0, 0, 0, 4) });
+        orgCol.Children.Add(Field(t.Org, v => t.Org = v));
+        brand.Children.Add(footCol); brand.Children.Add(orgCol);
+        form.Children.Add(brand);
+        form.Children.Add(Muted(L.T("El pie va abajo de cada página; la organización, en la portada y en la barra del pie. Vacíos = no se muestran."), new Thickness(0, 0, 0, 8)));
+        var logoRow = new StackPanel { Orientation = Orientation.Horizontal };
+        var logoName = Muted(t.LogoPath != null ? L.T("Logo cargado.") : L.T("Sin logo."), new Thickness(10, 0, 0, 0)); logoName.VerticalAlignment = VerticalAlignment.Center;
+        var pick = new Button { Content = L.T("Elegir logo…"), MinWidth = 120 };
+        var clear = new Button { Content = L.T("Quitar"), MinWidth = 80, Margin = new Thickness(8, 0, 0, 0), IsEnabled = t.LogoPath != null };
+        pick.Click += (_, _) =>
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog { Title = L.T("Elegir logo"), Filter = L.T("Imágenes") + "|*.png;*.jpg;*.jpeg;*.bmp;*.gif" };
+            if (dlg.ShowDialog(this) != true) return;
+            try { t.Logo = DocTemplates.ImportLogo(dlg.FileName); logoName.Text = L.T("Logo cargado."); clear.IsEnabled = true; Refresh(); }
+            catch (Exception ex) when (ex is System.IO.IOException or OutOfMemoryException or ArgumentException or UnauthorizedAccessException) { logoName.Text = ex.Message; }
+        };
+        clear.Click += (_, _) => { t.Logo = ""; logoName.Text = L.T("Sin logo."); clear.IsEnabled = false; Refresh(); };
+        logoRow.Children.Add(pick); logoRow.Children.Add(clear); logoRow.Children.Add(logoName);
+        form.Children.Add(logoRow);
+        form.Children.Add(Muted(L.T("Va en la portada y en el encabezado de cada página. Mejor un PNG con fondo transparente."), new Thickness(0, 6, 0, 0)));
 
         root.Children.Add(new ScrollViewer { Content = form, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Padding = new Thickness(0, 0, 10, 0) });
         Content = root;

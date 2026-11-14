@@ -23,6 +23,10 @@ public sealed record AiRequest(string System, string Prompt, IReadOnlyList<byte[
 /// </summary>
 public abstract class AiClient
 {
+    /// <summary>Raised when the service asks to wait (rate limit or overload) before a retry, with how long.</summary>
+    public static event Action<TimeSpan>? Waiting;
+    protected static void RaiseWaiting(TimeSpan wait) => Waiting?.Invoke(wait);
+
     public abstract Task<string> CompleteAsync(AiRequest request, CancellationToken ct = default);
 
     /// <summary>Client for the current settings, or an AiException saying what is missing.</summary>
@@ -184,7 +188,9 @@ sealed class OpenAiCompatibleClient(string baseUrl, string? apiKey, string model
             if (code is not (429 or 500 or 502 or 503 or 504) || attempt >= 3) break;
             var wait = res.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(code == 429 ? 20 : 6 * (attempt + 1));
             res.Dispose();
-            await Task.Delay(wait > TimeSpan.FromSeconds(60) ? TimeSpan.FromSeconds(60) : wait, ct);
+            if (wait > TimeSpan.FromSeconds(60)) wait = TimeSpan.FromSeconds(60);
+            RaiseWaiting(wait);   // the loading card shows the countdown instead of looking stuck
+            await Task.Delay(wait, ct);
         }
         string text = await res.Content.ReadAsStringAsync(ct);
         if (!res.IsSuccessStatusCode)
