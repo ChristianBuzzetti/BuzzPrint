@@ -554,6 +554,7 @@ static class LocEn
         ["Fucsia"] = "Fuchsia",
         ["Gris"] = "Gray",
         ["Color propio"] = "Custom color",
+        ["Instalado · muestra a Boberto"] = "Installed · shows Boberto",
         ["LICENCIA"] = "LICENSE",
         ["CÓDIGO"] = "SOURCE",
         ["FUENTES"] = "FONTS",

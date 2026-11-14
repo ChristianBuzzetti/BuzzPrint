@@ -188,7 +188,7 @@ public partial class App : Application
     public async Task CheckComponentsAsync()
     {
         bool web = Dependencies.WebView2Installed(), ff = Recorder.FFmpeg() != null;
-        if (web && ff) { PromptWindow.Info(main, L.T("Componentes"), L.T("Todo instalado: WebView2 para Boberto y FFmpeg para grabar.") + "\n\nFFmpeg: " + Recorder.FFmpeg()); return; }
+        if (web && ff) { PromptWindow.Info(main, L.T("Componentes"), L.T("Todo instalado: WebView2 para Boberto y FFmpeg para grabar.") + "\n\nWebView2: " + L.T("Instalado · muestra a Boberto") + "\nFFmpeg: " + Recorder.FFmpeg()); return; }
         if (!ff && await Dependencies.OfferFFmpegAsync(main) != null) PromptWindow.Info(main, L.T("FFmpeg listo"), L.T("Ya podés grabar video y audio."));
         if (!web) { Store.Settings.WebView2Declined = false; await OfferWebView2Async(); }
     }

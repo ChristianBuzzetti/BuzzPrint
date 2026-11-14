@@ -123,6 +123,17 @@ static class Shots
             await Task.Delay(700);
             Save(about, Path.Combine(dir, "12-about.png"), log);
             about.Close();
+            foreach (var (file, w) in new[]
+            {
+                ("13-dialog-components.png", PromptWindow.ForShot(main, L.T("Componentes"), L.T("Todo instalado: WebView2 para Boberto y FFmpeg para grabar.") + "\n\nWebView2: " + L.T("Instalado · muestra a Boberto") + "\nFFmpeg: C:\\BuzzPrint-Preview\\tools\\ffmpeg.exe", null)),
+                ("14-dialog-rename.png", PromptWindow.ForShot(main, L.T("Renombrar"), L.T("Nuevo nombre para la captura."), "Formulario de parámetros")),
+            })
+            {
+                w.Show();
+                await Task.Delay(600);
+                Save(w, Path.Combine(dir, file), log);
+                w.Close();
+            }
             // The 3D head turn: every shape looking left, front, right, up and down, at 96 px and at 32 px.
             {
                 var sheet = new DrawingVisual();
