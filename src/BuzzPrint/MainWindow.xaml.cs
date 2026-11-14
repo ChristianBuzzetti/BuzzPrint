@@ -747,6 +747,6 @@ public partial class MainWindow : Window
         Store.Settings.RecordMicrophone = MicToggle.IsChecked == true;
         Store.Settings.RecordCursor = CursorToggle.IsChecked == true;
         Store.SaveSettings();
-        if (sender == StartupToggle) App.StartupEnabled = StartupToggle.IsChecked == true;
+        if (sender == StartupToggle) { App.StartupEnabled = StartupToggle.IsChecked == true; StartupToggle.IsChecked = App.StartupEnabled; }
     }
 }

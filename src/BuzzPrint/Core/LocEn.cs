@@ -479,5 +479,12 @@ static class LocEn
         ["Eliminar…"] = "Delete…",
         ["Todavía no hay secciones"] = "No sections yet",
         ["Crear, renombrar o eliminar secciones"] = "Create, rename or delete sections",
+
+        // ---- Microsoft Store build
+        ["Lo desactivaste desde Windows. Para volver a activarlo, abrí Configuración → Aplicaciones → Inicio y encendé BuzzPrint."] = "It was turned off in Windows. To turn it back on, open Settings → Apps → Startup and switch BuzzPrint on.",
+        ["Una directiva de tu organización no permite que BuzzPrint arranque con Windows."] = "Your organization's policy doesn't allow BuzzPrint to start with Windows.",
+        ["FFmpeg viene incluido con BuzzPrint pero no se encontró. Repará o reinstalá BuzzPrint desde Microsoft Store (Configuración → Aplicaciones → BuzzPrint → Opciones avanzadas → Reparar)."] = "FFmpeg comes with BuzzPrint but wasn't found. Repair or reinstall BuzzPrint from Microsoft Store (Settings → Apps → BuzzPrint → Advanced options → Repair).",
+        ["Boberto, Boberto Studio y la vista previa de Personalizar usan Microsoft Edge WebView2, que no está en esta PC. Podés instalarlo desde la página oficial de Microsoft. Las capturas, la grabación y el editor funcionan igual sin él."] = "Boberto, Boberto Studio and the Personalize preview use Microsoft Edge WebView2, which isn't on this PC. You can install it from Microsoft's official page. Captures, recording and the editor work without it.",
+        ["Abrir la página"] = "Open the page",
     };
 }

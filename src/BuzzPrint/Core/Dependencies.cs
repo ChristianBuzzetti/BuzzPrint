@@ -43,6 +43,12 @@ public static class Dependencies
     /// <summary>Asks, downloads and unpacks FFmpeg. Returns the ffmpeg.exe path, or null if declined or failed.</summary>
     public static async Task<string?> OfferFFmpegAsync(Window? owner)
     {
+#if STORE
+        // The Store package carries FFmpeg in tools\ and never downloads code; reaching this means the install is damaged.
+        await Task.CompletedTask;
+        PromptWindow.Info(owner, L.T("Falta FFmpeg"), L.T("FFmpeg viene incluido con BuzzPrint pero no se encontró. Repará o reinstalá BuzzPrint desde Microsoft Store (Configuración → Aplicaciones → BuzzPrint → Opciones avanzadas → Reparar)."));
+        return null;
+#else
         if (!PromptWindow.Confirm(owner, L.T("Falta FFmpeg"),
                 L.T("Para grabar video y audio, BuzzPrint usa FFmpeg (gratuito y de código abierto). Lo puede descargar ahora desde gyan.dev, las compilaciones oficiales para Windows que recomienda ffmpeg.org (unos 110 MB), y guardarlo en su carpeta. Las capturas, el editor y la exportación funcionan sin él."),
                 L.T("Descargar FFmpeg"), L.T("Ahora no"))) return null;
@@ -52,6 +58,7 @@ public static class Dependencies
             PromptWindow.Info(owner, L.T("No se pudo descargar FFmpeg"), ex.Message + "\n\n" + L.T("Podés instalarlo a mano con:") + " winget install Gyan.FFmpeg");
             return null;
         }
+#endif
     }
 
     /// <summary>Downloads, verifies (SHA-256) and unpacks FFmpeg with a progress window. Null if cancelled.</summary>
@@ -92,6 +99,16 @@ public static class Dependencies
     /// <summary>Asks, downloads Microsoft's WebView2 bootstrapper, checks its signature and runs it.</summary>
     public static async Task<bool> OfferWebView2Async(Window? owner)
     {
+#if STORE
+        // Store build: no downloaded installers. Point to Microsoft's page instead.
+        await Task.CompletedTask;
+        if (PromptWindow.Confirm(owner, L.T("Falta Microsoft Edge WebView2"),
+                L.T("Boberto, Boberto Studio y la vista previa de Personalizar usan Microsoft Edge WebView2, que no está en esta PC. Podés instalarlo desde la página oficial de Microsoft. Las capturas, la grabación y el editor funcionan igual sin él."),
+                L.T("Abrir la página"), L.T("Ahora no")))
+            try { Process.Start(new ProcessStartInfo("https://developer.microsoft.com/microsoft-edge/webview2/") { UseShellExecute = true }); }
+            catch (System.ComponentModel.Win32Exception) { }
+        return false;
+#else
         if (!PromptWindow.Confirm(owner, L.T("Falta Microsoft Edge WebView2"),
                 L.T("Boberto, Boberto Studio y la vista previa de Personalizar usan Microsoft Edge WebView2, que no está en esta PC. BuzzPrint puede bajar el instalador oficial de Microsoft (2 MB) e instalarlo. Las capturas, la grabación y el editor funcionan igual sin él."),
                 L.T("Instalar WebView2"), L.T("Ahora no"))) return false;
@@ -116,6 +133,7 @@ public static class Dependencies
             return false;
         }
         finally { try { File.Delete(temp); } catch (IOException) { } catch (UnauthorizedAccessException) { } }
+#endif
     }
 
     /// <summary>Valid, trusted Authenticode signature over the file as downloaded, and the signer is Microsoft.</summary>

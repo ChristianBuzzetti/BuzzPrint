@@ -83,7 +83,7 @@ public partial class App : Application
         hotkeys = new HotkeyWindow();
         RegisterHotkeys();
         main.RefreshShortcuts();
-        if (Array.IndexOf(e.Args, "--tray") < 0) main.Show();
+        if (!LaunchedAtStartup(e.Args)) main.Show();
         else Toast(L.T("BuzzPrint está activo"), CaptureHotkeyText + " " + L.T("para capturar") + " · " + Store.Settings.HotkeyPick + " " + L.T("para elegir una captura"));
         // WebView2 (Boberto, Studio) ships with Windows 11; on a PC without it, offer Microsoft's installer once.
         if (!Dependencies.WebView2Installed() && !Store.Settings.WebView2Declined)
@@ -417,6 +417,51 @@ public partial class App : Application
     }
 
     // ------------------------------------------------------------------ startup with Windows
+#if STORE
+    // Packaged (MSIX): a write to HKCU\...\Run is virtualized and does nothing, so the package declares a startup task
+    // (AppxManifest: TaskId "BuzzPrintStartup") and the app turns it on or off. Windows launches it without "--tray";
+    // LaunchedAtStartup reads the activation kind instead.
+    const string StartupTaskId = "BuzzPrintStartup";
+
+    /// <summary>Reads the startup task's state (enable null), or turns it on or off and returns the new state.</summary>
+    static global::Windows.ApplicationModel.StartupTaskState StartupState(bool? enable)
+    {
+        // WinRT async completes on the thread pool; Task.Run keeps the UI thread's context out of the wait.
+        return Task.Run(async () =>
+        {
+            var task = await global::Windows.ApplicationModel.StartupTask.GetAsync(StartupTaskId);
+            if (enable == true && task.State == global::Windows.ApplicationModel.StartupTaskState.Disabled) return await task.RequestEnableAsync();
+            if (enable == false && task.State == global::Windows.ApplicationModel.StartupTaskState.Enabled) task.Disable();
+            return task.State;
+        }).GetAwaiter().GetResult();
+    }
+
+    public static bool StartupEnabled
+    {
+        get
+        {
+            try { return StartupState(null) is global::Windows.ApplicationModel.StartupTaskState.Enabled or global::Windows.ApplicationModel.StartupTaskState.EnabledByPolicy; }
+            catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException or ArgumentException) { return false; }
+        }
+        set
+        {
+            global::Windows.ApplicationModel.StartupTaskState state;
+            try { state = StartupState(value); }
+            catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException or ArgumentException) { return; }
+            if (value && state == global::Windows.ApplicationModel.StartupTaskState.DisabledByUser)
+                PromptWindow.Info(Current.main, L.T("Iniciar con Windows"), L.T("Lo desactivaste desde Windows. Para volver a activarlo, abrí Configuración → Aplicaciones → Inicio y encendé BuzzPrint."));
+            else if (value && state == global::Windows.ApplicationModel.StartupTaskState.DisabledByPolicy)
+                PromptWindow.Info(Current.main, L.T("Iniciar con Windows"), L.T("Una directiva de tu organización no permite que BuzzPrint arranque con Windows."));
+        }
+    }
+
+    static bool LaunchedAtStartup(string[] args)
+    {
+        if (Array.IndexOf(args, "--tray") >= 0) return true;
+        try { return global::Windows.ApplicationModel.AppInstance.GetActivatedEventArgs()?.Kind == global::Windows.ApplicationModel.Activation.ActivationKind.StartupTask; }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException) { return false; }
+    }
+#else
     const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     public static bool StartupEnabled
     {
@@ -428,6 +473,9 @@ public partial class App : Application
             else k.DeleteValue("BuzzPrint", false);
         }
     }
+
+    static bool LaunchedAtStartup(string[] args) => Array.IndexOf(args, "--tray") >= 0;
+#endif
 }
 
 /// <summary>Hidden window that receives WM_HOTKEY.</summary>

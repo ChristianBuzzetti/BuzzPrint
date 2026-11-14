@@ -18,6 +18,13 @@
     <Deterministic>true</Deterministic>
     <NoWarn>$(NoWarn);CA1416;WFO1000</NoWarn>
   </PropertyGroup>
+  <!-- Microsoft Store build (build.ps1 -Msix): Windows SDK projection for StartupTask and activation, STORE symbol.
+       The zip build stays on plain net10.0-windows so it doesn't carry the projection assemblies. -->
+  <PropertyGroup Condition="'$(Store)' == 'true'">
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <DefineConstants>$(DefineConstants);STORE</DefineConstants>
+  </PropertyGroup>
   <ItemGroup>
     <!-- WPF owns the UI; Windows Forms is used only for the capture overlay, clipboard, tray icon and hotkey window. -->
     <Using Remove="System.Windows.Forms" />

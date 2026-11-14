@@ -119,11 +119,26 @@ Choose them in the options panel → Storage → **Change…** (it offers to mov
 ```powershell
 .\build.ps1          # self-contained publish to dist\BuzzPrint (bundles .NET 10 and copies ffmpeg to tools)
 .\build.ps1 -Shot    # also saves verification screenshots to artifacts\shots (includes a real test recording)
+.\build.ps1 -Zip     # also builds artifacts\BuzzPrint-<version>-win-x64.zip for GitHub Releases
+.\build.ps1 -Msix    # also builds artifacts\store\BuzzPrint_<version>.0_x64.msix for the Microsoft Store
+.\build.ps1 -Msix -TestSign   # plus a ..._test.msix signed with a self-signed certificate, to install on this PC
 ```
 
 Needs the **.NET 10 SDK** (`dotnet` on the PATH, or its path in `$env:BUZZPRINT_DOTNET`). The publish is self-contained: users don't need to install .NET. Recording uses **FFmpeg** (`winget install Gyan.FFmpeg`); `build.ps1` copies it to `dist\BuzzPrint\tools`. Audio is captured with WASAPI (system loopback and the default microphone).
 
 `BuzzPrint.exe --icon DIR` redraws the icon (Boberto's hexagon head and eyes, as vectors, crisp from 16 to 256 px) plus a preview sheet. The appearance system (`src\BuzzPrint\Appearance`) and the Boberto engine (`src\BuzzPrint\Assets\Boberto`) come from the author's DBMON SQL project.
+
+### Microsoft Store package
+
+`-Msix` compiles the **Store flavor** (`-p:Store=true`, symbol `STORE`): start with Windows uses the package's startup task instead of the `Run` registry key, and nothing is downloaded at run time (FFmpeg *essentials* from gyan.dev is bundled in `tools\`, SHA-256 checked at build time; for a missing WebView2 the app links to Microsoft's page). The Windows SDK tools (`makeappx`, `makepri`, `signtool`) come from the `Microsoft.Windows.SDK.BuildTools` NuGet package, cached in `artifacts\cache`.
+
+The package identity is in `packaging\store.json`. Before uploading, replace its three values with the ones in Partner Center → BuzzPrint → Product identity. Upload the unsigned `.msix`; the Store signs it. To try the test package, trust its certificate once (PowerShell as administrator) and double-click the `_test.msix`:
+
+```powershell
+Import-Certificate -FilePath artifacts\store\BuzzPrint-test.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
+```
+
+The Store version keeps its settings in the package's own data folder, separate from the zip version.
 
 ## License
 
