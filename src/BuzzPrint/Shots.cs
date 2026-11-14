@@ -111,6 +111,13 @@ static class Shots
             await Task.Delay(1200);
             Save(export, Path.Combine(dir, "09-export.png"), log);
             export.Close();
+#if PREVIEW
+            var aiWin = AiSettingsWindow.ForShot(main);
+            aiWin.Show();
+            await Task.Delay(900);
+            Save(aiWin, Path.Combine(dir, "10-ai-settings.png"), log);
+            aiWin.Close();
+#endif
             string exportDir = Path.Combine(dir, "export");
             try { if (Directory.Exists(exportDir)) Directory.Delete(exportDir, true); }
             catch (IOException) { exportDir += "-" + DateTime.Now.ToString("HHmmss"); }   // a viewer still has the last run open

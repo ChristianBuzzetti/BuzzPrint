@@ -180,8 +180,9 @@ sealed class OpenAiCompatibleClient(string baseUrl, string? apiKey, string model
             {
                 throw new AiException(baseUrl.Contains("localhost") ? L.T("No responde Ollama en esta PC. ¿Está instalado y abierto?") : L.T("No hay conexión con el servicio. Revisá internet o el proxy."), ex);
             }
-            if ((int)res.StatusCode != 429 || attempt >= 3) break;
-            var wait = res.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(20);
+            int code = (int)res.StatusCode;
+            if (code is not (429 or 500 or 502 or 503 or 504) || attempt >= 3) break;
+            var wait = res.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(code == 429 ? 20 : 6 * (attempt + 1));
             res.Dispose();
             await Task.Delay(wait > TimeSpan.FromSeconds(60) ? TimeSpan.FromSeconds(60) : wait, ct);
         }
@@ -195,6 +196,7 @@ sealed class OpenAiCompatibleClient(string baseUrl, string? apiKey, string model
                 403 => L.T("La API key no tiene permiso para este modelo."),
                 404 => L.F("El modelo «{0}» no existe o la URL es incorrecta.", model),
                 429 => L.T("Demasiados pedidos seguidos o sin saldo. Probá en un rato o revisá tu cuenta."),
+                500 or 502 or 503 or 504 => L.T("El servicio está saturado o con problemas en este momento. Probá de nuevo en unos minutos o usá otra conexión."),
                 _ => L.T("El servicio devolvió un error: ") + (int)res.StatusCode,
             } + (detail.Length > 0 ? "\n" + detail : ""));
         }

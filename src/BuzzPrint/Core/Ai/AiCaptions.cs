@@ -44,7 +44,7 @@ public static partial class AiCaptions
         string prompt = ocr.Length > 0
             ? "Text read from the screenshot by OCR (may contain errors):\n<ocr>\n" + ocr + "\n</ocr>\nDescribe the screenshot."
             : "Describe the screenshot.";
-        string answer = await client.CompleteAsync(new AiRequest(SystemPrompt, prompt, [png], 1024), ct);
+        string answer = await client.CompleteAsync(new AiRequest(SystemPrompt, prompt, [png], 2500), ct);
         return Parse(answer);
     }
 

@@ -488,7 +488,7 @@ static class LocEn
         ["Abrir la página"] = "Open the page",
 
         // ---- text inside captures (OCR)
-        ["Buscar capturas o texto dentro…"] = "Search captures or the text inside…",
+        ["Buscar capturas o texto dentro…"] = "Search captures and text…",
         ["Copiar el texto de la imagen"] = "Copy text from image",
         ["Leyendo el texto…"] = "Reading the text…",
         ["Leyendo el texto de las capturas… {0}/{1}"] = "Reading the text in captures… {0}/{1}",
@@ -637,6 +637,7 @@ static class LocEn
         ["Sección: {0}   ·   antes: {1}"] = "Section: {0}   ·   was: {1}",
         ["Destildá lo que no quieras cambiar. Se renombran las capturas y se mueven a la sección sugerida."] = "Untick what you don't want to change. Captures are renamed and moved to the suggested section.",
         ["Aplicar"] = "Apply",
+        ["El servicio está saturado o con problemas en este momento. Probá de nuevo en unos minutos o usá otra conexión."] = "The service is overloaded or having trouble right now. Try again in a few minutes or use another connection.",
         ["IA: {0} captura(s) ordenadas"] = "AI: {0} capture(s) organized",
         ["Cerrar"] = "Close",
         ["Copiado al portapapeles."] = "Copied to the clipboard.",

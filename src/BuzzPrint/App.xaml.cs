@@ -104,6 +104,51 @@ public partial class App : Application
             return;
         }
 #endif
+#if PREVIEW
+        // --ai-feature LOG FEATURE PNG...: runs one AI feature on sample images with the active connection and writes
+        // the result to LOG (tests and support; the images never enter the library).
+        if (Arg(e.Args, "--ai-feature") is string featureLog)
+        {
+            int i = Array.IndexOf(e.Args, "--ai-feature");
+            string feature = i + 2 < e.Args.Length ? e.Args[i + 2] : "";
+            var items = e.Args.Skip(i + 3).Where(a => a.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                .Select(p => new CaptureItem { Id = "ai-test-" + Guid.NewGuid().ToString("N"), Path = p, Title = "", Source = "", Created = DateTime.Now }).ToList();
+            Dispatcher.BeginInvoke(async () =>
+            {
+                string result;
+                try
+                {
+                    var client = Ai.AiClient.FromSettings(Store.Settings);
+                    switch (feature)
+                    {
+                        case "caption": { var r = await Ai.AiCaptions.DescribeAsync(client, items[0]); result = "title=" + r.Title + "\nsummary=" + r.Caption; break; }
+                        case "document":
+                        {
+                            var d = await Ai.AiDocument.DraftAsync(items, "Capturas");
+                            result = "title=" + d.Title + "\nintro=" + d.Intro + "\n" + string.Join("\n", d.Steps.Select((s, n) => (n + 1) + ". " + s.Title + " | " + s.Note));
+                            break;
+                        }
+                        case "ticket": result = await Ai.AiTicket.WriteAsync(items); break;
+                        case "organize": { var o = await Ai.AiOrganize.SuggestAsync(client, items[0], ["Base de datos", "Accesos"]); result = "title=" + o.Title + "\nsection=" + o.Section; break; }
+                        case "ask": result = await new Ai.AiConversation(items[0]).AskAsync(L.Es ? "¿Qué significa este error y qué debería revisar?" : "What does this error mean and what should I check?"); break;
+                        case "redact":
+                        {
+                            var spots = await Ai.AiRedaction.FindAsync(items[0], true);
+                            using (var bmp = Ai.AiRedaction.Render(items[0], spots)) bmp.Save(Path.ChangeExtension(featureLog, ".png"));
+                            result = string.Join("\n", spots.Select(s => s.Kind + ": " + s.Text));
+                            break;
+                        }
+                        default: result = "unknown feature"; break;
+                    }
+                    result = "OK\n" + result;
+                }
+                catch (Ai.AiException ex) { result = "FAIL " + ex.Message; }
+                File.WriteAllText(featureLog, result);
+                ExitApp();
+            });
+            return;
+        }
+#endif
         if (Appearance.BobertoVisible) BobertoRuntime.Prewarm(BobertoRuntime.DefaultProfile);
 
         main = new MainWindow();

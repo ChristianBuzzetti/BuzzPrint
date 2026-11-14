@@ -385,6 +385,19 @@ public sealed class AiSettingsWindow : Window
         return t;
     }
 
+    /// <summary>Screenshot run: sample connections in memory only (nothing is saved).</summary>
+    internal static AiSettingsWindow ForShot(Window owner)
+    {
+        var w = new AiSettingsWindow { Owner = owner };
+        if (w.working.Count == 0)
+        {
+            var g = new AiConnection { Provider = "gemini", Model = "gemini-4-hydrogen" };
+            w.working.Add(g); w.working.Add(new AiConnection { Provider = "anthropic", Model = "claude-opus-5-5" });
+            w.activeId = g.Id; w.enabled.IsChecked = true; w.Select(g); w.SyncEnabled();
+        }
+        return w;
+    }
+
     public static void ShowFor(Window? owner)
     {
         var w = new AiSettingsWindow();

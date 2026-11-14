@@ -117,6 +117,7 @@ public static partial class AiRedaction
     [GeneratedRegex(@"^\d{1,3}(\.\d{1,3}){3}(:\d+)?$")] private static partial Regex Ip();
     [GeneratedRegex(@"^(?=.*\d)(?=.*[A-Za-z])[A-Za-z0-9_\-]{24,}$")] private static partial Regex Token();
     [GeneratedRegex(@"^\d[\d\- ]{11,}\d$")] private static partial Regex LongNumber();
+    [GeneratedRegex(@"^(?i)(token|api|apikey|api-key|key|clave|contrase(ñ|n)a|password|passwd|pwd|pass|secret|secreto)[:=]?$")] private static partial Regex SecretLabel();
 
     public static async Task<List<SensitiveSpot>> FindAsync(CaptureItem it, bool useAi, CancellationToken ct = default)
     {
@@ -128,6 +129,19 @@ public static partial class AiRedaction
             string t = words[i].Text.Trim('(', ')', '[', ']', ',', ';', '<', '>', '"', '\'');
             string? kind = Mail().IsMatch(t) ? "mail" : Ip().IsMatch(t) ? "ip" : Token().IsMatch(t) ? "token" : LongNumber().IsMatch(t) ? "number" : null;
             if (kind != null) spots.Add(new SensitiveSpot(kind, words[i].Text, Box(words[i])));
+        }
+        // "Token API: …", "Password: …": hide the rest of the line after the label, read or not.
+        double right = words.Count > 0 ? words.Max(w => w.X + w.W) : 0;
+        using (var probe = Store.LoadBitmap(it.Path)) right = Math.Max(right, probe.Width - 24);
+        for (int i = 0; i < words.Count; i++)
+        {
+            if (!SecretLabel().IsMatch(words[i].Text.Trim())) continue;
+            int last = i;
+            while (last + 1 < words.Count && SameLine(words[i], words[last + 1]) && SecretLabel().IsMatch(words[last + 1].Text.Trim())) last++;
+            var lab = words[last];
+            float x = (float)(lab.X + lab.W + 4), h = (float)Math.Max(lab.H, 12);
+            var box = new RectangleF(x, (float)lab.Y - 4, (float)Math.Max(40, right - x), h + 8);
+            if (!spots.Any(s => s.Box.Contains(box))) spots.Add(new SensitiveSpot("secret", words[i].Text + " …", box));
         }
         if (useAi && words.Count > 0)
         {
@@ -144,32 +158,49 @@ public static partial class AiRedaction
                 """;
             string answer = await client.CompleteAsync(new AiRequest(system, listing.ToString(), [], 3000), ct);
             using var doc = AiInput.Json(answer);
+            var flagged = new HashSet<int>();
             if (doc != null && doc.RootElement.TryGetProperty("spots", out var arr) && arr.ValueKind == JsonValueKind.Array)
                 foreach (var s in arr.EnumerateArray())
                 {
                     if (!s.TryGetProperty("words", out var idx) || idx.ValueKind != JsonValueKind.Array) continue;
                     var picked = idx.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.Number).Select(x => x.GetInt32()).Where(n => n >= 0 && n < words.Count).ToList();
+                    flagged.UnionWith(picked);
                     foreach (var n in picked)
-                        if (!spots.Any(p => p.Box.IntersectsWith(Box(words[n]))))
+                        if (!spots.Any(p => p.Box.Contains(Center(words[n]))))
                             spots.Add(new SensitiveSpot(AiInput.Str(s, "kind") is { Length: > 0 } k ? k : "data", words[n].Text, Box(words[n])));
                 }
+            // A name split by the model ("Martina … Ferreyra"): the word between two flagged ones on the same line goes too.
+            foreach (int n in flagged.ToList())
+                if (flagged.Contains(n + 2) && !flagged.Contains(n + 1) && n + 1 < words.Count && SameLine(words[n], words[n + 2]) && char.IsUpper(words[n + 1].Text.FirstOrDefault()))
+                    spots.Add(new SensitiveSpot("name", words[n + 1].Text, Box(words[n + 1])));
         }
         return spots;
     }
+
+    static PointF Center(OcrWord w) => new((float)(w.X + w.W / 2), (float)(w.Y + w.H / 2));
+
+    static bool SameLine(OcrWord a, OcrWord b) => Math.Abs((a.Y + a.H / 2) - (b.Y + b.H / 2)) < Math.Max(a.H, b.H) * 0.6;
 
     static RectangleF Box(OcrWord w) => new((float)w.X - 3, (float)w.Y - 3, (float)w.W + 6, (float)w.H + 6);
 
     /// <summary>Pixelates the spots on a copy of the capture and adds it to the library next to the original.</summary>
     public static CaptureItem SaveRedactedCopy(CaptureItem it, IReadOnlyList<SensitiveSpot> spots)
     {
-        using var bmp = Store.LoadBitmap(it.Path);
-        foreach (var s in spots) Pixelate(bmp, Rectangle.Round(s.Box));
+        using var bmp = Render(it, spots);
         var copy = Store.Add(bmp, it.Source);
         Store.UpdateMeta(copy, "title", AiInput.OneLine(it.Display, 60) + (L.Es ? " (protegida)" : " (redacted)"));
         if (it.Note.Length > 0) Store.UpdateMeta(copy, "note", it.Note);
         if (it.Section.Length > 0) Store.UpdateMeta(copy, "section", it.Section);
         Store.RaiseChanged();
         return copy;
+    }
+
+    /// <summary>The capture with the spots pixelated (caller disposes).</summary>
+    public static Bitmap Render(CaptureItem it, IReadOnlyList<SensitiveSpot> spots)
+    {
+        var bmp = Store.LoadBitmap(it.Path);
+        foreach (var s in spots) Pixelate(bmp, Rectangle.Round(s.Box));
+        return bmp;
     }
 
     static void Pixelate(Bitmap bmp, Rectangle r)
@@ -241,7 +272,7 @@ public static class AiOrganize
             """;
         string prompt = "Existing sections: " + (sections.Count > 0 ? string.Join(", ", sections.Select(s => "\"" + s + "\"")) : "(none yet)") +
                         (ocr.Length > 0 ? "\nOCR text:\n<ocr>\n" + ocr + "\n</ocr>" : "") + "\nSuggest the title and section.";
-        string answer = await client.CompleteAsync(new AiRequest(system, prompt, [png], 400), ct);
+        string answer = await client.CompleteAsync(new AiRequest(system, prompt, [png], 2000), ct);
         using var doc = AiInput.Json(answer) ?? throw new AiException(L.T("La IA no devolvió el formato esperado."));
         return new OrganizeSuggestion(it, AiInput.OneLine(AiInput.Str(doc.RootElement, "title"), 48), AiInput.OneLine(AiInput.Str(doc.RootElement, "section"), 32));
     }
