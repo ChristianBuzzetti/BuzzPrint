@@ -121,7 +121,7 @@ public sealed class PersonalizationWindow:Window
         stack.Children.Add(statusFrame);scene.Children.Add(app);
 
         bobertoPreview.SetResourceReference(Border.BorderBrushProperty,"StrongBorder");
-        PreviewDock=new BobertoDockControl(settings,testProfile,cacheSnapshot:false,suspendRenderer:false);PreviewDock.StudioRequested+=()=>Dispatcher.BeginInvoke(()=> {if(!closed)Sections.SelectedIndex=4;});bobertoPreview.Child=PreviewDock;DockPanel.SetDock(bobertoPreview,Dock.Top);column.Children.Add(bobertoPreview);
+        PreviewDock=new BobertoDockControl(settings,testProfile,cacheSnapshot:true,suspendRenderer:false,snapshotFile:"boberto-preview.png");   /* its own 16:9 snapshot: opens on the same picture the live scene shows */PreviewDock.StudioRequested+=()=>Dispatcher.BeginInvoke(()=> {if(!closed)Sections.SelectedIndex=4;});bobertoPreview.Child=PreviewDock;DockPanel.SetDock(bobertoPreview,Dock.Top);column.Children.Add(bobertoPreview);
         return card;
     }
     private void FitPreview()

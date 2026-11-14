@@ -51,10 +51,12 @@ public sealed class BobertoDockControl:Grid,IDisposable
     public bool ShowsSnapshot {get;private set;}
     public string SnapshotPath=>snapshotPath;
     // Only the console dock suspends its renderer when hidden; the Personalize preview shares that renderer and just hides.
-    public BobertoDockControl(AppearanceSettings settings,string? profile=null,bool cacheSnapshot=true,bool suspendRenderer=true)
+    private readonly bool previewMode;
+    /// <param name="snapshotFile">Startup snapshot file; each placement keeps its own so the proportions match (header band vs Personalize preview).</param>
+    public BobertoDockControl(AppearanceSettings settings,string? profile=null,bool cacheSnapshot=true,bool suspendRenderer=true,string snapshotFile="boberto-dock.png")
     {
         appearance=settings;profilePath=profile??BobertoRuntime.DefaultProfile;this.cacheSnapshot=cacheSnapshot;this.suspendRenderer=suspendRenderer;
-        snapshotPath=Path.Combine(Path.GetDirectoryName(Path.GetFullPath(profilePath))!,"boberto-dock.png");
+        snapshotPath=Path.Combine(Path.GetDirectoryName(Path.GetFullPath(profilePath))!,snapshotFile);previewMode=snapshotFile!="boberto-dock.png";
         BuildPlaceholder();
         var stack=new StackPanel {VerticalAlignment=VerticalAlignment.Bottom,HorizontalAlignment=HorizontalAlignment.Center};stack.Children.Add(fallbackImage);stack.Children.Add(fallbackText);fallback.Child=stack;
         fallbackText.SetResourceReference(TextBlock.ForegroundProperty,"Muted");fallbackText.SetResourceReference(TextBlock.FontSizeProperty,"SmallFontSize");
@@ -151,7 +153,7 @@ public sealed class BobertoDockControl:Grid,IDisposable
     {
         bool motion=appearance.BobertoMotion&&SystemParameters.ClientAreaAnimation;
         var surface=new Border();surface.SetResourceReference(Border.BackgroundProperty,"Header");placeholder.Children.Add(surface);
-        var snapshot=cacheSnapshot?LoadSnapshot():null;ShowsSnapshot=snapshot!=null;   /* previews: no header snapshot (other proportions, looked zoomed) */
+        var snapshot=LoadSnapshot();ShowsSnapshot=snapshot!=null;
         if(snapshot!=null){
             placeholder.Children.Add(new Image {Source=snapshot,Stretch=Stretch.UniformToFill,Opacity=.92});
             var shine=new LinearGradientBrush {StartPoint=new Point(0,0),EndPoint=new Point(1,.35)};
@@ -161,9 +163,11 @@ public sealed class BobertoDockControl:Grid,IDisposable
         } else {
             var halo=new Ellipse {Width=150,Height=90,VerticalAlignment=VerticalAlignment.Bottom,Margin=new Thickness(0,0,0,18),Opacity=.55};
             halo.Fill=new RadialGradientBrush((Color)Application.Current.Resources["AccentGlowColor"],Colors.Transparent){Opacity=.35};placeholder.Children.Add(halo);
+            if(!previewMode){   /* the bundled mascot is not the person's Boberto: previews show only the stage */
             var lift=new TranslateTransform();var mascot=new Image {Source=new BitmapImage(new Uri("pack://application:,,,/Assets/boberto.png")),Width=62,Height=62,VerticalAlignment=VerticalAlignment.Bottom,Margin=new Thickness(0,0,0,34),RenderTransform=lift};
             RenderOptions.SetBitmapScalingMode(mascot,BitmapScalingMode.HighQuality);placeholder.Children.Add(mascot);
             if(motion)lift.BeginAnimation(TranslateTransform.YProperty,new DoubleAnimation(0,-6,TimeSpan.FromSeconds(.9)){AutoReverse=true,RepeatBehavior=RepeatBehavior.Forever,EasingFunction=new SineEase {EasingMode=EasingMode.EaseInOut}});
+            }
             var floor=new Grid {Height=2,VerticalAlignment=VerticalAlignment.Bottom,Margin=new Thickness(10,0,10,30),ClipToBounds=true};
             var edge=new Rectangle {Opacity=.75};edge.SetResourceReference(Shape.FillProperty,"EdgeBar");floor.Children.Add(edge);
             var sweepColor=(Color)Application.Current.Resources["EdgeSweepColor"];var sweep=new LinearGradientBrush {StartPoint=new Point(0,0),EndPoint=new Point(1,0)};
