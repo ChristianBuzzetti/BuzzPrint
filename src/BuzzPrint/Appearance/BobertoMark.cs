@@ -73,6 +73,7 @@ public sealed class BobertoMark : FrameworkElement
     enum Blink { Both, Alternate, Double }
     Blink blink;
     double blinkUnit = 150;
+    DateTime nextGlance = DateTime.Now.AddMilliseconds(600);
     Outline? morphFrom; DateTime morphStart = DateTime.MinValue;
     const double MorphMs = 420;
     MarkStyle? lastDrawn;
@@ -187,7 +188,14 @@ public sealed class BobertoMark : FrameworkElement
             target = len < 1 ? default : d / len * Math.Min(1, len / 220);
             target = new Vector(target.X * 3.4, target.Y * 2.6);
         }
-        var next = eye + (target - eye) * .16;
+        else if (DateTime.Now >= nextGlance)
+        {
+            // Look around now and then: sideways, up or down, or back to the front.
+            double r = random.NextDouble();
+            target = r < .3 ? default : new Vector((random.NextDouble() * 2 - 1) * 3.4, (random.NextDouble() * 2 - 1) * 2.2);
+            nextGlance = DateTime.Now.AddMilliseconds(1400 + random.Next(2600));
+        }
+        var next = eye + (target - eye) * .12;
         if ((next - eye).LengthSquared > 0.0004) { eye = next; dirty = true; }
 
         var now = DateTime.Now;
@@ -244,15 +252,60 @@ public sealed class BobertoMark : FrameworkElement
 
         var headColor = MarkStyle.ToColor(st.Head);
         var outline = headOverride ?? Outline.For(st.Shape);
-        g.DrawGeometry(Frozen(headColor), null, outline.Geometry());
+        var shape = outline.Geometry();
         double cy = outline.EyeY;
+
+        // A 2.5D turn, the way a solid toy head reads: where the eyes look, the head turns. Yaw/pitch come from the
+        // eye offset (-1..1). The face narrows on the turning axis and slides toward the look, its far side shows as a
+        // darker body behind it (an extrusion), the eyes slide further than the outline (parallax) and bunch up, and a
+        // soft light stays put while the face moves under it. At rest it is a chunky object with a little depth below.
+        double yaw = Math.Clamp(eye.X / 3.4, -1, 1), pitch = Math.Clamp(eye.Y / 2.6, -1, 1);
+        double ay = Math.Abs(yaw), ap = Math.Abs(pitch);
+        double sx = 1 - .18 * ay, sy = 1 - .11 * ap;
+        double fx = yaw * 1.8, fy = pitch * 1.3;
+        Matrix Face(double ox, double oy) => new(sx, 0, 0, sy, 32 - 32 * sx + ox, 32 - 32 * sy + oy);
+        var back = new Vector(-yaw * 4.4, -pitch * 3.2 + 1.8 * (1 - ap));
+        var sideColor = Shade(headColor, .62);
+        const int Layers = 5;
+        for (int i = Layers; i >= 1; i--)
+        {
+            g.PushTransform(new MatrixTransform(Face(fx + back.X * i / Layers, fy + back.Y * i / Layers)));
+            g.DrawGeometry(Frozen(i == Layers ? Shade(headColor, .5) : sideColor), null, shape);
+            g.Pop();
+        }
+
+        g.PushTransform(new MatrixTransform(Face(fx, fy)));
+        g.DrawGeometry(Frozen(headColor), null, shape);
+        if (!tiny || size >= 24)
+        {
+            g.PushClip(shape);
+            // Light from the upper left; it stays in place, so the turning face slides under it.
+            var light = new RadialGradientBrush(Color.FromArgb(84, 255, 255, 255), Color.FromArgb(0, 255, 255, 255))
+                { MappingMode = BrushMappingMode.Absolute, Center = new Point(24 - fx * 2.2, cy - 12 - fy * 2), GradientOrigin = new Point(24 - fx * 2.2, cy - 12 - fy * 2), RadiusX = 24, RadiusY = 20 };
+            light.Freeze();
+            g.DrawRectangle(light, null, new Rect(0, 0, 64, 64));
+            // The far side falls into shadow as it turns away.
+            if (ay > .05 || ap > .05)
+            {
+                var far = new LinearGradientBrush { MappingMode = BrushMappingMode.Absolute,
+                    StartPoint = new Point(32 - yaw * 26, cy - pitch * 22), EndPoint = new Point(32 + yaw * 4, cy + pitch * 4) };
+                far.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(95 * Math.Max(ay, ap)), 0, 0, 0), 0));
+                far.GradientStops.Add(new GradientStop(Color.FromArgb(0, 0, 0, 0), 1));
+                far.Freeze();
+                g.DrawRectangle(far, null, new Rect(0, 0, 64, 64));
+            }
+            g.Pop();
+        }
 
         // Eyes contrast with the head: white on dark heads, ink on light ones.
         double lum = (.2126 * headColor.R + .7152 * headColor.G + .0722 * headColor.B) / 255;
         var eyeBrush = lum > .62 ? DarkEye : LightEye;
-        double gap = tiny ? 7 : 6.5;
-        DrawEye(g, st.Eyes, eyeBrush, new Point(32 - gap + eye.X, cy + eye.Y), blinkLeft, tiny);
-        DrawEye(g, st.Eyes, eyeBrush, new Point(32 + gap + eye.X, cy + eye.Y), blinkRight, tiny);
+        double gap = (tiny ? 7 : 6.5) * (1 - .28 * ay);
+        double ex = 32 + yaw * 3.8, ey = cy + pitch * 3;
+        // The eye on the far side is a touch smaller (it is further away).
+        DrawEyeScaled(g, st.Eyes, eyeBrush, new Point(ex - gap, ey), blinkLeft, tiny, 1 - .16 * Math.Max(0, yaw));
+        DrawEyeScaled(g, st.Eyes, eyeBrush, new Point(ex + gap, ey), blinkRight, tiny, 1 - .16 * Math.Max(0, -yaw));
+        g.Pop();
         if (bare) g.Pop();
         g.Pop();
     }
@@ -264,6 +317,22 @@ public sealed class BobertoMark : FrameworkElement
         if (brushes.TryGetValue(c, out var b)) return b;
         var nb = new SolidColorBrush(c); nb.Freeze();
         return brushes[c] = nb;
+    }
+
+    static Color Shade(Color c, double k)
+    {
+        // Darken; very dark heads lighten instead so their body still reads against the tile.
+        double lum = (.2126 * c.R + .7152 * c.G + .0722 * c.B) / 255;
+        if (lum < .12) return Color.FromRgb((byte)Math.Min(255, c.R + 70 * (1.2 - k)), (byte)Math.Min(255, c.G + 70 * (1.2 - k)), (byte)Math.Min(255, c.B + 76 * (1.2 - k)));
+        return Color.FromRgb((byte)(c.R * k), (byte)(c.G * k), (byte)(c.B * k));
+    }
+
+    static void DrawEyeScaled(DrawingContext g, string kind, Brush b, Point c, double open, bool tiny, double scale)
+    {
+        if (Math.Abs(scale - 1) < .01) { DrawEye(g, kind, b, c, open, tiny); return; }
+        g.PushTransform(new ScaleTransform(scale, scale, c.X, c.Y));
+        DrawEye(g, kind, b, c, open, tiny);
+        g.Pop();
     }
 
     static void DrawEye(DrawingContext g, string kind, Brush b, Point c, double open, bool tiny)

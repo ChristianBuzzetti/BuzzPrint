@@ -118,6 +118,34 @@ static class Shots
             Save(aiWin, Path.Combine(dir, "10-ai-settings.png"), log);
             aiWin.Close();
 #endif
+            // The 3D head turn: every shape looking left, front, right, up and down, at 96 px and at 32 px.
+            {
+                var sheet = new DrawingVisual();
+                var looks = new[] { new Vector(-3.4, 0), new Vector(-1.7, -1.3), default, new Vector(1.7, 1.3), new Vector(3.4, 0), new Vector(0, -2.6), new Vector(0, 2.6) };
+                var accent = (Brush)Application.Current.Resources["Accent"];
+                using (var g = sheet.RenderOpen())
+                {
+                    g.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x10, 0x12, 0x18)), null, new Rect(0, 0, looks.Length * 104 + 60, MarkStyle.Shapes.Length * 104));
+                    for (int r = 0; r < MarkStyle.Shapes.Length; r++)
+                    {
+                        var st = BobertoMark.Current with { Shape = MarkStyle.Shapes[r] };
+                        for (int c = 0; c < looks.Length; c++)
+                        {
+                            g.PushTransform(new TranslateTransform(c * 104 + 4, r * 104 + 4));
+                            BobertoMark.Draw(g, 96, st, accent, looks[c]);
+                            g.Pop();
+                        }
+                        g.PushTransform(new TranslateTransform(looks.Length * 104 + 10, r * 104 + 34));
+                        BobertoMark.Draw(g, 32, st, accent, looks[0]);
+                        g.Pop();
+                    }
+                }
+                var bmp = new System.Windows.Media.Imaging.RenderTargetBitmap(looks.Length * 104 + 60, MarkStyle.Shapes.Length * 104, 96, 96, PixelFormats.Pbgra32);
+                bmp.Render(sheet);
+                var enc = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bmp));
+                using (var f = File.Create(Path.Combine(dir, "11-mark-3d.png"))) enc.Save(f);
+            }
             string exportDir = Path.Combine(dir, "export");
             try { if (Directory.Exists(exportDir)) Directory.Delete(exportDir, true); }
             catch (IOException) { exportDir += "-" + DateTime.Now.ToString("HHmmss"); }   // a viewer still has the last run open
