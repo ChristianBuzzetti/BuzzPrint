@@ -332,7 +332,7 @@
                 </ContextMenu>
               </ListBox.ContextMenu>
               <ListBox.ItemTemplate><DataTemplate>
-                <StackPanel Width="{DynamicResource LibraryCardWidth}" ToolTip="{Binding Caption}" ToolTipService.ShowDuration="20000">
+                <StackPanel Width="{DynamicResource LibraryCardWidth}">
                   <Border Margin="8,8,8,0" Height="{DynamicResource LibraryThumbHeight}" Background="{DynamicResource Canvas}" CornerRadius="{DynamicResource ControlRadius}" ClipToBounds="True"><Grid>
                     <Image Source="{Binding Thumb}" Stretch="Uniform" Margin="6" RenderOptions.BitmapScalingMode="HighQuality"/>
                     <TextBlock Visibility="{Binding NoThumbVisibility}" Text="{Binding KindGlyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="34" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
