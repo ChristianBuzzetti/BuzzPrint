@@ -81,7 +81,7 @@
                 </MenuItem>
               </MenuItem>
               <MenuItem x:Name="MenuAi" Header="{local:T 'IA'}" Tag="&#xEA80;" Visibility="Collapsed"><MenuItem Header="{local:T 'Título y resumen'}" Click="AiCaptionClick"/><MenuItem Header="{local:T 'Documento paso a paso…'}" Click="AiDocumentClick"/><MenuItem Header="{local:T 'Proteger datos sensibles'}" Click="AiRedactClick"/><MenuItem Header="{local:T 'Preguntar sobre la captura…'}" Click="AiAskClick"/><MenuItem Header="{local:T 'Reporte de incidente'}" Click="AiTicketClick"/><MenuItem Header="{local:T 'Ordenar la biblioteca'}" Click="AiOrganizeClick"/><Separator/><MenuItem Header="{local:T 'Configurar IA…'}" Click="AiSettingsClick"/></MenuItem>
-              <MenuItem Header="{local:T 'Ayuda'}" Tag="&#xE897;"><MenuItem Header="{local:T 'Revisar componentes…'}" Click="ComponentsClick"/><MenuItem Header="{local:T 'Acerca de BuzzPrint'}" Click="AboutClick"/></MenuItem>
+              <MenuItem Header="{local:T 'Ayuda'}" Tag="&#xE897;"><MenuItem Header="{local:T 'Guía de BuzzPrint'}" InputGestureText="F1" Click="GuideClick"/><Separator/><MenuItem Header="{local:T 'Revisar componentes…'}" Click="ComponentsClick"/><MenuItem Header="{local:T 'Acerca de BuzzPrint'}" Click="AboutClick"/></MenuItem>
             </Menu>
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -162,6 +162,7 @@
             <Border Height="1" Background="{DynamicResource FaintBorder}" Margin="6,6,6,6"/>
             <RadioButton x:Name="NavOptions" Style="{StaticResource NavItem}" GroupName="NavOptions" Click="NavOptionsClick"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE9E9;"/><TextBlock Text="{local:T 'Opciones'}"/></DockPanel></RadioButton>
             <Button Style="{StaticResource NavAction}" Click="PersonalizeClick"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE790;"/><TextBlock Text="{local:T 'Personalizar'}"/></DockPanel></Button>
+            <Button Style="{StaticResource NavAction}" Click="GuideClick" ToolTip="{local:T 'Todo lo que puede hacer BuzzPrint, paso a paso · F1'}"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE82D;"/><TextBlock Text="{local:T 'Guía'}"/></DockPanel></Button>
             <Button x:Name="NavAiStatus" Style="{StaticResource NavAction}" Visibility="Collapsed" Click="AiSettingsClick"><DockPanel><Ellipse x:Name="NavAiDot" DockPanel.Dock="Right" Width="8" Height="8" VerticalAlignment="Center" Fill="{DynamicResource Muted}"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xEA80;"/><TextBlock x:Name="NavAiText" Text="IA" TextTrimming="CharacterEllipsis"/></DockPanel></Button>
           </StackPanel>
           <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">

@@ -84,6 +84,7 @@ public partial class MainWindow : Window
         CtxCopyText.Visibility = MenuCopyText.Visibility = Ocr.Supported ? Visibility.Visible : Visibility.Collapsed;
         Dispatcher.BeginInvoke(OcrIndex.Refresh, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         PreviewKeyDown += OnKey;
+        ContentRendered += (_, _) => Dispatcher.BeginInvoke(OfferGuide, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
 
         OnAppearance(appearance);
         RefreshShortcuts();
@@ -676,8 +677,45 @@ public partial class MainWindow : Window
         if (files.Length > 0) DragDrop.DoDragDrop(Library, new DataObject(DataFormats.FileDrop, files), DragDropEffects.Copy);
     }
 
+    void GuideClick(object sender, RoutedEventArgs e) => GuideWindow.Open(this);
+
+    /// <summary>The guide's "try it" buttons.</summary>
+    public void GuideAction(string action, Window from)
+    {
+        switch (action)
+        {
+            case "capture": App.Current.Capture(CaptureMode.Region, this); break;
+            case "full": App.Current.Capture(CaptureMode.Full, this); break;
+            case "quick": QuickPickWindow.Toggle(IntPtr.Zero); break;
+            case "editor": EditorWindow.Open(Selected.FirstOrDefault(x => !x.IsRecording) ?? Store.All().FirstOrDefault(x => !x.IsRecording)); break;
+            case "recordings": ShowRecordings(); Activate(); break;
+            case "folder": FolderClick(this, new RoutedEventArgs()); break;
+            case "export": Activate(); ExportClick(this, new RoutedEventArgs()); break;
+            case "templates":
+                if (TemplatesWindow.Pick(from, Store.Settings.ExportTemplate, ExportWindow.AccentHex()) is string id) { Store.Settings.ExportTemplate = id; Store.SaveSettings(); }
+                break;
+            case "personalize": App.Current.OpenPersonalization(this); break;
+#if PREVIEW
+            case "ai": AiSettingsClick(this, new RoutedEventArgs()); break;
+#endif
+        }
+    }
+
+    /// <summary>Once, on the first start: offer the guide.</summary>
+    void OfferGuide()
+    {
+        if (Store.Settings.GuideOffered || App.IsShot || !IsVisible) return;
+        Store.Settings.GuideOffered = true; Store.SaveSettings();
+        if (PromptWindow.Confirm(this, L.T("Te damos la bienvenida a BuzzPrint"),
+                L.T("¿Querés ver la guía? Explica todo lo que puede hacer la app, paso a paso, con botones para probar cada función.") + "\n\n" +
+                L.T("Siempre a mano: Ayuda → Guía de BuzzPrint, o F1"),
+                L.T("Ver la guía"), L.T("Más tarde")))
+            GuideWindow.Open(this);
+    }
+
     void OnKey(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.F1) { GuideWindow.Open(this); e.Handled = true; return; }
         if (Search.IsKeyboardFocusWithin)
         {
             if (e.Key == Key.Escape) { Search.Text = ""; Library.Focus(); e.Handled = true; }

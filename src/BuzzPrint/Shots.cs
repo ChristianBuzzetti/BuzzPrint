@@ -153,6 +153,14 @@ static class Shots
                 busy.Dispose();
             }
 #endif
+            foreach (var (topic, file) in new[] { ("start", "20-guide-start.png"), ("editor", "21-guide-editor.png") })
+            {
+                var guide = GuideWindow.ForShot(main, topic);
+                guide.Show();
+                await Task.Delay(700);
+                Save(guide, Path.Combine(dir, file), log);
+                guide.Close();
+            }
             // The 3D head turn: every shape looking left, front, right, up and down, at 96 px and at 32 px.
             {
                 var sheet = new DrawingVisual();
