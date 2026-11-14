@@ -101,6 +101,7 @@
                   <MenuItem x:Name="LangEsMenu" Header="Español" IsCheckable="True" Click="LangEsClick"/>
                 </MenuItem>
               </MenuItem>
+              <MenuItem x:Name="MenuAi" Header="{local:T 'IA'}" Tag="&#xEA80;" Visibility="Collapsed"><MenuItem Header="{local:T 'Configurar IA…'}" Click="AiSettingsClick"/></MenuItem>
               <MenuItem Header="{local:T 'Ayuda'}" Tag="&#xE897;"><MenuItem Header="{local:T 'Revisar componentes…'}" Click="ComponentsClick"/><MenuItem Header="{local:T 'Acerca de BuzzPrint'}" Click="AboutClick"/></MenuItem>
             </Menu>
             <Border Padding="{DynamicResource ToolbarPadding}">

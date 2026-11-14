@@ -40,6 +40,9 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         Title = AppInfo.Name;
+#if PREVIEW
+        MenuAi.Visibility = Visibility.Visible;
+#endif
         Library.ItemsSource = cards;
         CopyToggle.IsChecked = Store.Settings.CopyAfterCapture;
         EditorToggle.IsChecked = Store.Settings.OpenEditorAfterCapture;
@@ -669,6 +672,12 @@ public partial class MainWindow : Window
         catch (System.Runtime.InteropServices.COMException ex) { StatusText.Text = L.T("No se pudo copiar: ") + ex.Message; return; }
         int words = all.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
         StatusText.Text = L.F("Texto copiado · {0} palabras", words);
+    }
+    void AiSettingsClick(object sender, RoutedEventArgs e)
+    {
+#if PREVIEW
+        AiSettingsWindow.ShowFor(this);
+#endif
     }
     void CopyFileClick(object sender, RoutedEventArgs e) { var it = Selected.FirstOrDefault(); if (it != null) { Store.CopyFileToClipboard(it); StatusText.Text = L.T("Archivo copiado") + " · " + it.Path; } }
     void EditClick(object sender, RoutedEventArgs e)

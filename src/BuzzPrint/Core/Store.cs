@@ -74,6 +74,11 @@ namespace BuzzPrint
         public string MarkHead = "#0E1015";
         public string MarkEyes = "oval";
         public string MarkTile = "accent";
+        // AI (preview builds). Off until the person turns it on; the API key is stored apart, encrypted (AiKeys).
+        public bool AiEnabled = false;
+        public string AiProvider = "anthropic";   // id from AiProviders.All
+        public string AiModel = "";               // empty = the provider's suggested model
+        public string AiBaseUrl = "";             // only for "custom" (any OpenAI-compatible endpoint)
     }
 
     public static class Store

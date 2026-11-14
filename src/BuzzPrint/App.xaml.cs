@@ -74,6 +74,28 @@ public partial class App : Application
             });
             return;
         }
+#if PREVIEW
+        // --ai-test LOG PROVIDER MODEL: one tiny text request with the given provider (key from BUZZPRINT_AI_TEST_KEY,
+        // else the stored one); writes OK + answer or FAIL + message to LOG and exits. Support and tests only.
+        if (Arg(e.Args, "--ai-test") is string aiLog)
+        {
+            int i = Array.IndexOf(e.Args, "--ai-test");
+            var trial = new Settings { AiEnabled = true, AiProvider = i + 2 < e.Args.Length ? e.Args[i + 2] : "anthropic", AiModel = i + 3 < e.Args.Length ? e.Args[i + 3] : "" };
+            Dispatcher.BeginInvoke(async () =>
+            {
+                string result;
+                try
+                {
+                    var client = Ai.AiClient.FromSettings(trial, Environment.GetEnvironmentVariable("BUZZPRINT_AI_TEST_KEY"));
+                    result = "OK " + await client.CompleteAsync(new Ai.AiRequest("Reply with exactly: OK", "Reply with exactly: OK", [], 50));
+                }
+                catch (Ai.AiException ex) { result = "FAIL " + ex.Message; }
+                File.WriteAllText(aiLog, result);
+                ExitApp();
+            });
+            return;
+        }
+#endif
         if (Appearance.BobertoVisible) BobertoRuntime.Prewarm(BobertoRuntime.DefaultProfile);
 
         main = new MainWindow();

@@ -41,6 +41,11 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
   </ItemGroup>
+  <!-- AI features live only in the preview for now: Claude through Anthropic's official SDK, other providers through
+       their OpenAI-compatible endpoint, API keys encrypted with Windows DPAPI. -->
+  <ItemGroup Condition="'$(Preview)' == 'true'">
+    <PackageReference Include="Anthropic" Version="13.8.0" />
+  </ItemGroup>
   <ItemGroup>
     <Content Include="Assets/*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Resource Include="Assets/Fonts/*.ttf" />
