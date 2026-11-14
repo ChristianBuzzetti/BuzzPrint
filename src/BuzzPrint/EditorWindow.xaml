@@ -84,6 +84,15 @@
         </ListBox>
       </DockPanel>
     </ContentControl>
+    <!-- Summary of the capture: the note that exports print under the image; AI can write it, anyone can edit it. -->
+    <ContentControl DockPanel.Dock="Right" Style="{StaticResource NeoCard}" Width="290" Margin="0,12,16,12">
+      <DockPanel Margin="16,14,16,14">
+        <TextBlock DockPanel.Dock="Top" Text="{local:T 'RESUMEN'}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource LineNumber}"/>
+        <TextBlock DockPanel.Dock="Top" Text="{local:T 'Va debajo de la imagen al exportar. Se guarda solo.'}" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" FontSize="{DynamicResource SmallFontSize}" Margin="0,4,0,10"/>
+        <Button x:Name="SummaryAiButton" DockPanel.Dock="Bottom" Visibility="Collapsed" Margin="0,10,0,0" Click="SummaryAiClick" HorizontalAlignment="Stretch"><TextBlock Text="{local:T '✦ Escribir con IA'}"/></Button>
+        <TextBox x:Name="SummaryBox" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top" TextChanged="SummaryChanged" LostKeyboardFocus="SummaryLostFocus"/>
+      </DockPanel>
+    </ContentControl>
     <ContentControl Style="{StaticResource NeoCard}" Margin="16,12,16,12">
       <ScrollViewer x:Name="Scroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="{DynamicResource CanvasGrid}" Margin="2" PreviewMouseWheel="ScrollerWheel" SizeChanged="ScrollerSizeChanged">
         <Grid x:Name="Stage" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="28">

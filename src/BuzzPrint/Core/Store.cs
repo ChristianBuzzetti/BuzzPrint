@@ -80,6 +80,19 @@ namespace BuzzPrint
         public string AiModel = "";               // empty = the provider's suggested model
         public string AiBaseUrl = "";             // only for "custom" (any OpenAI-compatible endpoint)
         public bool AiAutoCaption = false;        // title + caption for every new capture (sends each one to the provider)
+        public List<AiConnection> AiConnections = new List<AiConnection>();   // saved connections; keys live apart (AiKeys)
+        public string AiActiveId = "";            // the connection AI features use
+    }
+
+    /// <summary>One saved AI connection: provider, model and (for custom services) the endpoint. Its API key is kept
+    /// encrypted under its Id, never in this JSON.</summary>
+    public class AiConnection
+    {
+        public string Id = Guid.NewGuid().ToString("N");
+        public string Name = "";        // optional label; empty = provider and model
+        public string Provider = "anthropic";
+        public string Model = "";
+        public string BaseUrl = "";     // only for "custom"
     }
 
     public static class Store

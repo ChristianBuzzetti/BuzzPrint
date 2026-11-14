@@ -80,13 +80,13 @@ public partial class App : Application
         if (Arg(e.Args, "--ai-test") is string aiLog)
         {
             int i = Array.IndexOf(e.Args, "--ai-test");
-            var trial = new Settings { AiEnabled = true, AiProvider = i + 2 < e.Args.Length ? e.Args[i + 2] : "anthropic", AiModel = i + 3 < e.Args.Length ? e.Args[i + 3] : "" };
+            var trial = new AiConnection { Provider = i + 2 < e.Args.Length ? e.Args[i + 2] : "anthropic", Model = i + 3 < e.Args.Length ? e.Args[i + 3] : "" };
             Dispatcher.BeginInvoke(async () =>
             {
                 string result;
                 try
                 {
-                    var client = Ai.AiClient.FromSettings(trial, Environment.GetEnvironmentVariable("BUZZPRINT_AI_TEST_KEY"));
+                    var client = Ai.AiClient.FromConnection(trial, Environment.GetEnvironmentVariable("BUZZPRINT_AI_TEST_KEY"));
                     // Optional 4th argument: a PNG to describe with the title-and-caption prompt (never the library).
                     string? png = i + 4 < e.Args.Length ? e.Args[i + 4] : null;
                     if (png != null)

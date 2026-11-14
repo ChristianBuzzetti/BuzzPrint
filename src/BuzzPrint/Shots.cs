@@ -2,6 +2,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 using D = System.Drawing;
 
 namespace BuzzPrint;
@@ -208,6 +209,26 @@ static class Shots
     static void Save(Window w, string path, List<string> log)
     {
         if (w.WindowState == WindowState.Minimized) { w.WindowState = WindowState.Normal; log.Add("restored minimized " + w.GetType().Name); }
+        // BUZZPRINT_SHOT_RENDER=1: draw the window's content off screen (works with the session locked; no title bar,
+        // and WebView2 parts such as Boberto stay blank).
+        if (Environment.GetEnvironmentVariable("BUZZPRINT_SHOT_RENDER") == "1" && w.Content is FrameworkElement root)
+        {
+            root.UpdateLayout();
+            double dpi = VisualTreeHelper.GetDpi(root).PixelsPerDip;
+            var rtb = new System.Windows.Media.Imaging.RenderTargetBitmap((int)(root.ActualWidth * dpi), (int)(root.ActualHeight * dpi), 96 * dpi, 96 * dpi, PixelFormats.Pbgra32);
+            var dv = new DrawingVisual();
+            using (var dc = dv.RenderOpen())
+            {
+                dc.DrawRectangle(w.Background ?? Brushes.Black, null, new Rect(0, 0, root.ActualWidth, root.ActualHeight));
+                dc.DrawRectangle(new VisualBrush(root), null, new Rect(0, 0, root.ActualWidth, root.ActualHeight));
+            }
+            rtb.Render(dv);
+            var enc = new System.Windows.Media.Imaging.PngBitmapEncoder();
+            enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(rtb));
+            using (var fs = File.Create(path)) enc.Save(fs);
+            log.Add("rendered " + path + " " + rtb.PixelWidth + "x" + rtb.PixelHeight);
+            return;
+        }
         var h = new WindowInteropHelper(w).Handle;
         GetWindowRect(h, out var r);
         int width = r.Right - r.Left, height = r.Bottom - r.Top;

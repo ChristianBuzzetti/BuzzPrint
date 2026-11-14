@@ -21,6 +21,7 @@ public sealed class ExportPage
 public sealed class ExportOptions
 {
     public string Title = "";
+    public string Intro = "";   // optional paragraph under the title (cover); written by hand or by AI
     public bool Cover = true, Numbers = true, Captions = true, Meta = true, OnePerPage = true, Landscape;
     public string Accent = "F43F5E";
 }
@@ -163,6 +164,7 @@ public static class Exporter
             body.Append(Rect(id++, M, (long)(In * 2.35), (long)(Pt * 6), (long)(In * 1.55), o.Accent));
             body.Append(Text(id++, M + In / 4, (long)(In * 2.2), SlideW - 2 * M - In / 4, (long)(In * 1.1), 4000, true, "1F2328", o.Title, "b"));
             body.Append(Text(id++, M + In / 4, (long)(In * 3.42), SlideW - 2 * M - In / 4, (long)(In * 0.5), 1600, false, "6B7280", Subtitle(pages.Count), "t"));
+            if (o.Intro.Trim().Length > 0) body.Append(Text(id++, M + In / 4, (long)(In * 4.0), SlideW - 2 * M - In / 4, (long)(In * 2.2), 1300, false, "4B5563", o.Intro.Trim(), "t"));
             body.Append(Text(id++, M, SlideH - M - (long)(In * .3), SlideW - 2 * M, (long)(In * .3), 1000, false, "9CA3AF", "BuzzPrint", "b"));
             Entry(zip, "ppt/slides/slide" + n + ".xml", Slide(body.ToString()));
             Rels(n, null);
@@ -270,6 +272,7 @@ public static class Exporter
         {
             body.Append(P("Title", R(o.Title)));
             body.Append(P("Subtitle", R(Subtitle(pages.Count))));
+            if (o.Intro.Trim().Length > 0) body.Append("<w:p>" + Lines(o.Intro.Trim()) + "</w:p>");
         }
         for (int i = 0; i < pages.Count; i++)
         {
@@ -326,6 +329,8 @@ public static class Exporter
             double y = H * .5 + 32;
             foreach (var line in Wrap(o.Title, 30, W - 2 * M - 20).Take(2)) { c.Append(Txt("F2", 30, M + 20, y, ink, line)); y -= 36; }
             c.Append(Txt("F1", 13, M + 20, H * .5 - 6, muted, Subtitle(pages.Count)));
+            double iy = H * .5 - 34;
+            foreach (var line in Wrap(o.Intro.Trim(), 11, W - 2 * M - 20).Take(14)) { if (line.Length == 0) continue; c.Append(Txt("F1", 11, M + 20, iy, ink, line)); iy -= 15; }
             c.Append(Txt("F1", 9, M, M - 10, faint, "BuzzPrint"));
             AddPage(c.ToString(), "");
         }

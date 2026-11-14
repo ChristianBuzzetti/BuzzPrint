@@ -89,7 +89,7 @@ public partial class EditorWindow : Window
         WidthBox.SelectedIndex = 3; FontBox.SelectedIndex = 4;
 
         Store.Changed += StoreChanged;
-        Closing += (_, e) => { if (!ConfirmDiscard()) e.Cancel = true; };
+        Closing += (_, e) => { SaveSummary(); if (!ConfirmDiscard()) e.Cancel = true; };
         Closed += (_, _) => { Store.Changed -= StoreChanged; instance = null; };
         PreviewKeyDown += OnKey;
         RefreshTray();
@@ -191,6 +191,7 @@ public partial class EditorWindow : Window
     public void LoadItem(CaptureItem it)
     {
         if (item != null && it.Id == item.Id) return;
+        SaveSummary();
         if (!ConfirmDiscard()) return;
         CommitText();
         D.Bitmap b;
@@ -212,6 +213,10 @@ public partial class EditorWindow : Window
         undo.Clear(); redo.Clear(); selected = null; current = null; dirty = false;
         DocTitle.Text = string.IsNullOrEmpty(it.Title) ? (string.IsNullOrEmpty(it.Source) ? L.T("Captura") : it.Source) : it.Title;
         Title = DocTitle.Text + " · Editor · BuzzPrint";
+        loadingSummary = true; SummaryBox.Text = it.Note; loadingSummary = false; summaryDirty = false;
+#if PREVIEW
+        SummaryAiButton.Visibility = Store.Settings.AiEnabled ? Visibility.Visible : Visibility.Collapsed;
+#endif
         RenderCommitted();
         Dispatcher.BeginInvoke(FitZoom, System.Windows.Threading.DispatcherPriority.Loaded);
         RefreshTray();
@@ -266,6 +271,37 @@ public partial class EditorWindow : Window
     }
 
     void SaveClick(object sender, RoutedEventArgs e) => Save();
+
+    // ------------------------------------------------------------------ summary (capture note)
+    bool loadingSummary, summaryDirty;
+    void SummaryChanged(object sender, TextChangedEventArgs e) { if (!loadingSummary) summaryDirty = true; }
+    void SummaryLostFocus(object sender, RoutedEventArgs e) => SaveSummary();
+    void SaveSummary()
+    {
+        if (!summaryDirty || item == null) return;
+        summaryDirty = false;
+        try { Store.UpdateMeta(item, "note", SummaryBox.Text.Trim()); item.Note = SummaryBox.Text.Trim(); Store.RaiseChanged(); StatusText.Text = L.T("Resumen guardado"); }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException) { StatusText.Text = ex.Message; }
+    }
+    async void SummaryAiClick(object sender, RoutedEventArgs e)
+    {
+#if PREVIEW
+        if (item == null) return;
+        SummaryAiButton.IsEnabled = false;
+        StatusText.Text = L.T("IA: escribiendo el resumen…");
+        try
+        {
+            var client = Ai.AiClient.FromSettings(Store.Settings);
+            var r = await Ai.AiCaptions.DescribeAsync(client, item);
+            if (r.Caption.Length > 0) { SummaryBox.Text = r.Caption; summaryDirty = true; SaveSummary(); }
+            if (r.Title.Length > 0 && Ai.AiCaptions.HasDefaultTitle(item)) { Store.UpdateMeta(item, "title", r.Title); DocTitle.Text = r.Title; Store.RaiseChanged(); }
+        }
+        catch (Ai.AiException ex) { StatusText.Text = ""; PromptWindow.Info(this, L.T("Título y resumen"), ex.Message); }
+        finally { SummaryAiButton.IsEnabled = true; }
+#else
+        await Task.CompletedTask;
+#endif
+    }
     void Save()
     {
         if (baseImg == null || item == null) return;

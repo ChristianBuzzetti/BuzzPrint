@@ -6,7 +6,7 @@ using System.Windows.Media;
 
 namespace BuzzPrint;
 
-public sealed record AppearanceSettings(string ThemeId="neomirai",string? AccentHex="#F43F5E",string UiFont="inter",string EditorFont="consolas",double UiSize=12,double EditorSize=15,bool Compact=false,bool Rounded=false,bool ShowMessages=true,bool BobertoVisible=true,double BobertoSize=84,bool Motion=false,string BobertoBackground="theme",bool BobertoMotion=true,bool SqlCompletion=true)
+public sealed record AppearanceSettings(string ThemeId="neomirai",string? AccentHex="#F43F5E",string UiFont="inter",string EditorFont="consolas",double UiSize=13,double EditorSize=15,bool Compact=false,bool Rounded=true,bool ShowMessages=true,bool BobertoVisible=true,double BobertoSize=84,bool Motion=false,string BobertoBackground="theme",bool BobertoMotion=true,bool SqlCompletion=true)
 {
     // SqlCompletion is retained only to read older files under strict JSON validation. Completion is always available.
     // Motion, BobertoBackground and BobertoSize predate the live dock (the band height now decides Boberto's scale): Studio's engine now owns the scene background and BobertoMotion
@@ -52,14 +52,15 @@ public static class AppTypography
         resources["UiFontSize"]=settings.UiSize;
         resources["SmallFontSize"]=Math.Max(11,settings.UiSize-1);
         resources["SectionFontSize"]=settings.UiSize+4;
-        resources["TitleFontSize"]=settings.UiSize+8;
+        resources["TitleFontSize"]=settings.UiSize+9;
         resources["EditorFontSize"]=settings.EditorSize;
         resources["GridRowHeight"]=Math.Max(settings.Compact?26d:32d,settings.UiSize+16);
         resources["GridHeaderHeight"]=settings.UiSize+20;
         // Square by default: DBMON's Neo Mirai skin. "Soft control corners" switches to DBMON's standard radii
         // (r-sm 6 controls, r-md 8 strips, pills) and drops the Neo Mirai corner brackets.
-        resources["ControlRadius"]=new CornerRadius(settings.Rounded?6:0);
-        resources["StripRadius"]=new CornerRadius(settings.Rounded?8:0);
+        resources["ControlRadius"]=new CornerRadius(settings.Rounded?7:0);
+        resources["StripRadius"]=new CornerRadius(settings.Rounded?10:0);
+        resources["PanelRadius"]=new CornerRadius(settings.Rounded?14:0);
         resources["PillRadius"]=new CornerRadius(settings.Rounded?16:0);
 
         resources["ToolbarPadding"]=settings.Compact?new Thickness(16,7,16,7):new Thickness(16,10,16,10);

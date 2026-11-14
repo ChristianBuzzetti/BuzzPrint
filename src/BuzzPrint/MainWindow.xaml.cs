@@ -25,9 +25,13 @@ public sealed class CaptureCard
     public Visibility PlayVisibility => Item.Kind == "video" && Thumb != null ? Visibility.Visible : Visibility.Collapsed;
     public Visibility NoThumbVisibility => Thumb == null || Item.Kind == "audio" ? Visibility.Visible : Visibility.Collapsed;
     public string? Caption => string.IsNullOrWhiteSpace(Item.Note) ? null : Item.Note;
+    public Visibility CaptionVisibility => Caption == null ? Visibility.Collapsed : Visibility.Visible;
     public string KindGlyph => Item.Kind == "audio" ? "\uE8D6" : Item.Kind == "video" ? "\uE714" : "\uEB9F";
     public string KindText => (Item.Kind == "video" ? "VIDEO" : "AUDIO") + "  " + Recorder.Clock(TimeSpan.FromSeconds(Item.Duration));
 }
+
+/// <summary>A section row in the sidebar ("all" and "none" are the special rows).</summary>
+public sealed record SectionNav(string Key, string Name, int Count, bool IsActive, string Glyph);
 
 public partial class MainWindow : Window
 {
@@ -86,7 +90,8 @@ public partial class MainWindow : Window
         BobertoPanel.Visibility = settings.BobertoVisible ? Visibility.Visible : Visibility.Collapsed;
         ShowOptionsMenu.IsChecked = settings.ShowMessages;
         OptionsPanel.Visibility = settings.ShowMessages ? Visibility.Visible : Visibility.Collapsed;
-        OptionsColumn.Width = new GridLength(settings.ShowMessages ? 320 : 0);
+        OptionsColumn.Width = new GridLength(settings.ShowMessages ? 332 : 0);
+        NavOptions.IsChecked = settings.ShowMessages;
         AdaptHeader();
         SyncBobertoDock(settings);
         ApplyShellMotion(settings);
@@ -109,14 +114,14 @@ public partial class MainWindow : Window
     void AdaptHeader()
     {
         bool shortWindow = ActualHeight is > 0 and < 720;
-        Resources["TopMenuGlyph"] = ActualWidth is > 0 and < 1180 ? Visibility.Collapsed : Visibility.Visible;
+        Resources["TopMenuGlyph"] = ActualWidth is > 0 and < 1700 ? Visibility.Collapsed : Visibility.Visible;
         bool narrow = ActualWidth is > 0 and < 1180;
         var labels = narrow ? Visibility.Collapsed : Visibility.Visible;
-        QuickText.Visibility = EditorText.Visibility = FolderText.Visibility = PersonalizeText.Visibility = CaptureKeyHint.Visibility = labels;
-        Subtitle.Visibility = ActualWidth is > 0 and < 1320 ? Visibility.Collapsed : Visibility.Visible;
-        SearchBox.Width = narrow ? 200 : 300;
+        QuickText.Visibility = EditorText.Visibility = FolderText.Visibility = CaptureKeyHint.Visibility = labels;
+        PersonalizeText.Visibility = ActualWidth is > 0 and < 1600 ? Visibility.Collapsed : Visibility.Visible;
+        SearchBox.Width = narrow ? 190 : ActualWidth < 1600 ? 240 : 300;
         HeaderBar.Padding = shortWindow ? new Thickness(20, 6, 16, 6) : new Thickness(20, 10, 16, 10);
-        MainMenu.Padding = shortWindow ? new Thickness(16, 4, 16, 0) : new Thickness(16, 8, 16, 0);
+        SidebarColumn.Width = new GridLength(ActualWidth is > 0 and < 1100 ? 0 : 236);
         SizeBobertoBand();
     }
 
@@ -249,7 +254,8 @@ public partial class MainWindow : Window
         CtxCopy.Header = L.T(recordings ? "Copiar archivo" : "Copiar imagen");
         CtxExport.Visibility = CtxStitch.Visibility = recordings ? Visibility.Collapsed : Visibility.Visible;
         CtxCopyText.Visibility = recordings || !Ocr.Supported ? Visibility.Collapsed : Visibility.Visible;
-        CtxAiCaption.Visibility = recordings || !AppInfo.IsPreview ? Visibility.Collapsed : Visibility.Visible;
+        CtxAi.Visibility = recordings || !AiOn ? Visibility.Collapsed : Visibility.Visible;
+        SyncSidebar(all);
         CtxEdit.Header = L.T(recordings ? "Reproducir" : "Editar y anotar");
         cards.Clear();
         foreach (var it in list)
@@ -518,6 +524,78 @@ public partial class MainWindow : Window
 
     void SearchChanged(object sender, TextChangedEventArgs e) => Reload();
     void FilterChanged(object sender, SelectionChangedEventArgs e) { if (e.Source == Filters) Reload(); }
+
+    // ------------------------------------------------------------------ sidebar
+    bool syncingNav;
+    static readonly string[] ViewTitles = ["Todas las capturas", "Capturas de hoy", "Fijadas", "Editadas", "Grabaciones"];
+    bool AiOn => AppInfo.IsPreview && Store.Settings.AiEnabled;
+
+    void NavFilterChecked(object sender, RoutedEventArgs e)
+    {
+        if (syncingNav || Filters == null || sender is not RadioButton { Tag: string tag } || !int.TryParse(tag, out int index)) return;
+        if (Filters.SelectedIndex != index) Filters.SelectedIndex = index;
+    }
+
+    void NavSectionClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton { Tag: string key }) return;
+        sectionKey = key;
+        Reload();
+    }
+
+    void NavOptionsClick(object sender, RoutedEventArgs e)
+    {
+        App.Current.ApplyAppearance(appearance with { ShowMessages = !appearance.ShowMessages });
+        App.Current.SaveAppearance();
+    }
+
+    /// <summary>Counts per view, the active view, the section list and the AI group follow the library.</summary>
+    void SyncSidebar(List<CaptureItem> shownSource)
+    {
+        syncingNav = true;
+        try
+        {
+            var images = Store.All();
+            NavAllCount.Text = images.Count.ToString();
+            NavTodayCount.Text = images.Count(x => x.Created.Date == DateTime.Today).ToString();
+            NavPinnedCount.Text = images.Count(x => x.Pinned).ToString();
+            NavEditedCount.Text = images.Count(x => File.Exists(x.OrigPath)).ToString();
+            NavRecordingsCount.Text = Store.Recordings().Count.ToString();
+            var navs = new[] { NavAll, NavToday, NavPinned, NavEdited, NavRecordings };
+            int idx = Math.Clamp(Filters.SelectedIndex, 0, navs.Length - 1);
+            navs[idx].IsChecked = true;
+            PageTitle.Text = sectionKey is "all" or "none" or "" ? L.T(ViewTitles[idx]) : sectionKey;
+            var rows = new List<SectionNav> { new("all", L.T("Todas las secciones"), shownSource.Count, sectionKey == "all", "\uE8FD") };
+            foreach (var name in Store.SectionNames())
+                rows.Add(new(name, name, shownSource.Count(x => x.Section == name), sectionKey == name, "\uE8B7"));
+            if (shownSource.Any(x => x.Section.Length == 0) && rows.Count > 1)
+                rows.Add(new("none", L.T("Sin sección"), shownSource.Count(x => x.Section.Length == 0), sectionKey == "none", "\uE8F1"));
+            NavSections.ItemsSource = rows;
+            NavAiGroup.Visibility = AiOn ? Visibility.Visible : Visibility.Collapsed;
+            SyncAiChip();
+        }
+        finally { syncingNav = false; }
+    }
+
+#if PREVIEW
+    static string ProviderShort(AiConnection c)
+    {
+        if (c.Name.Trim().Length > 0) return c.Name.Trim();
+        string n = Ai.AiProviders.Get(c.Provider).Name; int i = n.IndexOf(" (", StringComparison.Ordinal);
+        return i > 0 ? n[..i] : n;
+    }
+#endif
+    void SyncAiChip()
+    {
+#if PREVIEW
+        AiChip.Visibility = Visibility.Visible;
+        var st = Store.Settings;
+        var conn = Ai.AiConnections.Active(st);
+        AiChipText.Text = st.AiEnabled && conn != null ? (L.Es ? "IA · " : "AI · ") + ProviderShort(conn) : L.T("IA apagada");
+        AiChip.ToolTip = st.AiEnabled && conn != null ? Ai.AiConnections.DisplayName(conn) : L.T("Configurar IA");
+        AiChipDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, st.AiEnabled && conn != null ? "Ok" : "Muted");
+#endif
+    }
     void LibrarySelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateStatus();
     void LibraryDoubleClick(object sender, MouseButtonEventArgs e) { if (ItemUnder(e) != null) EditClick(sender, e); }
 
@@ -675,25 +753,161 @@ public partial class MainWindow : Window
         int words = all.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
         StatusText.Text = L.F("Texto copiado · {0} palabras", words);
     }
-    /// <summary>IA → Título y pie: asks first (which captures, which service), then writes title and caption one by one.</summary>
+    // ================================================================== AI (preview)
+#if PREVIEW
+    /// <summary>Checks AI is on and has a connection (opening the settings otherwise), then asks before sending.</summary>
+    bool AiReady(string title, string what)
+    {
+        if (!Store.Settings.AiEnabled || Ai.AiConnections.Active(Store.Settings) == null) { AiSettingsWindow.ShowFor(this); Reload(); if (!Store.Settings.AiEnabled || Ai.AiConnections.Active(Store.Settings) == null) return false; }
+        var conn = Ai.AiConnections.Active(Store.Settings)!;
+        return PromptWindow.Confirm(this, title, what + "\n\n" + L.F("Servicio: {0}", Ai.AiConnections.DisplayName(conn)), L.T("Enviar"));
+    }
+
+    List<CaptureItem> SelectedImages() => Selected.Where(x => !x.IsRecording).ToList();
+    bool NeedSelection(List<CaptureItem> sel, int max, string title)
+    {
+        if (sel.Count == 0) { PromptWindow.Info(this, title, L.T("Elegí una o más capturas en la biblioteca (Ctrl+clic o Shift+clic).")); return false; }
+        if (sel.Count > max) { PromptWindow.Info(this, title, L.F("Elegí hasta {0} capturas para esta función.", max)); return false; }
+        return true;
+    }
+    void AiError(string title, Ai.AiException ex) { StatusText.Text = ""; PromptWindow.Info(this, title, ex.Message); }
+#endif
+
+    /// <summary>Title (short) and summary for the selected captures, one at a time.</summary>
     async void AiCaptionClick(object sender, RoutedEventArgs e)
     {
 #if PREVIEW
-        var sel = Selected.Where(x => !x.IsRecording).ToList();
-        if (sel.Count == 0) { StatusText.Text = L.T("Elegí una o más capturas"); return; }
-        if (!Store.Settings.AiEnabled) { AiSettingsWindow.ShowFor(this); if (!Store.Settings.AiEnabled) return; }
-        var st = Store.Settings;
-        var prov = Ai.AiProviders.Get(st.AiProvider);
-        if (!PromptWindow.Confirm(this, L.T("Título y pie con IA"),
-                L.F("Se van a enviar {0} captura(s) y su texto a {1} ({2}) para escribir un título y un pie explicativo. Los títulos que escribiste vos no se tocan.", sel.Count, prov.Name, Ai.AiProviders.ModelFor(st)),
-                L.T("Enviar"))) return;
+        string title = L.T("Título y resumen");
+        var sel = SelectedImages();
+        if (!NeedSelection(sel, 50, title)) return;
+        if (!AiReady(title, L.F("Se van a enviar {0} captura(s) y su texto para escribir un título corto y un resumen. Los títulos que escribiste vos no se tocan.", sel.Count))) return;
         try
         {
             var progress = new Progress<(int done, int total)>(p => StatusText.Text = L.F("IA: describiendo capturas… {0}/{1}", p.done, p.total));
             int n = await Ai.AiCaptions.ApplyAsync(sel, progress);
-            StatusText.Text = L.F("IA: {0} captura(s) con título y pie", n);
+            StatusText.Text = L.F("IA: {0} captura(s) con título y resumen", n);
         }
-        catch (Ai.AiException ex) { StatusText.Text = ""; PromptWindow.Info(this, L.T("Título y pie con IA"), ex.Message); }
+        catch (Ai.AiException ex) { AiError(title, ex); }
+#else
+        await Task.CompletedTask;
+#endif
+    }
+
+    /// <summary>Opens the export window with the selection and lets AI draft the whole document.</summary>
+    void AiDocumentClick(object sender, RoutedEventArgs e)
+    {
+#if PREVIEW
+        var (items, picked) = ExportSelection();
+        items = items.Where(x => !x.IsRecording).ToList();
+        if (!NeedSelection(items, 40, L.T("Documento paso a paso"))) return;
+        if (!Store.Settings.AiEnabled || Ai.AiConnections.Active(Store.Settings) == null) { AiSettingsWindow.ShowFor(this); Reload(); if (!Store.Settings.AiEnabled) return; }
+        ExportWindow.Open(this, items, picked, aiDraft: true);
+#endif
+    }
+
+    /// <summary>Finds sensitive data with OCR and patterns (and AI on the text only), then saves a pixelated copy.</summary>
+    async void AiRedactClick(object sender, RoutedEventArgs e)
+    {
+#if PREVIEW
+        string title = L.T("Proteger datos sensibles");
+        var sel = SelectedImages();
+        if (!NeedSelection(sel, 1, title)) return;
+        var it = sel[0];
+        bool useAi = Store.Settings.AiEnabled && Ai.AiConnections.Active(Store.Settings) != null;
+        if (useAi && !PromptWindow.Confirm(this, title,
+                L.F("BuzzPrint busca mails, IPs, tokens y números largos en tu PC. Para encontrar también nombres, usuarios y cuentas, envía SOLO el texto de la captura (no la imagen) a {0}.", Ai.AiConnections.DisplayName(Ai.AiConnections.Active(Store.Settings)!)),
+                L.T("Buscar"))) return;
+        StatusText.Text = L.T("Buscando datos sensibles…");
+        try
+        {
+            var spots = await Ai.AiRedaction.FindAsync(it, useAi);
+            StatusText.Text = "";
+            if (spots.Count == 0) { PromptWindow.Info(this, title, L.T("No se encontraron datos sensibles en esta captura.")); return; }
+            var rows = spots.Select(s => (KindName(s.Kind) + ": " + Mask(s.Text), "")).ToList();
+            var keep = AiReviewWindow.Ask(this, title, L.T("Marcá lo que querés tapar. Se guarda una copia pixelada; la captura original no se modifica."), rows, L.T("Guardar copia protegida"), it);
+            if (keep == null || keep.Count == 0) return;
+            var copy = Ai.AiRedaction.SaveRedactedCopy(it, keep.Select(i => spots[i]).ToList());
+            StatusText.Text = L.F("Copia protegida: {0} dato(s) tapado(s) · {1}", keep.Count, copy.Display);
+        }
+        catch (Ai.AiException ex) { AiError(title, ex); }
+#else
+        await Task.CompletedTask;
+#endif
+    }
+
+    static string KindName(string kind) => kind switch
+    {
+        "mail" => L.T("Mail"), "ip" => "IP", "token" or "secret" => L.T("Clave o token"), "number" or "account" or "id" => L.T("Número"),
+        "name" => L.T("Nombre"), "user" => L.T("Usuario"), "phone" => L.T("Teléfono"), "host" => L.T("Servidor"), _ => L.T("Dato")
+    };
+    static string Mask(string t) => t.Length <= 4 ? t : t[..2] + new string('•', Math.Min(8, t.Length - 4)) + t[^2..];
+
+    void AiAskClick(object sender, RoutedEventArgs e)
+    {
+#if PREVIEW
+        var sel = SelectedImages();
+        if (!NeedSelection(sel, 1, L.T("Preguntar sobre la captura"))) return;
+        if (!Store.Settings.AiEnabled || Ai.AiConnections.Active(Store.Settings) == null) { AiSettingsWindow.ShowFor(this); Reload(); if (!Store.Settings.AiEnabled) return; }
+        AiAskWindow.Open(this, sel[0]);
+#endif
+    }
+
+    async void AiTicketClick(object sender, RoutedEventArgs e)
+    {
+#if PREVIEW
+        string title = L.T("Reporte de incidente");
+        var sel = SelectedImages().OrderBy(x => x.Created).ToList();
+        if (!NeedSelection(sel, 6, title)) return;
+        if (!AiReady(title, L.F("Se van a enviar {0} captura(s) y su texto para armar un reporte listo para pegar en Jira o un mail.", sel.Count))) return;
+        StatusText.Text = L.T("IA: armando el reporte…");
+        try
+        {
+            string text = await Ai.AiTicket.WriteAsync(sel);
+            StatusText.Text = L.T("Reporte listo");
+            AiTextWindow.Show(this, title, L.T("Revisalo antes de enviarlo: la IA solo sabe lo que muestran las capturas."), text);
+        }
+        catch (Ai.AiException ex) { AiError(title, ex); }
+#else
+        await Task.CompletedTask;
+#endif
+    }
+
+    /// <summary>Short names and sections for the selected captures (or today's untitled ones), reviewed before applying.</summary>
+    async void AiOrganizeClick(object sender, RoutedEventArgs e)
+    {
+#if PREVIEW
+        string title = L.T("Ordenar la biblioteca");
+        var sel = SelectedImages();
+        if (sel.Count == 0) sel = Store.All().Where(x => Ai.AiCaptions.HasDefaultTitle(x)).Take(20).ToList();
+        if (sel.Count == 0) { PromptWindow.Info(this, title, L.T("Elegí las capturas a ordenar. Sin selección, se toman las que todavía tienen nombre automático, y no quedan.")); return; }
+        if (sel.Count > 30) sel = sel.Take(30).ToList();
+        if (!AiReady(title, L.F("Se van a enviar {0} captura(s), de a una, para sugerir un nombre corto y una sección. Vas a poder revisar todo antes de aplicarlo.", sel.Count))) return;
+        var client = Ai.AiClient.FromSettings(Store.Settings);
+        var sections = Store.SectionNames().ToList();
+        var results = new List<Ai.OrganizeSuggestion>();
+        try
+        {
+            for (int i = 0; i < sel.Count; i++)
+            {
+                StatusText.Text = L.F("IA: ordenando… {0}/{1}", i, sel.Count);
+                var r = await Ai.AiOrganize.SuggestAsync(client, sel[i], sections);
+                results.Add(r);
+                if (r.Section.Length > 0 && !sections.Contains(r.Section)) sections.Add(r.Section);
+            }
+        }
+        catch (Ai.AiException ex) { if (results.Count == 0) { AiError(title, ex); return; } PromptWindow.Info(this, title, ex.Message + "\n\n" + L.F("Se revisan las {0} que alcanzaron a procesarse.", results.Count)); }
+        StatusText.Text = "";
+        var rows = results.Select(r => (r.Title, L.F("Sección: {0}   ·   antes: {1}", r.Section.Length > 0 ? r.Section : "—", r.Item.Display))).ToList();
+        var keep = AiReviewWindow.Ask(this, title, L.T("Destildá lo que no quieras cambiar. Se renombran las capturas y se mueven a la sección sugerida."), rows, L.T("Aplicar"));
+        if (keep == null) return;
+        foreach (int i in keep)
+        {
+            var r = results[i];
+            if (r.Title.Length > 0) Store.UpdateMeta(r.Item, "title", r.Title);
+            if (r.Section.Length > 0) { Store.AddSection(r.Section); Store.SetSection([r.Item], r.Section); }
+        }
+        Store.RaiseChanged();
+        StatusText.Text = L.F("IA: {0} captura(s) ordenadas", keep.Count);
 #else
         await Task.CompletedTask;
 #endif
@@ -703,6 +917,7 @@ public partial class MainWindow : Window
     {
 #if PREVIEW
         AiSettingsWindow.ShowFor(this);
+        Reload();
 #endif
     }
     void CopyFileClick(object sender, RoutedEventArgs e) { var it = Selected.FirstOrDefault(); if (it != null) { Store.CopyFileToClipboard(it); StatusText.Text = L.T("Archivo copiado") + " · " + it.Path; } }

@@ -19,6 +19,10 @@ public sealed class ExportWindow : Window
     readonly List<ExportPage> pages;
     readonly StackPanel rows = new();
     readonly TextBox titleBox;
+    readonly TextBox introBox;
+#if PREVIEW
+    Button? aiDraftButton;
+#endif
     readonly Button exportButton;
     readonly TextBlock countText, statusText;
     readonly Dictionary<ExportFormat, RadioButton> formats = new();
@@ -67,6 +71,15 @@ public sealed class ExportWindow : Window
         var cancel = new Button { Content = L.T("Cancelar"), IsCancel = true, MinWidth = 96 };
         var right = new StackPanel { Orientation = Orientation.Horizontal };
         right.Children.Add(cancel); right.Children.Add(exportButton);
+#if PREVIEW
+        if (Store.Settings.AiEnabled)
+        {
+            var draft = aiDraftButton = new Button { Content = "✦ " + L.T("Redactar con IA"), MinWidth = 150, Margin = new Thickness(0, 0, 8, 0), ToolTip = L.T("Escribe el título del documento, una introducción y el título y la nota de cada paso a partir de las capturas") };
+            draft.Click += async (_, _) => await DraftWithAiAsync(draft);
+            DockPanel.SetDock(draft, Dock.Left);
+            foot.Children.Insert(0, draft);
+        }
+#endif
         DockPanel.SetDock(right, Dock.Right); foot.Children.Add(right);
         statusText = Muted("", new Thickness(0)); statusText.VerticalAlignment = VerticalAlignment.Center; statusText.TextTrimming = TextTrimming.CharacterEllipsis;
         foot.Children.Add(statusText);
@@ -96,6 +109,9 @@ public sealed class ExportWindow : Window
         titleBox = new TextBox { Text = L.T("Capturas") + " — " + DateTime.Now.ToString("d"), Margin = new Thickness(0, 0, 0, 4) };
         opts.Children.Add(titleBox);
         opts.Children.Add(Muted(L.T("Va en la portada y en el nombre del archivo."), new Thickness(0, 0, 0, 6)));
+        introBox = new TextBox { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 64, MaxHeight = 140, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(0, 4, 0, 4), ToolTip = L.T("Introducción (opcional): un párrafo debajo del título en la portada") };
+        opts.Children.Add(Section(L.T("INTRODUCCIÓN (OPCIONAL)"), 10));
+        opts.Children.Add(introBox);
         opts.Children.Add(Section(L.T("INCLUIR"), 12));
         cover = Check(L.T("Portada con título y fecha"), st.ExportCover);
         numbers = Check(L.T("Numerar pasos (Paso 1, Paso 2…)"), st.ExportNumbers);
@@ -138,7 +154,37 @@ public sealed class ExportWindow : Window
     /// <summary>Opens the export window for the given captures (recordings are left out and counted).</summary>
     /// <param name="keepOrder">true when the person picked the captures one by one (Ctrl+clic): that order is kept;
     /// otherwise they are listed chronologically, the order things happened.</param>
-    public static void Open(Window owner, IReadOnlyList<CaptureItem> items, bool keepOrder)
+#if PREVIEW
+    /// <summary>Fills the document title, the introduction and each step's title and note from the captures.</summary>
+    async Task DraftWithAiAsync(Button button)
+    {
+        var st = Store.Settings;
+        var conn = Ai.AiConnections.Active(st);
+        if (conn == null) { PromptWindow.Info(this, L.T("Redactar con IA"), L.T("Todavía no hay ninguna conexión de IA. Agregá una en IA → Configurar IA…")); return; }
+        if (!PromptWindow.Confirm(this, L.T("Redactar con IA"),
+                L.F("Se van a enviar las {0} capturas, en este orden, y su texto a {1} para escribir el título, una introducción y el título y la nota de cada paso. Después podés editar todo antes de exportar.", pages.Count, Ai.AiConnections.DisplayName(conn)),
+                L.T("Enviar"))) return;
+        button.IsEnabled = false; busy = true; Sync();
+        statusText.Text = L.T("La IA está redactando el documento…");
+        try
+        {
+            var draft = await Ai.AiDocument.DraftAsync(pages.Select(p => p.Item).ToList(), titleBox.Text);
+            if (draft.Title.Length > 0) titleBox.Text = draft.Title;
+            introBox.Text = draft.Intro;
+            for (int i = 0; i < pages.Count && i < draft.Steps.Count; i++)
+            {
+                if (draft.Steps[i].Title.Length > 0) pages[i].Title = draft.Steps[i].Title;
+                if (draft.Steps[i].Note.Length > 0) pages[i].Note = draft.Steps[i].Note;
+            }
+            Render();
+            statusText.Text = L.T("Listo: revisá y corregí lo que haga falta antes de exportar.");
+        }
+        catch (Ai.AiException ex) { statusText.Text = ""; PromptWindow.Info(this, L.T("Redactar con IA"), ex.Message); }
+        finally { busy = false; button.IsEnabled = true; Sync(); }
+    }
+#endif
+
+    public static void Open(Window owner, IReadOnlyList<CaptureItem> items, bool keepOrder, bool aiDraft = false)
     {
         var images = items.Where(i => !i.IsRecording && File.Exists(i.Path)).ToList();
         int skipped = items.Count - images.Count;
@@ -148,7 +194,11 @@ public sealed class ExportWindow : Window
             return;
         }
         if (!keepOrder) images = images.OrderBy(i => i.Created).ToList();
-        new ExportWindow(images, skipped) { Owner = owner }.ShowDialog();
+        var w = new ExportWindow(images, skipped) { Owner = owner };
+#if PREVIEW
+        if (aiDraft) w.Loaded += async (_, _) => { if (w.aiDraftButton != null) await w.DraftWithAiAsync(w.aiDraftButton); };
+#endif
+        w.ShowDialog();
     }
     // ------------------------------------------------------------------ rows
     void Render()
@@ -311,7 +361,7 @@ public sealed class ExportWindow : Window
 
         var options = new ExportOptions
         {
-            Title = docTitle, Cover = st.ExportCover, Numbers = st.ExportNumbers, Captions = st.ExportCaptions, Meta = st.ExportMeta,
+            Title = docTitle, Intro = introBox.Text, Cover = st.ExportCover, Numbers = st.ExportNumbers, Captions = st.ExportCaptions, Meta = st.ExportMeta,
             OnePerPage = st.ExportOnePerPage, Landscape = st.ExportLandscape, Accent = AccentHex()
         };
         var snapshot = pages.Select(p => new ExportPage { Item = p.Item, Title = p.Title, Note = p.Note }).ToList();

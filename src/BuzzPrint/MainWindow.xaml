@@ -5,8 +5,8 @@
       <Setter Property="Margin" Value="0,0,14,14"/><Setter Property="Cursor" Value="Hand"/><Setter Property="Focusable" Value="True"/>
       <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem">
         <Grid>
-          <Border x:Name="Frame" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource FaintBorder}" BorderThickness="1" CornerRadius="{DynamicResource ControlRadius}"><ContentPresenter/></Border>
-          <Border x:Name="Bar" Width="3" HorizontalAlignment="Left" Background="{DynamicResource Accent}" Visibility="Hidden"/>
+          <Border x:Name="Frame" Background="{DynamicResource SurfaceRaised}" BorderBrush="{DynamicResource FaintBorder}" BorderThickness="1" CornerRadius="{DynamicResource StripRadius}"><ContentPresenter/></Border>
+          <Border x:Name="Bar" Width="3" Margin="0,10" HorizontalAlignment="Left" CornerRadius="2" Background="{DynamicResource Accent}" Visibility="Hidden"/>
         </Grid>
         <ControlTemplate.Triggers>
           <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Frame" Property="Background" Value="{DynamicResource SurfaceRaised}"/><Setter TargetName="Frame" Property="BorderBrush" Value="{DynamicResource StrongBorder}"/></Trigger>
@@ -27,29 +27,8 @@
               <local:BobertoMark x:Name="BrandMark" Tile="{DynamicResource Accent}" Width="30" Height="30" Margin="0,0,10,0" VerticalAlignment="Center" ToolTip="Boberto"/>
               <StackPanel x:Name="Wordmark" Orientation="Horizontal" VerticalAlignment="Center" Cursor="Hand" ToolTip="BuzzPrint" MouseLeftButtonUp="WordmarkClick"/>
               <Grid Width="12" Height="12" Margin="8,2,0,0" VerticalAlignment="Center"><Ellipse Width="12" Height="12" Fill="{DynamicResource OkGlow}"/><Ellipse x:Name="BrandDot" Width="6" Height="6" Fill="{DynamicResource Ok}"/></Grid>
-              <Border x:Name="Subtitle" BorderBrush="{DynamicResource FaintBorder}" BorderThickness="1,0,0,0" Margin="16,2,0,2" Padding="14,0,0,0" VerticalAlignment="Center"><TextBlock Text="{local:T 'CAPTURAS · VIDEO · AUDIO · ANOTACIONES'}" FontFamily="{DynamicResource MonoFont}" FontSize="10" Foreground="{DynamicResource Muted}" VerticalAlignment="Center"/></Border>
-            </StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-              <Border x:Name="SearchBox" Width="300" Height="34" BorderThickness="1" BorderBrush="{DynamicResource FaintBorder}" Background="{DynamicResource Surface}" CornerRadius="{DynamicResource ControlRadius}" Padding="10,0,6,0">
-                <DockPanel>
-                  <Border DockPanel.Dock="Right" BorderThickness="1" BorderBrush="{DynamicResource FaintBorder}" Padding="5,0" VerticalAlignment="Center" CornerRadius="{DynamicResource ControlRadius}"><TextBlock Text="Ctrl F" FontFamily="{DynamicResource MonoFont}" FontSize="10" Foreground="{DynamicResource Muted}"/></Border>
-                  <TextBlock DockPanel.Dock="Left" Style="{StaticResource GlyphText}" Text="&#xE721;" Foreground="{DynamicResource Muted}"/>
-                  <Grid>
-                    <TextBox x:Name="Search" BorderThickness="0" Background="Transparent" Padding="0,7" TextChanged="SearchChanged" ToolTip="{local:T 'Filtrar capturas por nombre o ventana'}"/>
-                    <TextBlock Text="{local:T 'Buscar capturas o texto dentro…'}" IsHitTestVisible="False" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="2,0,0,0">
-                      <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=Search}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
-                    </TextBlock>
-                  </Grid>
-                </DockPanel>
-              </Border>
-              <Button x:Name="PersonalizeButton" Style="{StaticResource PillButton}" Click="PersonalizeClick" ToolTip="{local:T 'Personalizar: paleta, tipografía, interfaz y Boberto'}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource GlyphText}" Text="&#xE713;" Margin="0,0,7,0"/><TextBlock x:Name="PersonalizeText" Text="{local:T 'Personalizar'}" VerticalAlignment="Center"/></StackPanel></Button>
-            </StackPanel>
-          </Grid>
-        </Border>
-        <Grid DockPanel.Dock="Top" Height="2" ClipToBounds="True"><Rectangle Fill="{DynamicResource EdgeBar}" Opacity="0.75"/><Rectangle x:Name="EdgeSweep"/></Grid>
-        <Border BorderBrush="{DynamicResource StrongBorder}" BorderThickness="0,0,0,1" Background="{DynamicResource SubbarHairlines}">
-          <DockPanel>
-            <Menu x:Name="MainMenu" DockPanel.Dock="Top" Padding="16,8,16,0">
+              <Border x:Name="Subtitle" Visibility="Collapsed" BorderBrush="{DynamicResource FaintBorder}" BorderThickness="1,0,0,0" Margin="16,2,0,2" Padding="14,0,0,0" VerticalAlignment="Center"><TextBlock Text="{local:T 'CAPTURAS · VIDEO · AUDIO · ANOTACIONES'}" FontFamily="{DynamicResource MonoFont}" FontSize="10" Foreground="{DynamicResource Muted}" VerticalAlignment="Center"/></Border>
+            <Menu x:Name="MainMenu" Padding="14,0,0,0" VerticalAlignment="Center">
               <MenuItem Header="{local:T 'Captura'}" Tag="&#xE722;">
                 <MenuItem x:Name="MenuCapture" Header="{local:T 'Región o ventana'}" Click="CaptureClick"/>
                 <MenuItem x:Name="MenuFull" Header="{local:T 'Pantalla completa'}" Click="FullClick"/>
@@ -101,9 +80,31 @@
                   <MenuItem x:Name="LangEsMenu" Header="Español" IsCheckable="True" Click="LangEsClick"/>
                 </MenuItem>
               </MenuItem>
-              <MenuItem x:Name="MenuAi" Header="{local:T 'IA'}" Tag="&#xEA80;" Visibility="Collapsed"><MenuItem Header="{local:T 'Título y pie con IA'}" Click="AiCaptionClick"/><Separator/><MenuItem Header="{local:T 'Configurar IA…'}" Click="AiSettingsClick"/></MenuItem>
+              <MenuItem x:Name="MenuAi" Header="{local:T 'IA'}" Tag="&#xEA80;" Visibility="Collapsed"><MenuItem Header="{local:T 'Título y resumen'}" Click="AiCaptionClick"/><MenuItem Header="{local:T 'Documento paso a paso…'}" Click="AiDocumentClick"/><MenuItem Header="{local:T 'Proteger datos sensibles'}" Click="AiRedactClick"/><MenuItem Header="{local:T 'Preguntar sobre la captura…'}" Click="AiAskClick"/><MenuItem Header="{local:T 'Reporte de incidente'}" Click="AiTicketClick"/><MenuItem Header="{local:T 'Ordenar la biblioteca'}" Click="AiOrganizeClick"/><Separator/><MenuItem Header="{local:T 'Configurar IA…'}" Click="AiSettingsClick"/></MenuItem>
               <MenuItem Header="{local:T 'Ayuda'}" Tag="&#xE897;"><MenuItem Header="{local:T 'Revisar componentes…'}" Click="ComponentsClick"/><MenuItem Header="{local:T 'Acerca de BuzzPrint'}" Click="AboutClick"/></MenuItem>
             </Menu>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+              <Border x:Name="SearchBox" Width="300" Height="34" BorderThickness="1" BorderBrush="{DynamicResource FaintBorder}" Background="{DynamicResource Surface}" CornerRadius="{DynamicResource ControlRadius}" Padding="10,0,6,0">
+                <DockPanel>
+                  <Border DockPanel.Dock="Right" BorderThickness="1" BorderBrush="{DynamicResource FaintBorder}" Padding="5,0" VerticalAlignment="Center" CornerRadius="{DynamicResource ControlRadius}"><TextBlock Text="Ctrl F" FontFamily="{DynamicResource MonoFont}" FontSize="10" Foreground="{DynamicResource Muted}"/></Border>
+                  <TextBlock DockPanel.Dock="Left" Style="{StaticResource GlyphText}" Text="&#xE721;" Foreground="{DynamicResource Muted}"/>
+                  <Grid>
+                    <TextBox x:Name="Search" BorderThickness="0" Background="Transparent" Padding="0,7" TextChanged="SearchChanged" ToolTip="{local:T 'Filtrar capturas por nombre o ventana'}"/>
+                    <TextBlock Text="{local:T 'Buscar capturas o texto dentro…'}" IsHitTestVisible="False" Foreground="{DynamicResource Muted}" VerticalAlignment="Center" Margin="2,0,0,0">
+                      <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=Search}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                    </TextBlock>
+                  </Grid>
+                </DockPanel>
+              </Border>
+              <Button x:Name="AiChip" Style="{StaticResource SessionChip}" Height="34" Visibility="Collapsed" Click="AiSettingsClick" ToolTip="{local:T 'Configurar IA'}"><StackPanel Orientation="Horizontal"><Ellipse x:Name="AiChipDot" Width="7" Height="7" Margin="0,0,8,0" VerticalAlignment="Center" Fill="{DynamicResource Muted}"/><TextBlock x:Name="AiChipText" Text="IA" VerticalAlignment="Center"/></StackPanel></Button>
+              <Button x:Name="PersonalizeButton" Style="{StaticResource PillButton}" Click="PersonalizeClick" ToolTip="{local:T 'Personalizar: paleta, tipografía, interfaz y Boberto'}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource GlyphText}" Text="&#xE713;" Margin="0,0,7,0"/><TextBlock x:Name="PersonalizeText" Text="{local:T 'Personalizar'}" VerticalAlignment="Center"/></StackPanel></Button>
+            </StackPanel>
+          </Grid>
+        </Border>
+        <Grid DockPanel.Dock="Top" Height="2" ClipToBounds="True"><Rectangle Fill="{DynamicResource EdgeBar}" Opacity="0.75"/><Rectangle x:Name="EdgeSweep"/></Grid>
+        <Border BorderBrush="{DynamicResource StrongBorder}" BorderThickness="0,0,0,1" Background="{DynamicResource SubbarHairlines}">
+          <DockPanel>
             <Border Padding="{DynamicResource ToolbarPadding}">
               <StackPanel x:Name="CommandToolbar" Orientation="Horizontal" ClipToBounds="True">
                 <Button x:Name="CaptureButton" Background="{DynamicResource Accent}" Foreground="{DynamicResource OnAccent}" BorderBrush="{DynamicResource Accent}" Click="CaptureClick" Margin="0,0,1,0" ToolTip="{local:T 'Arrastrá una región o hacé clic en una ventana'}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource GlyphText}" Text="&#xE722;" FontSize="12" Margin="0,0,7,0"/><TextBlock Text="{local:T 'Capturar'}" FontWeight="SemiBold" VerticalAlignment="Center"/><TextBlock x:Name="CaptureKeyHint" Text="PrtSc" FontFamily="{DynamicResource MonoFont}" FontSize="{DynamicResource SmallFontSize}" Opacity="0.75" Margin="10,0,0,0" VerticalAlignment="Center"/></StackPanel></Button>
@@ -156,9 +157,45 @@
         </Grid>
       </DockPanel>
     </Border>
-    <Grid x:Name="WorkArea" Margin="16,12,16,12">
-      <Grid.ColumnDefinitions><ColumnDefinition x:Name="OptionsColumn" Width="320"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-      <ContentControl x:Name="OptionsPanel" Style="{StaticResource NeoCard}" Margin="0,0,14,0">
+    <Grid x:Name="WorkArea" Margin="14,12,14,12">
+      <Grid.ColumnDefinitions><ColumnDefinition x:Name="SidebarColumn" Width="248"/><ColumnDefinition Width="*"/><ColumnDefinition x:Name="OptionsColumn" Width="320"/></Grid.ColumnDefinitions>
+      <!-- DBMON sidebar (.dbm-side): library views, sections and AI actions; settings at the foot. -->
+      <Border x:Name="Sidebar" Margin="0,0,12,0" Background="{DynamicResource Header}" BorderBrush="{DynamicResource FaintBorder}" BorderThickness="1" CornerRadius="{DynamicResource PanelRadius}" Padding="8,2,8,8">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Bottom">
+            <Border Height="1" Background="{DynamicResource FaintBorder}" Margin="6,6,6,6"/>
+            <RadioButton x:Name="NavOptions" Style="{StaticResource NavItem}" GroupName="NavOptions" Click="NavOptionsClick"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE9E9;"/><TextBlock Text="{local:T 'Opciones'}"/></DockPanel></RadioButton>
+            <Button Style="{StaticResource NavAction}" Click="PersonalizeClick"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE790;"/><TextBlock Text="{local:T 'Personalizar'}"/></DockPanel></Button>
+          </StackPanel>
+          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+              <TextBlock Style="{StaticResource NavLabel}" Text="{local:T 'BIBLIOTECA'}"/>
+              <RadioButton x:Name="NavAll" Style="{StaticResource NavItem}" GroupName="NavLib" Tag="0" Checked="NavFilterChecked" IsChecked="True"><DockPanel><TextBlock x:Name="NavAllCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE8B9;"/><TextBlock Text="{local:T 'Todas'}"/></DockPanel></RadioButton>
+              <RadioButton x:Name="NavToday" Style="{StaticResource NavItem}" GroupName="NavLib" Tag="1" Checked="NavFilterChecked"><DockPanel><TextBlock x:Name="NavTodayCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE787;"/><TextBlock Text="{local:T 'Hoy'}"/></DockPanel></RadioButton>
+              <RadioButton x:Name="NavPinned" Style="{StaticResource NavItem}" GroupName="NavLib" Tag="2" Checked="NavFilterChecked"><DockPanel><TextBlock x:Name="NavPinnedCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE718;"/><TextBlock Text="{local:T 'Fijadas'}"/></DockPanel></RadioButton>
+              <RadioButton x:Name="NavEdited" Style="{StaticResource NavItem}" GroupName="NavLib" Tag="3" Checked="NavFilterChecked"><DockPanel><TextBlock x:Name="NavEditedCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE70F;"/><TextBlock Text="{local:T 'Editadas'}"/></DockPanel></RadioButton>
+              <RadioButton x:Name="NavRecordings" Style="{StaticResource NavItem}" GroupName="NavLib" Tag="4" Checked="NavFilterChecked"><DockPanel><TextBlock x:Name="NavRecordingsCount" Style="{StaticResource NavCount}" DockPanel.Dock="Right"/><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE714;"/><TextBlock Text="{local:T 'Grabaciones'}"/></DockPanel></RadioButton>
+              <TextBlock Style="{StaticResource NavLabel}" Text="{local:T 'SECCIONES'}"/>
+              <ItemsControl x:Name="NavSections">
+                <ItemsControl.ItemTemplate><DataTemplate>
+                  <RadioButton Style="{StaticResource NavItem}" GroupName="NavSection" IsChecked="{Binding IsActive, Mode=OneWay}" Tag="{Binding Key}" Click="NavSectionClick"><DockPanel><TextBlock Style="{StaticResource NavCount}" DockPanel.Dock="Right" Text="{Binding Count}"/><TextBlock Style="{StaticResource NavGlyph}" Text="{Binding Glyph}"/><TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/></DockPanel></RadioButton>
+                </DataTemplate></ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button Style="{StaticResource NavAction}" Click="NewSectionClick"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE710;"/><TextBlock Text="{local:T 'Nueva sección'}"/></DockPanel></Button>
+              <StackPanel x:Name="NavAiGroup" Visibility="Collapsed">
+                <TextBlock Style="{StaticResource NavLabel}" Text="{local:T 'INTELIGENCIA ARTIFICIAL'}"/>
+                <Button Style="{StaticResource NavAction}" Click="AiCaptionClick"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE8D2;"/><TextBlock Text="{local:T 'Título y resumen'}"/></DockPanel></Button>
+                <Button Style="{StaticResource NavAction}" Click="AiDocumentClick"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE8A5;"/><TextBlock Text="{local:T 'Documento paso a paso'}"/></DockPanel></Button>
+                <Button Style="{StaticResource NavAction}" Click="AiRedactClick"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE72E;"/><TextBlock Text="{local:T 'Proteger datos'}"/></DockPanel></Button>
+                <Button Style="{StaticResource NavAction}" Click="AiAskClick"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE897;"/><TextBlock Text="{local:T 'Preguntar sobre la captura'}"/></DockPanel></Button>
+                <Button Style="{StaticResource NavAction}" Click="AiTicketClick"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE8C3;"/><TextBlock Text="{local:T 'Reporte de incidente'}"/></DockPanel></Button>
+                <Button Style="{StaticResource NavAction}" Click="AiOrganizeClick"><DockPanel><TextBlock Style="{StaticResource NavGlyph}" Text="&#xE8CB;"/><TextBlock Text="{local:T 'Ordenar la biblioteca'}"/></DockPanel></Button>
+              </StackPanel>
+            </StackPanel>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+      <ContentControl x:Name="OptionsPanel" Grid.Column="2" Style="{StaticResource NeoCard}" Margin="12,0,0,0">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="18,16,18,16">
             <StackPanel Orientation="Horizontal" Margin="0,0,0,10"><TextBlock Text="&#x259A;" Foreground="{DynamicResource Accent}" FontSize="10" Margin="0,0,7,0" VerticalAlignment="Center"/><TextBlock Style="{StaticResource SectionLabel}" Text="{local:T 'DESPUÉS DE CAPTURAR'}"/></StackPanel>
@@ -198,10 +235,11 @@
       </ContentControl>
       <ContentControl Grid.Column="1" Style="{StaticResource NeoCard}">
         <DockPanel>
-          <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource FaintBorder}" BorderThickness="0,0,0,1" Padding="12,12,16,10">
+          <Border DockPanel.Dock="Top" Padding="20,16,18,4">
             <DockPanel>
               <TextBlock x:Name="CountText" DockPanel.Dock="Right" FontFamily="{DynamicResource MonoFont}" FontSize="{DynamicResource SmallFontSize}" Foreground="{DynamicResource Muted}" VerticalAlignment="Center"/>
-              <TabControl x:Name="Filters" Padding="0" SelectionChanged="FilterChanged" BorderBrush="{DynamicResource Rule}">
+              <TextBlock x:Name="PageTitle" Style="{StaticResource PageTitle}" Text="{local:T 'Todas las capturas'}"/>
+              <TabControl x:Name="Filters" Visibility="Collapsed" Padding="0" SelectionChanged="FilterChanged" BorderBrush="{DynamicResource Rule}">
                 <TabItem><TabItem.Header><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource TabIcon}" Text="&#xE8B9;"/><TextBlock Text="{local:T 'Todas'}" VerticalAlignment="Center"/></StackPanel></TabItem.Header></TabItem>
                 <TabItem><TabItem.Header><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource TabIcon}" Text="&#xE787;"/><TextBlock Text="{local:T 'Hoy'}" VerticalAlignment="Center"/></StackPanel></TabItem.Header></TabItem>
                 <TabItem><TabItem.Header><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource TabIcon}" Text="&#xE718;"/><TextBlock Text="{local:T 'Fijadas'}" VerticalAlignment="Center"/></StackPanel></TabItem.Header></TabItem>
@@ -210,13 +248,13 @@
               </TabControl>
             </DockPanel>
           </Border>
-          <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource FaintBorder}" BorderThickness="0,0,0,1" Padding="14,8,16,8">
+          <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource FaintBorder}" BorderThickness="0,0,0,1" Padding="20,8,18,12">
             <DockPanel>
-              <Button DockPanel.Dock="Right" Click="SectionsButtonClick" ToolTip="{local:T 'Crear, renombrar o eliminar secciones'}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource GlyphText}" Text="&#xE8FD;" FontSize="11" Margin="0,0,7,0"/><TextBlock Text="{local:T 'Secciones'}" VerticalAlignment="Center"/><TextBlock Style="{StaticResource GlyphText}" Text="&#xE70D;" FontSize="9" Margin="8,0,0,0"/></StackPanel></Button>
+              <Button DockPanel.Dock="Right" VerticalAlignment="Center" Click="SectionsButtonClick" ToolTip="{local:T 'Crear, renombrar o eliminar secciones'}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource GlyphText}" Text="&#xE8FD;" FontSize="11" Margin="0,0,7,0"/><TextBlock Text="{local:T 'Secciones'}" VerticalAlignment="Center"/><TextBlock Style="{StaticResource GlyphText}" Text="&#xE70D;" FontSize="9" Margin="8,0,0,0"/></StackPanel></Button>
               <WrapPanel VerticalAlignment="Center">
-                <TextBlock Text="{local:T 'DÍA'}" Style="{StaticResource SectionLabel}" Margin="0,0,8,0"/><ComboBox x:Name="DayFilter" Width="190" Margin="0,0,18,0" SelectionChanged="SubFilterChanged"/>
-                <TextBlock Text="{local:T 'SECCIÓN'}" Style="{StaticResource SectionLabel}" Margin="0,0,8,0"/><ComboBox x:Name="SectionFilter" Width="200" Margin="0,0,18,0" SelectionChanged="SubFilterChanged"/>
-                <TextBlock Text="{local:T 'AGRUPAR'}" Style="{StaticResource SectionLabel}" Margin="0,0,8,0"/><ComboBox x:Name="GroupByBox" Width="150" SelectionChanged="SubFilterChanged"/>
+                <TextBlock Text="{local:T 'DÍA'}" Style="{StaticResource SectionLabel}" Margin="0,0,8,0"/><ComboBox x:Name="DayFilter" Width="160" Margin="0,0,14,0" SelectionChanged="SubFilterChanged"/>
+                <TextBlock Text="{local:T 'SECCIÓN'}" Style="{StaticResource SectionLabel}" Margin="0,0,8,0"/><ComboBox x:Name="SectionFilter" Width="170" Margin="0,0,14,0" SelectionChanged="SubFilterChanged"/>
+                <TextBlock Text="{local:T 'AGRUPAR'}" Style="{StaticResource SectionLabel}" Margin="0,0,8,0"/><ComboBox x:Name="GroupByBox" Width="130" SelectionChanged="SubFilterChanged"/>
               </WrapPanel>
             </DockPanel>
           </Border>
@@ -257,7 +295,13 @@
                   <MenuItem x:Name="CtxCopy" Header="{local:T 'Copiar imagen'}" InputGestureText="Ctrl+C" Click="CopyClick"/>
                   <MenuItem Header="{local:T 'Copiar como archivo'}" Click="CopyFileClick"/>
                   <MenuItem x:Name="CtxCopyText" Header="{local:T 'Copiar el texto de la imagen'}" InputGestureText="Ctrl+Shift+T" Click="CopyTextClick"/>
-                  <MenuItem x:Name="CtxAiCaption" Header="{local:T 'Título y pie con IA'}" Click="AiCaptionClick" Visibility="Collapsed"/>
+                  <MenuItem x:Name="CtxAi" Header="{local:T 'IA'}" Visibility="Collapsed">
+                    <MenuItem Header="{local:T 'Título y resumen'}" Click="AiCaptionClick"/>
+                    <MenuItem Header="{local:T 'Proteger datos sensibles'}" Click="AiRedactClick"/>
+                    <MenuItem Header="{local:T 'Preguntar sobre la captura…'}" Click="AiAskClick"/>
+                    <MenuItem Header="{local:T 'Reporte de incidente'}" Click="AiTicketClick"/>
+                    <MenuItem Header="{local:T 'Documento paso a paso…'}" Click="AiDocumentClick"/>
+                  </MenuItem>
                   <MenuItem x:Name="CtxEdit" Header="{local:T 'Editar y anotar'}" InputGestureText="Enter" Click="EditClick"/>
                   <MenuItem Header="{local:T 'Renombrar'}" InputGestureText="F2" Click="RenameClick"/>
                   <MenuItem Header="{local:T 'Fijar / soltar'}" InputGestureText="Ctrl+P" Click="PinClick"/>
@@ -272,16 +316,17 @@
               </ListBox.ContextMenu>
               <ListBox.ItemTemplate><DataTemplate>
                 <StackPanel Width="{Binding CardWidth}" ToolTip="{Binding Caption}" ToolTipService.ShowDuration="20000">
-                  <Grid Margin="8,8,8,0" Height="{Binding ThumbHeight}" Background="{DynamicResource Canvas}">
+                  <Border Margin="8,8,8,0" Height="{Binding ThumbHeight}" Background="{DynamicResource Canvas}" CornerRadius="{DynamicResource ControlRadius}" ClipToBounds="True"><Grid>
                     <Image Source="{Binding Thumb}" Stretch="Uniform" Margin="6" RenderOptions.BitmapScalingMode="HighQuality"/>
                     <TextBlock Visibility="{Binding NoThumbVisibility}" Text="{Binding KindGlyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="34" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     <Border Visibility="{Binding PlayVisibility}" Width="40" Height="40" CornerRadius="20" Background="#99000000" HorizontalAlignment="Center" VerticalAlignment="Center"><TextBlock Text="&#xE768;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="3,0,0,0"/></Border>
                     <Border Visibility="{Binding KindVisibility}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="6" Background="{DynamicResource Header}" BorderBrush="{DynamicResource AccentCardRing}" BorderThickness="1" Padding="6,1" CornerRadius="{DynamicResource ControlRadius}"><TextBlock Text="{Binding KindText}" FontFamily="{DynamicResource MonoFont}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource Accent}"/></Border>
                     <Border Visibility="{Binding PinnedVisibility}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="6" Background="{DynamicResource Accent}" Padding="6,1" CornerRadius="{DynamicResource ControlRadius}"><TextBlock Text="{local:T 'FIJADA'}" FontFamily="{DynamicResource MonoFont}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource OnAccent}"/></Border>
                     <Border Visibility="{Binding EditedVisibility}" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6" Background="{DynamicResource Header}" BorderBrush="{DynamicResource AccentCardRing}" BorderThickness="1" Padding="6,1" CornerRadius="{DynamicResource ControlRadius}"><TextBlock Text="{local:T 'ANOTADA'}" FontFamily="{DynamicResource MonoFont}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource Accent}"/></Border>
-                  </Grid>
+                  </Grid></Border>
                   <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Margin="12,10,12,0" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Ink}"/>
-                  <TextBlock Text="{Binding Meta}" FontFamily="{DynamicResource MonoFont}" FontSize="{DynamicResource SmallFontSize}" Foreground="{DynamicResource Muted}" Margin="12,3,12,12" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Text="{Binding Caption}" Visibility="{Binding CaptionVisibility}" FontSize="{DynamicResource SmallFontSize}" Foreground="{DynamicResource Muted}" Margin="12,3,12,0" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Text="{Binding Meta}" FontFamily="{DynamicResource MonoFont}" FontSize="{DynamicResource SmallFontSize}" Foreground="{DynamicResource LineNumber}" Margin="12,3,12,12" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
               </DataTemplate></ListBox.ItemTemplate>
             </ListBox>
