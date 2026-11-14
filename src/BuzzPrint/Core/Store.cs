@@ -60,6 +60,7 @@ namespace BuzzPrint
         public string RecordFolder = "";    // empty = Videos\BuzzPrint
         public string Language = "en";      // en | es
         public string ExportFormat = "pptx"; // pptx | docx | pdf | png
+        public string ExportTemplate = "buzzprint";   // document design (DocTemplates)
         public bool ExportCover = true;
         public bool ExportNumbers = true;
         public bool ExportCaptions = true;

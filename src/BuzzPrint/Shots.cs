@@ -198,6 +198,29 @@ static class Shots
             try { Exporter.Write(Path.Combine(exportDir, "demo-landscape.docx"), ExportFormat.Docx, pages, opt); Exporter.Write(Path.Combine(exportDir, "demo-landscape.pdf"), ExportFormat.Pdf, pages, opt); }
             catch (Exception ex) { log.Add("EXPORT FAIL landscape " + ex); }
 
+            // Every built-in template, in every format; PDFs are rendered to PNG pages to review them.
+            foreach (var tpl in DocTemplates.BuiltIns)
+            {
+                var topt = new ExportOptions { Title = "Demo " + tpl.Name, Intro = "Sample document to review the template.", T = tpl, Accent = tpl.AccentHex(ExportWindow.AccentHex()) };
+                foreach (var f in new[] { ExportFormat.Pptx, ExportFormat.Docx, ExportFormat.Pdf, ExportFormat.Png })
+                {
+                    string file = Path.Combine(exportDir, "tpl-" + tpl.Id + Exporter.Extension(f));
+                    try { Exporter.Write(file, f, pages.Take(2).ToList(), topt); log.Add("template " + tpl.Id + " " + f + " " + new FileInfo(file).Length + " bytes"); }
+                    catch (Exception ex) { log.Add("TEMPLATE FAIL " + tpl.Id + " " + f + " " + ex); }
+                }
+#if PREVIEW
+                try { await RenderPdfPages(Path.Combine(exportDir, "tpl-" + tpl.Id + ".pdf"), Path.Combine(dir, "tpl-" + tpl.Id)); }
+                catch (Exception ex) { log.Add("PDF RENDER FAIL " + tpl.Id + " " + ex.Message); }
+#endif
+            }
+            {
+                var tw = TemplatesWindow.ForShot(main, "buzzprint", ExportWindow.AccentHex());
+                tw.Show();
+                await Task.Delay(800);
+                Save(tw, Path.Combine(dir, "19-templates.png"), log);
+                tw.Close();
+            }
+
             // Recordings: the empty tab shows the live Boberto stage; then a real 3 s video of the library window
             // and a 2 s system-audio clip (never the microphone) into the throwaway folder.
             main.Activate();
@@ -275,6 +298,25 @@ static class Shots
             Thread.Sleep(15);
         }
     }
+
+#if PREVIEW
+    /// <summary>Renders the first pages of a PDF next to <paramref name="prefix"/> (-p1.png, -p2.png) with Windows.Data.Pdf.</summary>
+    static async Task RenderPdfPages(string pdfPath, string prefix)
+    {
+        var file = await global::Windows.Storage.StorageFile.GetFileFromPathAsync(pdfPath);
+        var pdf = await global::Windows.Data.Pdf.PdfDocument.LoadFromFileAsync(file);
+        for (uint i = 0; i < Math.Min(2u, pdf.PageCount); i++)
+        {
+            using var page = pdf.GetPage(i);
+            using var ras = new global::Windows.Storage.Streams.InMemoryRandomAccessStream();
+            await page.RenderToStreamAsync(ras, new global::Windows.Data.Pdf.PdfPageRenderOptions { DestinationWidth = 700 });
+            ras.Seek(0);
+            using var src = ras.AsStreamForRead();
+            using var dst = File.Create(prefix + "-p" + (i + 1) + ".png");
+            await src.CopyToAsync(dst);
+        }
+    }
+#endif
 
     static void Save(Window w, string path, List<string> log)
     {

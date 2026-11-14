@@ -103,6 +103,17 @@ public sealed class ExportWindow : Window
             formats[f] = rb;
             opts.Children.Add(rb);
         }
+        // Design: the chosen template, previewed; "Change" opens the template manager.
+        opts.Children.Add(Section(L.T("DISEÑO"), 18));
+        designCard.Cursor = Cursors.Hand;
+        designCard.Padding = new Thickness(12);
+        designCard.BorderThickness = new Thickness(1);
+        designCard.SetResourceReference(Border.BackgroundProperty, "SurfaceRaised");
+        designCard.SetResourceReference(Border.BorderBrushProperty, "FaintBorder");
+        designCard.SetResourceReference(Border.CornerRadiusProperty, "StripRadius");
+        designCard.MouseLeftButtonUp += (_, _) => ChooseTemplate();
+        opts.Children.Add(designCard);
+        RenderDesign();
         opts.Children.Add(Section(L.T("DOCUMENTO"), 18));
         titleBox = new TextBox { Text = L.T("Capturas") + " — " + DateTime.Now.ToString("d", L.Culture), Margin = new Thickness(0, 0, 0, 4) };
         opts.Children.Add(titleBox);
@@ -362,7 +373,8 @@ public sealed class ExportWindow : Window
         var options = new ExportOptions
         {
             Title = docTitle, Intro = introBox.Text, Cover = st.ExportCover, Numbers = st.ExportNumbers, Captions = st.ExportCaptions, Meta = st.ExportMeta,
-            OnePerPage = st.ExportOnePerPage, Landscape = st.ExportLandscape, Accent = AccentHex()
+            OnePerPage = st.ExportOnePerPage, Landscape = st.ExportLandscape,
+            T = DocTemplates.Get(st.ExportTemplate), Accent = DocTemplates.Get(st.ExportTemplate).AccentHex(AccentHex())
         };
         var snapshot = pages.Select(p => new ExportPage { Item = p.Item, Title = p.Title, Note = p.Note }).ToList();
         busy = true; Sync();
@@ -390,6 +402,30 @@ public sealed class ExportWindow : Window
     }
 
     public static string? LastExport { get; private set; }
+
+    readonly Border designCard = new();
+    void RenderDesign()
+    {
+        var t = DocTemplates.Get(Store.Settings.ExportTemplate);
+        var col = new StackPanel();
+        col.Children.Add(TemplatePreview.Build(t, AccentHex(), 128));
+        var row = new DockPanel { Margin = new Thickness(0, 10, 0, 0) };
+        var change = new Button { Content = L.T("Cambiar…"), MinHeight = 0, Padding = new Thickness(10, 3, 10, 3), VerticalAlignment = VerticalAlignment.Center };
+        change.Click += (_, e) => { e.Handled = true; ChooseTemplate(); };
+        DockPanel.SetDock(change, Dock.Right); row.Children.Add(change);
+        var names = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        names.Children.Add(new TextBlock { Text = t.BuiltIn ? L.T(t.Name) : t.Name, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
+        names.Children.Add(Muted(t.BuiltIn ? L.T(t.Description) : t.Description, new Thickness(0, 1, 0, 0)));
+        row.Children.Add(names);
+        col.Children.Add(row);
+        designCard.Child = col;
+    }
+    void ChooseTemplate()
+    {
+        var id = TemplatesWindow.Pick(this, Store.Settings.ExportTemplate, AccentHex());
+        if (id != null) { Store.Settings.ExportTemplate = id; Store.SaveSettings(); }
+        RenderDesign();   // a deleted or edited template shows its current state
+    }
     internal static ExportWindow ForShot(Window owner, IReadOnlyList<CaptureItem> items) => new(items.OrderBy(i => i.Created), 0) { Owner = owner };
 
     void SaveTextBack()
