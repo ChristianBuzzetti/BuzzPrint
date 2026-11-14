@@ -66,6 +66,12 @@ public partial class MainWindow : Window
         ContentRendered += (_, _) => { if (companionAllowed) return; companionAllowed = true; SyncBobertoDock(appearance); };
         StateChanged += (_, _) => _ = bobertoDock?.PauseAsync(WindowState == WindowState.Minimized || !appearance.BobertoVisible);
         SizeChanged += (_, _) => AdaptHeader();
+        Resources["LibraryCardWidth"] = 260.0; Resources["LibraryThumbHeight"] = 150.0;
+        Library.Loaded += (_, _) =>
+        {
+            if (FindChild<ScrollViewer>(Library) is { } sv) sv.ScrollChanged += (_, e) => { if (e.ViewportWidthChange != 0) FitCards(); };
+            FitCards();
+        };
         HeaderLeft.SizeChanged += (_, _) => SizeBobertoBand();
         OptionsPanel.SizeChanged += (_, _) => SizeBobertoBand();
         Closing += (_, e) => { if (!App.Current.Exiting && !App.IsShot) { e.Cancel = true; Hide(); } };
@@ -123,6 +129,36 @@ public partial class MainWindow : Window
         HeaderBar.Padding = shortWindow ? new Thickness(20, 6, 16, 6) : new Thickness(20, 10, 16, 10);
         SidebarColumn.Width = new GridLength(ActualWidth is > 0 and < 1100 ? 0 : 236);
         SizeBobertoBand();
+    }
+
+    /// <summary>
+    /// Cards fill the row: as many columns as fit at the minimum card width, then every card widens to share what is
+    /// left (thumbnail keeps its proportion), so two or three per row never leave an empty strip on the right.
+    /// </summary>
+    void FitCards()
+    {
+        double view = FindChild<ScrollViewer>(Library) is { ViewportWidth: > 0 } sv ? sv.ViewportWidth : Library.ActualWidth;
+        if (view <= 0) return;
+        bool compact = appearance.Compact;
+        double min = compact ? 210 : 260, ratio = compact ? 120.0 / 210 : 150.0 / 260;
+        const double chrome = 16;   // card border (2) + gap to the next card (14)
+        double avail = view - Library.Padding.Left - (Library.GroupStyle.Count > 0 ? 14 : 0) - 2;
+        int cols = Math.Max(1, (int)Math.Floor(avail / (min + chrome)));
+        double w = Math.Max(min * .8, Math.Floor(avail / cols - chrome));
+        if (Resources["LibraryCardWidth"] is double old && Math.Abs(old - w) < 1) return;
+        Resources["LibraryCardWidth"] = w;
+        Resources["LibraryThumbHeight"] = Math.Round(w * ratio);
+    }
+
+    static T? FindChild<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T hit) return hit;
+            if (FindChild<T>(child) is { } deeper) return deeper;
+        }
+        return null;
     }
 
     const double BobertoStrip = 0, BobertoMinWindow = 900, BobertoMaxShare = 0.30, BobertoMaxHeight = 200;
@@ -292,6 +328,7 @@ public partial class MainWindow : Window
             view.GroupDescriptions.Add(new System.Windows.Data.PropertyGroupDescription(nameof(CaptureCard.Group)));
         }
         else Library.GroupStyle.Clear();
+        FitCards();
         foreach (var c in cards) if (keep.Contains(c.Item.Id)) Library.SelectedItems.Add(c);
         EmptyState.Visibility = all.Count == 0 ? Visibility.Visible : Visibility.Hidden;   // Hidden keeps its size, so the stage Boberto loads in the background
         EmptyTitle.Text = L.T(recordings ? "Todavía no hay grabaciones" : "Todavía no hay capturas");

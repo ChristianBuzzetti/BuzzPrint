@@ -332,8 +332,8 @@
                 </ContextMenu>
               </ListBox.ContextMenu>
               <ListBox.ItemTemplate><DataTemplate>
-                <StackPanel Width="{Binding CardWidth}" ToolTip="{Binding Caption}" ToolTipService.ShowDuration="20000">
-                  <Border Margin="8,8,8,0" Height="{Binding ThumbHeight}" Background="{DynamicResource Canvas}" CornerRadius="{DynamicResource ControlRadius}" ClipToBounds="True"><Grid>
+                <StackPanel Width="{DynamicResource LibraryCardWidth}" ToolTip="{Binding Caption}" ToolTipService.ShowDuration="20000">
+                  <Border Margin="8,8,8,0" Height="{DynamicResource LibraryThumbHeight}" Background="{DynamicResource Canvas}" CornerRadius="{DynamicResource ControlRadius}" ClipToBounds="True"><Grid>
                     <Image Source="{Binding Thumb}" Stretch="Uniform" Margin="6" RenderOptions.BitmapScalingMode="HighQuality"/>
                     <TextBlock Visibility="{Binding NoThumbVisibility}" Text="{Binding KindGlyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="34" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     <Border Visibility="{Binding PlayVisibility}" Width="40" Height="40" CornerRadius="20" Background="#99000000" HorizontalAlignment="Center" VerticalAlignment="Center"><TextBlock Text="&#xE768;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="3,0,0,0"/></Border>
