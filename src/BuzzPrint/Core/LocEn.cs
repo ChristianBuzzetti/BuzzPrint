@@ -554,6 +554,7 @@ static class LocEn
         ["Fucsia"] = "Fuchsia",
         ["Gris"] = "Gray",
         ["Color propio"] = "Custom color",
+        ["Primero pegá tu API key de {0} abajo y después tocá «Ver modelos»."] = "First paste your {0} API key below, then click “See models”.",
         ["Todos los modelos de chat de tu cuenta ({0})."] = "Every chat model on your account ({0}).",
         ["La cuenta no devolvió modelos de chat. Escribí el nombre a mano."] = "The account returned no chat models. Type the name by hand.",
         ["{0} modelos recientes de tu cuenta. Elegí uno de la lista."] = "{0} recent models on your account. Pick one from the list.",

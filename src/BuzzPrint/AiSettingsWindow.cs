@@ -248,6 +248,8 @@ public sealed class AiSettingsWindow : Window
         key.PasswordChanged += (_, _) => { if (!loading && current != null) { if (key.Password.Length > 0) typedKeys[current.Id] = key.Password; else typedKeys.Remove(current.Id); ShowKeyState(); } };
         keyLink.Click += (_, _) => { if (current == null) return; var p = AiProviders.Get(current.Provider); if (p.KeyHelpUrl.Length > 0) try { Process.Start(new ProcessStartInfo(p.KeyHelpUrl) { UseShellExecute = true }); } catch (System.ComponentModel.Win32Exception) { } };
         loadModels.Click += async (_, _) => await LoadModelsAsync();
+        // An empty list would open as a blank sliver under the field: keep it closed until there is something to pick.
+        model.DropDownOpened += (_, _) => { if (model.Items.Count == 0) Dispatcher.BeginInvoke(() => model.IsDropDownOpen = false); };
         test.Click += async (_, _) => await TestAsync();
         useButton.Click += (_, _) => { if (current != null) { activeId = current.Id; RenderList(); ShowHeader(); } };
         remove.Click += (_, _) => { if (current != null) Delete(current); };
@@ -409,6 +411,13 @@ public sealed class AiSettingsWindow : Window
     {
         if (current == null) return;
         var conn = current;
+        var provider = AiProviders.Get(conn.Provider);
+        if (provider.NeedsKey && !typedKeys.ContainsKey(conn.Id) && !AiKeys.Has(conn.Id, conn.Provider))
+        {
+            // No key yet: say so under the field and take the person straight to the key box.
+            if (!quiet) { Note(L.F("Primero pegá tu API key de {0} abajo y después tocá «Ver modelos».", L.T(provider.Name)), "ErrorInk"); key.BringIntoView(); key.Focus(); }
+            return;
+        }
         loadModels.IsEnabled = false;
         if (!quiet) Note(L.T("Buscando los modelos de tu cuenta…"), "Muted");
         try

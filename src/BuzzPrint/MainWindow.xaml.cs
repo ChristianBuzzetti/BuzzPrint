@@ -133,8 +133,15 @@ public partial class MainWindow : Window
         BobertoPanel.Width = width;
         // The header grows so Boberto's scene keeps its 16:9 shape at that width instead of a thin letterbox.
         double tall = width > 0 ? Math.Min(Math.Round((width - BobertoStrip) * 9 / 16), BobertoMaxHeight) : 0;
-        if (Math.Abs(HeaderLeft.MinHeight - tall) > 1) HeaderLeft.MinHeight = tall;
-        BobertoPanel.Height = Math.Max(tall, HeaderLeft.ActualHeight);
+        // With the right-hand panel open, Boberto hangs below the header into that column and the panel starts under
+        // him, so the header keeps its own height and the library rises. Without it, the header grows to fit him.
+        bool hang = appearance.ShowMessages && OptionsPanel.Visibility == Visibility.Visible;
+        double minHeader = hang ? 0 : tall;
+        if (Math.Abs(HeaderLeft.MinHeight - minHeader) > 1) HeaderLeft.MinHeight = minHeader;
+        double header = HeaderLeft.ActualHeight;
+        BobertoPanel.Height = Math.Max(tall, header);
+        double below = hang && header > 0 ? Math.Max(0, BobertoPanel.Height - header) : 0;
+        if (Math.Abs(OptionsPanel.Margin.Top - below) > 1) OptionsPanel.Margin = new Thickness(OptionsPanel.Margin.Left, below, 0, 0);
     }
     double BobertoBandWidth()
     {
