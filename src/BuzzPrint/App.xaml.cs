@@ -24,7 +24,7 @@ public partial class App : Application
     public static string? ShotDir { get; private set; }
 
     MainWindow? main;
-    public MainWindow? Main => main;
+    public MainWindow? Library => main;
     WinForms.NotifyIcon? tray;
     HotkeyWindow? hotkeys;
     Mutex? mutex;

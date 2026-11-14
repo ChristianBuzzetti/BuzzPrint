@@ -288,7 +288,7 @@ public partial class EditorWindow : Window
     void EditorAiClick(object sender, RoutedEventArgs e)
     {
 #if PREVIEW
-        if (item == null || App.Current.Main is not { } main) return;
+        if (item == null || App.Current.Library is not { } main) return;
         var menu = new ContextMenu { PlacementTarget = EditorAiButton, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
         void Add(string text, Action run) { var mi = new MenuItem { Header = text }; mi.Click += (_, _) => run(); menu.Items.Add(mi); }
         Add(L.T("Título y resumen"), () => SummaryAiClick(SummaryAiButton, new RoutedEventArgs()));
