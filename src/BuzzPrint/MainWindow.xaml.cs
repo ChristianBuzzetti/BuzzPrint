@@ -976,20 +976,24 @@ public partial class MainWindow : Window
         if (sel.Count == 0) sel = Store.All().Where(x => Ai.AiCaptions.HasDefaultTitle(x)).Take(20).ToList();
         if (sel.Count == 0) { PromptWindow.Info(AiOwner, title, L.T("Elegí las capturas a ordenar. Sin selección, se toman las que todavía tienen nombre automático, y no quedan.")); return; }
         if (sel.Count > 30) sel = sel.Take(30).ToList();
-        if (!AiReady(title, L.F("Se van a enviar {0} captura(s), de a una, para sugerir un nombre corto y una sección. Vas a poder revisar todo antes de aplicarlo.", sel.Count))) return;
+        if (!AiReady(title, L.F("Se van a enviar {0} captura(s) juntas, en una sola consulta, para sugerir un nombre corto y una sección para cada una. Vas a poder revisar todo antes de aplicarlo.", sel.Count))) return;
         var client = Ai.AiClient.FromSettings(Store.Settings);
         var sections = Store.SectionNames().ToList();
         var results = new List<Ai.OrganizeSuggestion>();
         var busy = AiBusy.Show(AiOwner, L.F("Ordenando… {0}/{1}", 0, sel.Count));
         try
         {
-            for (int i = 0; i < sel.Count; i++)
+            // All captures in one request (two when there are more than 15): far fewer requests than one per capture.
+            for (int start = 0; start < sel.Count; start += Ai.AiOrganize.Batch)
             {
-                StatusText.Text = L.F("IA: ordenando… {0}/{1}", i, sel.Count);
-                busy.Text = L.F("Ordenando… {0}/{1}", i, sel.Count);
-                var r = await Ai.AiOrganize.SuggestAsync(client, sel[i], sections, busy.Token);
-                results.Add(r);
-                if (r.Section.Length > 0 && !sections.Contains(r.Section)) sections.Add(r.Section);
+                var chunk = sel.Skip(start).Take(Ai.AiOrganize.Batch).ToList();
+                StatusText.Text = L.F("IA: ordenando {0} capturas…", sel.Count);
+                busy.Text = sel.Count <= Ai.AiOrganize.Batch ? L.F("Ordenando {0} capturas en una sola consulta…", sel.Count) : L.F("Ordenando… {0}/{1}", start, sel.Count);
+                foreach (var r in await Ai.AiOrganize.SuggestManyAsync(client, chunk, sections, busy.Token))
+                {
+                    results.Add(r);
+                    if (r.Section.Length > 0 && !sections.Contains(r.Section)) sections.Add(r.Section);
+                }
             }
         }
         catch (OperationCanceledException) { busy.Dispose(); StatusText.Text = AiBusy.Stopped(AiOwner, title); if (results.Count == 0) return; }

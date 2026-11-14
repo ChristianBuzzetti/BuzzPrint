@@ -260,6 +260,49 @@ public sealed record OrganizeSuggestion(CaptureItem Item, string Title, string S
 
 public static class AiOrganize
 {
+    /// <summary>At most this many captures per request: keeps the request within what providers accept.</summary>
+    public const int Batch = 15;
+    const string NL = "\n";
+
+    /// <summary>
+    /// Many captures in ONE request (smaller images, each with a little of its text, numbered): a name and a section
+    /// for each. One request instead of one per capture, so free keys with few requests per minute are not a problem.
+    /// </summary>
+    public static async Task<List<OrganizeSuggestion>> SuggestManyAsync(AiClient client, IReadOnlyList<CaptureItem> items, IReadOnlyList<string> sections, CancellationToken ct = default)
+    {
+        var images = new List<byte[]>();
+        var listing = new System.Text.StringBuilder();
+        for (int i = 0; i < items.Count; i++)
+        {
+            var (png, ocr) = await AiInput.CaptureAsync(items[i], 768, 600, ct);
+            images.Add(png);
+            listing.Append("Image " + (i + 1) + (ocr.Length > 0 ? " OCR:" + NL + "<ocr>" + NL + ocr + NL + "</ocr>" : " (no text)") + NL);
+        }
+        string system = AiInput.Language + " " + AiInput.Untrusted + """
+
+            You organize a library of screenshots. The images come in order (Image 1, Image 2, …).
+            Return ONLY a JSON array with one object per image, in the same order:
+            [{"image": 1, "title": "...", "section": "..."}, ...]
+            - title: at most 6 words, specific (system, screen or error), e.g. "ORA-01555 in nightly export". No dates, no file names.
+            - section: the best fitting existing section, or a new short one (1-3 words). Group related images under the same section.
+            """;
+        string prompt = "Existing sections: " + (sections.Count > 0 ? string.Join(", ", sections.Select(s => "\"" + s + "\"")) : "(none yet)") + NL +
+                        listing + "Suggest a title and a section for each of the " + items.Count + " images.";
+        string answer = await client.CompleteAsync(new AiRequest(system, prompt, images, 400 + 120 * items.Count), ct);
+        using var doc = AiInput.Json(answer, '[', ']') ?? throw new AiException(L.T("La IA no devolvió el formato esperado."));
+        var result = new List<OrganizeSuggestion>();
+        int position = 0;
+        foreach (var e in doc.RootElement.EnumerateArray())
+        {
+            int n = e.ValueKind == JsonValueKind.Object && e.TryGetProperty("image", out var iv) && iv.TryGetInt32(out var k) ? k - 1 : position;
+            position++;
+            if (n < 0 || n >= items.Count || result.Any(r => r.Item == items[n])) continue;
+            result.Add(new OrganizeSuggestion(items[n], AiInput.OneLine(AiInput.Str(e, "title"), 48), AiInput.OneLine(AiInput.Str(e, "section"), 32)));
+        }
+        if (result.Count == 0) throw new AiException(L.T("La IA no devolvió el formato esperado."));
+        return result.OrderBy(r => items.ToList().IndexOf(r.Item)).ToList();
+    }
+
     /// <summary>One capture per request: works within small rate limits and gives a result per capture.</summary>
     public static async Task<OrganizeSuggestion> SuggestAsync(AiClient client, CaptureItem it, IReadOnlyList<string> sections, CancellationToken ct = default)
     {

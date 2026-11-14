@@ -130,6 +130,7 @@ public partial class App : Application
                             break;
                         }
                         case "ticket": result = await Ai.AiTicket.WriteAsync(items); break;
+                        case "organize-batch": { var all = await Ai.AiOrganize.SuggestManyAsync(client, items, ["Base de datos", "Accesos"]); result = string.Join("|", all.Select(r => System.IO.Path.GetFileName(r.Item.Path) + " => " + r.Title + " / " + r.Section)); break; }
                         case "organize": { var o = await Ai.AiOrganize.SuggestAsync(client, items[0], ["Base de datos", "Accesos"]); result = "title=" + o.Title + "\nsection=" + o.Section; break; }
                         case "ask": result = await new Ai.AiConversation(items[0]).AskAsync(L.Es ? "¿Qué significa este error y qué debería revisar?" : "What does this error mean and what should I check?"); break;
                         case "redact":

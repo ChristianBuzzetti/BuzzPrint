@@ -201,10 +201,11 @@ sealed class OpenAiCompatibleClient(string baseUrl, string? apiKey, string model
                 401 => L.T("La API key no es válida."),
                 403 => L.T("La API key no tiene permiso para este modelo."),
                 404 => L.F("El modelo «{0}» no existe o la URL es incorrecta.", model),
+                429 when QuotaExhausted(text) => L.T("Se agotó la cuota de esta key: el plan gratuito tiene un límite de pedidos por minuto y por día. Esperá un rato, o usá otra conexión en IA → Configurar IA."),
                 429 => L.T("Demasiados pedidos seguidos o sin saldo. Probá en un rato o revisá tu cuenta."),
                 500 or 502 or 503 or 504 => L.T("El servicio está saturado o con problemas en este momento. Probá de nuevo en unos minutos o usá otra conexión."),
                 _ => L.T("El servicio devolvió un error: ") + (int)res.StatusCode,
-            } + (detail.Length > 0 ? "\n" + detail : ""));
+            } + (detail.Length > 0 ? "\n\n" + L.T("Detalle del servicio") + ": " + detail : ""));
         }
         try
         {
@@ -214,10 +215,25 @@ sealed class OpenAiCompatibleClient(string baseUrl, string? apiKey, string model
         catch (Exception ex) when (ex is JsonException or InvalidOperationException) { throw new AiException(L.T("La respuesta del servicio no se pudo leer."), ex); }
     }
 
+    /// <summary>The service's own error text, short and readable: from {"error":{"message"}} or [{"error":…}] (Gemini),
+    /// first sentence only, without links. Empty when there is nothing useful.</summary>
     static string ErrorMessage(string body)
     {
-        try { return JsonNode.Parse(body)?["error"]?["message"]?.GetValue<string>() ?? ""; }
-        catch (Exception ex) when (ex is JsonException or InvalidOperationException) { return body.Length > 300 ? body[..300] : body; }
+        string message;
+        try
+        {
+            var node = JsonNode.Parse(body);
+            if (node is JsonArray arr && arr.Count > 0) node = arr[0];
+            message = node?["error"]?["message"]?.GetValue<string>() ?? node?["message"]?.GetValue<string>() ?? "";
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException) { message = ""; }
+        message = System.Text.RegularExpressions.Regex.Replace(message, @"https?://\S+", "").Replace("\n", " ");
+        int cut = message.IndexOfAny(['*', '.']);
+        if (cut > 20) message = message[..(cut + 1)];
+        message = System.Text.RegularExpressions.Regex.Replace(message, @"\s+", " ").Trim().TrimEnd(':', ',');
+        return message.Length > 180 ? message[..180] + "…" : message;
     }
+
+    static bool QuotaExhausted(string body) => body.Contains("quota", StringComparison.OrdinalIgnoreCase) || body.Contains("RESOURCE_EXHAUSTED", StringComparison.Ordinal) || body.Contains("insufficient_quota", StringComparison.Ordinal);
 }
 #endif
