@@ -118,6 +118,11 @@ static class Shots
             Save(aiWin, Path.Combine(dir, "10-ai-settings.png"), log);
             aiWin.Close();
 #endif
+            var about = AboutWindow.ForShot(main);
+            about.Show();
+            await Task.Delay(700);
+            Save(about, Path.Combine(dir, "12-about.png"), log);
+            about.Close();
             // The 3D head turn: every shape looking left, front, right, up and down, at 96 px and at 32 px.
             {
                 var sheet = new DrawingVisual();

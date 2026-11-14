@@ -1028,15 +1028,7 @@ public partial class MainWindow : Window
     void FocusSearchClick(object sender, RoutedEventArgs e) { Search.Focus(); Search.SelectAll(); }
     void SelectAllClick(object sender, RoutedEventArgs e) => Library.SelectAll();
     async void ComponentsClick(object sender, RoutedEventArgs e) => await App.Current.CheckComponentsAsync();
-    void AboutClick(object sender, RoutedEventArgs e)
-    {
-        var v = typeof(App).Assembly.GetName().Version;
-        string version = v == null ? "" : " " + v.Major + "." + v.Minor + "." + v.Build;
-        PromptWindow.Info(this, "BuzzPrint" + version,
-            L.T("Capturas de región, ventana y pantalla completa, grabación de video y audio, biblioteca, menú rápido para copiar y pegar, editor de anotaciones y exportación a PowerPoint, Word y PDF.") + "\n\n" +
-            "© 2026 Christian Buzzetti · " + L.T("Licencia MIT") + "\n" + "github.com/ChristianBuzzetti/BuzzPrint" + "\n\n" +
-            L.T("Fuentes Inter y JetBrains Mono (SIL Open Font License).") + "\n" + L.T("Video y audio: FFmpeg (ffmpeg.org)."));
-    }
+    void AboutClick(object sender, RoutedEventArgs e) => AboutWindow.Show(this);
 
     void OptionChanged(object sender, RoutedEventArgs e)
     {
