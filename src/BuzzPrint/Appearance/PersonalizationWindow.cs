@@ -48,9 +48,9 @@ public sealed class PersonalizationWindow:Window
         studioButton=new Button {Content=L.T("Boberto Studio"),VerticalAlignment=VerticalAlignment.Center};studioButton.SetResourceReference(StyleProperty,"PillButton");
         studioButton.Click+=(_,_)=>Sections.SelectedIndex=Sections.SelectedIndex==4?0:4;DockPanel.SetDock(studioButton,Dock.Right);heading.Children.Add(studioButton);
         var titles=new StackPanel();
-        var title=new TextBlock {FontWeight=FontWeights.SemiBold};var mark=new Run("◤ ");mark.SetResourceReference(TextElement.ForegroundProperty,"Accent");title.Inlines.Add(mark);title.Inlines.Add(new Run(L.T("Personalizá tu espacio de trabajo")));title.SetResourceReference(TextBlock.FontSizeProperty,"TitleFontSize");titles.Children.Add(title);
-        titles.Children.Add(Muted(L.T("Paleta, acento, tipografía e interfaz de BuzzPrint. Cada cambio se aplica al instante y se guarda en esta computadora."),new Thickness(25,4,0,0)));
-        heading.Children.Add(titles);DockPanel.SetDock(heading,Dock.Top);root.Children.Add(heading);
+        var title=new TextBlock {Text=L.T("Personalizá tu espacio de trabajo"),FontWeight=FontWeights.SemiBold};title.SetResourceReference(TextBlock.FontSizeProperty,"TitleFontSize");titles.Children.Add(title);
+        titles.Children.Add(Muted(L.T("Paleta, acento, tipografía e interfaz de BuzzPrint. Cada cambio se aplica al instante y se guarda en esta computadora."),new Thickness(0,4,0,0)));
+        heading.Children.Add(BobertoMark.WithBadge(titles,48));DockPanel.SetDock(heading,Dock.Top);root.Children.Add(heading);
 
         // Footer: reassurance on the left, Reset (quiet) and Done (primary) on the right.
         var foot=new DockPanel {Margin=new Thickness(0,16,0,0)};

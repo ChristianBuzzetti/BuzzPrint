@@ -21,10 +21,10 @@
     <Grid DockPanel.Dock="Top" Background="{DynamicResource Header}" Panel.ZIndex="1">
       <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition x:Name="BobertoColumn" Width="300"/></Grid.ColumnDefinitions>
       <DockPanel x:Name="HeaderLeft">
-        <Border x:Name="HeaderBar" DockPanel.Dock="Top" Background="{DynamicResource Header}" BorderBrush="{DynamicResource TopbarRule}" BorderThickness="0,0,0,1" Padding="20,10,16,6">
+        <Border x:Name="HeaderBar" DockPanel.Dock="Top" Background="{DynamicResource Header}" BorderBrush="{DynamicResource TopbarRule}" BorderThickness="0,0,0,1" Padding="30,10,16,6">
           <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-              <local:BobertoMark x:Name="BrandMark" Tile="{DynamicResource Accent}" Width="30" Height="30" Margin="0,0,10,0" VerticalAlignment="Center" ToolTip="Boberto"/>
+              <local:BobertoMark x:Name="BrandMark" Tile="{DynamicResource Accent}" Width="44" Height="44" Margin="0,-6,14,-6" VerticalAlignment="Center" ToolTip="Boberto"/>
               <StackPanel x:Name="Wordmark" Orientation="Horizontal" VerticalAlignment="Center" Cursor="Hand" ToolTip="BuzzPrint" MouseLeftButtonUp="WordmarkClick"/>
               <Grid Width="12" Height="12" Margin="8,2,0,0" VerticalAlignment="Center"><Ellipse Width="12" Height="12" Fill="{DynamicResource OkGlow}"/><Ellipse x:Name="BrandDot" Width="6" Height="6" Fill="{DynamicResource Ok}"/></Grid>
               <Border x:Name="Subtitle" Visibility="Collapsed" BorderBrush="{DynamicResource FaintBorder}" BorderThickness="1,0,0,0" Margin="16,2,0,2" Padding="14,0,0,0" VerticalAlignment="Center"><TextBlock Text="{local:T 'CAPTURAS · VIDEO · AUDIO · ANOTACIONES'}" FontFamily="{DynamicResource MonoFont}" FontSize="10" Foreground="{DynamicResource Muted}" VerticalAlignment="Center"/></Border>

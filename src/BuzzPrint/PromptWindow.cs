@@ -20,14 +20,12 @@ public sealed class PromptWindow : Window
         Width = 520; SizeToContent = SizeToContent.Height; ResizeMode = ResizeMode.NoResize;
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ShowInTaskbar = false;
         var root = new StackPanel { Margin = new Thickness(24, 20, 24, 18) };
-        var head = new TextBlock { FontWeight = FontWeights.SemiBold };
-        var mark = new Run("◤ "); mark.SetResourceReference(TextElement.ForegroundProperty, "Accent");
-        head.Inlines.Add(mark); head.Inlines.Add(new Run(title));
+        var head = new TextBlock { Text = title, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap };
         head.SetResourceReference(TextBlock.FontSizeProperty, "SectionFontSize");
-        root.Children.Add(head);
         var msg = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 14) };
         msg.SetResourceReference(TextBlock.ForegroundProperty, "Muted");
-        root.Children.Add(msg);
+        var texts = new StackPanel(); texts.Children.Add(head); texts.Children.Add(msg);
+        root.Children.Add(BobertoMark.WithBadge(texts, 52));
         if (value != null)
         {
             input = new TextBox { Text = value, Margin = new Thickness(0, 0, 0, 16) };

@@ -92,6 +92,18 @@ public sealed class BobertoMark : FrameworkElement
         MouseLeave += (_, _) => Hover(false);
     }
 
+    /// <summary>The living mark beside a window's title, so Boberto is present across the app. Watches the cursor.</summary>
+    public static FrameworkElement WithBadge(UIElement content, double size = 48)
+    {
+        var mark = new BobertoMark { Width = size, Height = size, Margin = new Thickness(0, 0, 14, 0), VerticalAlignment = VerticalAlignment.Top };
+        mark.SetResourceReference(TileProperty, "Accent");
+        var row = new System.Windows.Controls.DockPanel();
+        System.Windows.Controls.DockPanel.SetDock(mark, System.Windows.Controls.Dock.Left);
+        row.Children.Add(mark);
+        row.Children.Add(content);
+        return row;
+    }
+
     // ------------------------------------------------------------------ motion (composited)
     void StartIdle()
     {

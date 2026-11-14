@@ -30,7 +30,9 @@ public abstract class AiWindowBase : Window
         head.Children.Add(t);
         var p = Muted(purpose); p.Margin = new Thickness(0, 4, 0, 14);
         head.Children.Add(p);
-        Root.Children.Add(head);
+        var top = BobertoMark.WithBadge(head, 48);
+        DockPanel.SetDock(top, Dock.Top);
+        Root.Children.Add(top);
         DockPanel.SetDock(Foot, Dock.Bottom);
         Root.Children.Add(Foot);
         Content = Root;

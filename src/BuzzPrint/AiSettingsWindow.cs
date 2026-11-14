@@ -69,10 +69,13 @@ public sealed class AiSettingsWindow : Window
         DockPanel.SetDock(head, Dock.Top);
         var title = new TextBlock { Text = L.T("Inteligencia artificial"), FontWeight = FontWeights.SemiBold };
         title.SetResourceReference(TextBlock.FontSizeProperty, "TitleFontSize");
-        head.Children.Add(title);
+        var titleBlock = new StackPanel();
+        titleBlock.Children.Add(title);
+        head.Children.Add(BobertoMark.WithBadge(titleBlock, 48));
         var intro = Muted(L.T("Conectá uno o más proveedores y elegí cuál usar. Nada se envía solo: cada función te muestra antes qué capturas van y a qué servicio. Con Ollama, nada sale de tu PC."));
-        intro.Margin = new Thickness(0, 6, 0, 16);
-        head.Children.Add(intro);
+        intro.Margin = new Thickness(0, 6, 0, 0);
+        titleBlock.Children.Add(intro);
+        titleBlock.Margin = new Thickness(0, 0, 0, 16);
         var switches = new StackPanel();
         switches.Children.Add(SwitchRow(enabled, L.T("Usar IA en BuzzPrint"), L.T("Muestra las funciones de IA en la barra lateral, los menús y el editor."), false));
         switches.Children.Add(SwitchRow(autoCaption, L.T("Título y resumen automáticos en cada captura nueva"), L.T("Cada captura nueva se envía a la conexión en uso. Apagado, lo pedís a mano desde el clic derecho → IA."), true));

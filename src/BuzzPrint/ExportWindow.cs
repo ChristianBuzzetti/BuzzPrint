@@ -55,13 +55,11 @@ public sealed class ExportWindow : Window
         var root = new DockPanel { Margin = new Thickness(24, 20, 24, 18) };
         // Header
         var head = new StackPanel();
-        var h = new TextBlock { FontWeight = FontWeights.SemiBold };
-        var mark = new Run("◤ "); mark.SetResourceReference(TextElement.ForegroundProperty, "Accent");
-        h.Inlines.Add(mark); h.Inlines.Add(new Run(L.T("Exportar capturas")));
+        var h = new TextBlock { Text = L.T("Exportar capturas"), FontWeight = FontWeights.SemiBold };
         h.SetResourceReference(TextBlock.FontSizeProperty, "SectionFontSize");
         head.Children.Add(h);
         head.Children.Add(Muted(L.T("Ordená, poné títulos y notas, y elegí el formato. El orden de la lista es el del documento."), new Thickness(0, 6, 0, 14)));
-        DockPanel.SetDock(head, Dock.Top); root.Children.Add(head);
+        var top = BobertoMark.WithBadge(head, 48); DockPanel.SetDock(top, Dock.Top); root.Children.Add(top);
 
         // Footer
         var foot = new DockPanel { Margin = new Thickness(0, 14, 0, 0) };
