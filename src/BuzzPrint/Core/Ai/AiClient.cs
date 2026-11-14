@@ -40,7 +40,7 @@ public abstract class AiClient
         var p = AiProviders.Get(c.Provider);
         string model = AiProviders.ModelFor(c);
         if (model.Length == 0) throw new AiException(L.T("Falta elegir el modelo de la conexión."));
-        string? key = keyOverride ?? AiKeys.Load(c.Id);
+        string? key = keyOverride ?? AiKeys.Load(c.Id, c.Provider);
         if (p.NeedsKey && string.IsNullOrWhiteSpace(key)) throw new AiException(L.T("Falta la API key de la conexión."));
         if (p.Id == "anthropic") return new ClaudeClient(key!, model);
         string url = AiProviders.BaseUrlFor(c);
@@ -52,7 +52,7 @@ public abstract class AiClient
     public static async Task<List<string>> ListModelsAsync(AiConnection c, string? keyOverride, CancellationToken ct = default)
     {
         var p = AiProviders.Get(c.Provider);
-        string? key = keyOverride ?? AiKeys.Load(c.Id);
+        string? key = keyOverride ?? AiKeys.Load(c.Id, c.Provider);
         if (p.NeedsKey && string.IsNullOrWhiteSpace(key)) throw new AiException(L.T("Escribí la API key para ver los modelos de tu cuenta."));
         if (p.Id == "anthropic") return await ClaudeClient.ListAsync(key!, ct);
         string url = AiProviders.BaseUrlFor(c);

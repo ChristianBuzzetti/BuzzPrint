@@ -307,9 +307,44 @@ public sealed class PersonalizationWindow:Window
         Toggles[section+"/"+title]=box;panel.Children.Add(frame);
     }
     private static void AutomationHelp(CheckBox box,string name)=>System.Windows.Automation.AutomationProperties.SetName(box,name);
+    /// <summary>A small mock of the shape: a panel with a button, or a button with a switch.</summary>
+    private static FrameworkElement ShapeSample(bool panels,bool round)
+    {
+        var host=new Grid {Height=58,Margin=new Thickness(4,4,4,0)};
+        if(panels)
+        {
+            var panel=new Border {CornerRadius=new CornerRadius(round?12:0),BorderThickness=new Thickness(1),Padding=new Thickness(10),Width=150,HorizontalAlignment=HorizontalAlignment.Left};
+            panel.SetResourceReference(Border.BackgroundProperty,"SurfaceRaised");panel.SetResourceReference(Border.BorderBrushProperty,"StrongBorder");
+            var line=new Border {Height=6,Width=90,HorizontalAlignment=HorizontalAlignment.Left,CornerRadius=new CornerRadius(3)};line.SetResourceReference(Border.BackgroundProperty,"Muted");
+            panel.Child=line;host.Children.Add(panel);
+        }
+        else
+        {
+            var row=new StackPanel {Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
+            var button=new Border {CornerRadius=new CornerRadius(round?7:0),Width=70,Height=28,Margin=new Thickness(0,0,12,0)};button.SetResourceReference(Border.BackgroundProperty,"Accent");
+            var track=new Border {CornerRadius=new CornerRadius(round?11:3),Width=40,Height=22,Padding=new Thickness(3)};track.SetResourceReference(Border.BackgroundProperty,"Accent");
+            var knob=new Border {CornerRadius=new CornerRadius(round?8:2),Width=16,Height=16,HorizontalAlignment=HorizontalAlignment.Right};knob.SetResourceReference(Border.BackgroundProperty,"OnAccent");
+            track.Child=knob;row.Children.Add(button);row.Children.Add(track);host.Children.Add(row);
+        }
+        return host;
+    }
     private void BuildInterface()
     {
         var section=Section("Interface");
+        // Shape first: panels and buttons each rounded or square, independently.
+        var shape=Group(section,L.T("FORMA"),L.T("Bordes de paneles y ventanas, y de botones, campos e interruptores. Se pueden combinar: paneles redondeados con botones rectos, o al revés."));
+        foreach(var (label,isPanels) in new[]{(L.T("Paneles y tarjetas"),true),(L.T("Botones, campos e interruptores"),false)})
+        {
+            shape.Children.Add(Heading(label,new Thickness(0,8,0,6)));
+            var choices=new WrapPanel();
+            foreach(var (name,round) in new[]{(L.T("Redondeados"),true),(L.T("Rectos"),false)})
+            {
+                var sample=ShapeSample(isPanels,round);
+                var card=OptionCard(sample,name,null,()=>(isPanels?settings.Rounded:settings.RoundedControls)==round,()=>Change(isPanels?settings with {Rounded=round}:settings with {RoundedControls=round}));
+                card.Width=200;choices.Children.Add(card);
+            }
+            shape.Children.Add(choices);
+        }
         // Language: English by default, Spanish on request. Every window is rebuilt in the new language, so BuzzPrint restarts.
         var language=Group(section,L.T("IDIOMA"),L.T("Idioma de menús, ventanas, mensajes y documentos exportados. BuzzPrint se reinicia para aplicarlo; tus capturas y ajustes no cambian."));
         var langs=new WrapPanel();
@@ -324,7 +359,6 @@ public sealed class PersonalizationWindow:Window
         language.Children.Add(langs);
         var layout=Group(section,L.T("DISPOSICIÓN"),L.T("Densidad y forma de la superficie de trabajo."));
         Toggle(layout,"Interface",L.T("Miniaturas y barra compactas"),L.T("Fichas de captura más chicas y barra de herramientas más ajustada."),()=>settings.Compact,v=>Change(settings with {Compact=v}));
-        Toggle(layout,"Interface",L.T("Esquinas suaves"),L.T("Los radios redondeados de DBMON en lugar de los controles cuadrados de Neo Mirai."),()=>settings.Rounded,v=>Change(settings with {Rounded=v}));
         Toggle(layout,"Interface",L.T("Mostrar panel de opciones"),L.T("El panel lateral con las opciones después de capturar y los atajos."),()=>settings.ShowMessages,v=>Change(settings with {ShowMessages=v}),last:true);
     }
     private void BuildEffects()

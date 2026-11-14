@@ -7,7 +7,7 @@ public sealed record AiModelChoice(string Id, string Note);
 /// <summary>A provider the person can pick. Claude goes through Anthropic's SDK; every other entry speaks the
 /// OpenAI-compatible chat API at <see cref="BaseUrl"/> (OpenAI itself, Gemini, OpenRouter, Ollama, any custom URL).</summary>
 public sealed record AiProvider(
-    string Id, string Name, string BaseUrl, IReadOnlyList<AiModelChoice> Models, bool NeedsKey, string KeyHelpUrl, string Hint)
+    string Id, string Name, string Tag, string Letter, string BaseUrl, IReadOnlyList<AiModelChoice> Models, bool NeedsKey, string KeyHelpUrl, string Hint)
 {
     public string SuggestedModel => Models.Count > 0 ? Models[0].Id : "";
     public override string ToString() => Name;
@@ -15,20 +15,21 @@ public sealed record AiProvider(
 
 public static class AiProviders
 {
+    // Names are brand names (not translated); Tag and Hint go through L.T where they are shown.
     public static readonly IReadOnlyList<AiProvider> All =
     [
-        new("anthropic", "Claude (Anthropic)", "",
+        new("anthropic", "Claude", "Anthropic", "C", "",
             [new("claude-opus-5-5", "Recomendado: el más capaz"), new("claude-sonnet-5-5", "Equilibrado: rápido y muy bueno"), new("claude-haiku-5-5", "Rápido y económico")],
             true, "https://console.anthropic.com/settings/keys", "Claude lee muy bien pantallas y documentos. La key se crea en console.anthropic.com."),
-        new("gemini", "Gemini (Google)", "https://generativelanguage.googleapis.com/v1beta/openai", [], true, "https://aistudio.google.com/apikey",
+        new("gemini", "Gemini", "Google · gratis", "G", "https://generativelanguage.googleapis.com/v1beta/openai", [], true, "https://aistudio.google.com/apikey",
             "Tocá «Ver modelos» para elegir entre los modelos de tu cuenta. Las keys gratuitas tienen pocos pedidos por minuto."),
-        new("openai", "ChatGPT (OpenAI)", "https://api.openai.com/v1", [], true, "https://platform.openai.com/api-keys",
-            "Tocá «Ver modelos» para elegir un modelo con visión de tu cuenta de OpenAI."),
-        new("openrouter", "OpenRouter (muchos modelos)", "https://openrouter.ai/api/v1", [], true, "https://openrouter.ai/keys",
+        new("openai", "ChatGPT", "OpenAI", "O", "https://api.openai.com/v1", [], true, "https://platform.openai.com/api-keys",
+            "Pegá una key de OpenAI y tocá «Ver modelos» para elegir un modelo con visión de tu cuenta."),
+        new("openrouter", "OpenRouter", "Muchos modelos", "R", "https://openrouter.ai/api/v1", [], true, "https://openrouter.ai/keys",
             "Tocá «Ver modelos» o escribí el id tal como figura en openrouter.ai/models."),
-        new("ollama", "Ollama (local, sin internet)", "http://localhost:11434/v1", [], false, "https://ollama.com/download",
+        new("ollama", "Ollama", "Local, sin internet", "L", "http://localhost:11434/v1", [], false, "https://ollama.com/download",
             "Nada sale de tu PC. Necesita Ollama abierto y un modelo con visión descargado (ollama pull …)."),
-        new("custom", "Otro compatible con OpenAI", "", [], true, "",
+        new("custom", "Otro", "API compatible", "+", "", [], true, "",
             "Cualquier servicio con API compatible con OpenAI: LM Studio, Azure OpenAI, Mistral, etc."),
     ];
 
@@ -52,9 +53,7 @@ public static class AiConnections
     public static string DisplayName(this AiConnection c)
     {
         if (c.Name.Trim().Length > 0) return c.Name.Trim();
-        string provider = AiProviders.Get(c.Provider).Name;
-        int paren = provider.IndexOf(" (", StringComparison.Ordinal);
-        if (paren > 0) provider = provider[..paren];
+        string provider = L.T(AiProviders.Get(c.Provider).Name);
         string model = AiProviders.ModelFor(c);
         return model.Length > 0 ? provider + " · " + model : provider;
     }
@@ -65,7 +64,7 @@ public static class AiConnections
     {
         if (s.AiConnections.Count > 0) return;
         var p = AiProviders.Get(s.AiProvider);
-        if (!AiKeys.Has(p.Id) && !(p.Id == "ollama" && s.AiModel.Trim().Length > 0)) return;
+        if (!AiKeys.HasLegacy(p.Id) && !(p.Id == "ollama" && s.AiModel.Trim().Length > 0)) return;
         s.AiConnections.Add(new AiConnection { Id = p.Id, Provider = p.Id, Model = s.AiModel, BaseUrl = s.AiBaseUrl });
         s.AiActiveId = p.Id;
         Store.SaveSettings();

@@ -10,106 +10,110 @@ using BuzzPrint.Ai;
 namespace BuzzPrint;
 
 /// <summary>
-/// IA → Configurar IA…: AI on/off and automatic captions on top; below, the saved connections on the left (one is
-/// active, the one every AI feature uses) and the selected connection's editor on the right: provider, model (with
-/// the recommended ones and the list the account really offers), API key (stored encrypted) and a connection test.
-/// Edits are kept in a working copy until Save.
+/// IA → Configurar IA…. Top: AI on/off and automatic summaries. Left: saved connections (the one in use carries an
+/// accent bar and a check). Right: the selected connection: provider tiles, model (recommended list or the account's
+/// own list), API key (encrypted, tied to its provider), optional name, test, use, delete. Changes apply on Save.
 /// </summary>
 public sealed class AiSettingsWindow : Window
 {
     readonly List<AiConnection> working;
-    readonly Dictionary<string, string> typedKeys = [];   // keys typed in this session, saved on Save
+    readonly Dictionary<string, string> typedKeys = [];   // connection id → key typed for its current provider
     readonly HashSet<string> deleted = [];
     string activeId;
     AiConnection? current;
     bool loading;
 
-    readonly CheckBox enabled = new() { Content = L.T("Usar IA en BuzzPrint"), Margin = new Thickness(0) };
-    readonly CheckBox autoCaption = new() { Content = L.T("Título y resumen automáticos en cada captura nueva"), Margin = new Thickness(0, 10, 0, 0) };
+    readonly CheckBox enabled = new() { Margin = new Thickness(0), VerticalAlignment = VerticalAlignment.Center };
+    readonly CheckBox autoCaption = new() { Margin = new Thickness(0), VerticalAlignment = VerticalAlignment.Center };
     readonly StackPanel list = new();
-    readonly ComboBox provider = new() { Margin = new Thickness(0, 6, 0, 0) };
-    readonly TextBlock hint = Muted("");
-    readonly ComboBox model = new() { IsEditable = true, Margin = new Thickness(0, 6, 0, 0) };
-    readonly Button loadModels = new() { Content = L.T("Ver modelos"), Margin = new Thickness(8, 6, 0, 0), Padding = new Thickness(12, 0, 12, 0) };
+    readonly System.Windows.Controls.Primitives.UniformGrid providerTiles = new() { Columns = 3, Margin = new Thickness(-4, 6, -4, 0) };
+    readonly TextBlock providerHint = Muted("");
+    readonly ComboBox model = new() { IsEditable = true, MinHeight = 38 };
+    readonly Button loadModels = new() { MinWidth = 120, Margin = new Thickness(8, 0, 0, 0) };
     readonly TextBlock modelNote = Muted("");
-    readonly TextBox url = new() { Margin = new Thickness(0, 6, 0, 0) };
-    readonly TextBox name = new() { Margin = new Thickness(0, 6, 0, 0) };
-    readonly PasswordBox key = new() { Margin = new Thickness(0, 6, 0, 0) };
+    readonly TextBox url = new() { MinHeight = 38 };
+    readonly TextBox name = new() { MinHeight = 38 };
+    readonly PasswordBox key = new() { MinHeight = 38 };
     readonly TextBlock keyState = Muted("");
-    readonly TextBlock status = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 12, 0, 0) };
-    readonly StackPanel urlRow = new(), keyRow = new(), editor = new();
-    readonly Hyperlink keyLink = new(new Run(L.T("Conseguir una API key")));
-    readonly Button test = new() { Content = L.T("Probar conexión"), MinWidth = 130 };
-    readonly Button makeActive = new() { Content = L.T("Usar esta conexión"), MinWidth = 140 };
-    readonly Button remove = new() { Content = L.T("Eliminar"), MinWidth = 90 };
-    readonly TextBlock emptyEditor = Muted(L.T("Agregá una conexión para empezar: elegís el proveedor, el modelo y pegás la API key."));
+    readonly Button keyLink = new();
+    readonly TextBlock status = new() { TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
+    readonly StackPanel urlBlock = new(), keyBlock = new(), editor = new();
+    readonly TextBlock headTitle = new() { FontWeight = FontWeights.SemiBold }, headSub = Muted("");
+    readonly Border headBadge = new() { Width = 40, Height = 40, Margin = new Thickness(0, 0, 12, 0) };
+    readonly TextBlock headLetter = new() { FontWeight = FontWeights.Bold, FontSize = 17, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+    readonly Button useButton = new() { MinWidth = 150 };
+    readonly Button test = new() { MinWidth = 140 };
+    readonly Button remove = new() { MinWidth = 100 };
+    readonly StackPanel emptyEditor = new() { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+    readonly Button addButton = new() { HorizontalContentAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 6, 0, 0), MinHeight = 44 };
 
     AiSettingsWindow()
     {
         SetResourceReference(StyleProperty, typeof(Window));
         TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
         Title = L.T("Configurar IA") + " · " + AppInfo.Name;
-        Width = 880; Height = 660; MinWidth = 760; MinHeight = 560;
+        Width = 980; Height = 720; MinWidth = 860; MinHeight = 600;
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ShowInTaskbar = false;
 
         var st = Store.Settings;
-        AiConnections.Active(st);   // migrates the single-provider settings of the first preview
+        AiConnections.Active(st);   // migrates the first preview's single-provider settings
         working = st.AiConnections.Select(Clone).ToList();
         activeId = st.AiActiveId.Length > 0 ? st.AiActiveId : working.FirstOrDefault()?.Id ?? "";
 
-        var root = new DockPanel { Margin = new Thickness(24, 20, 24, 18) };
+        var root = new DockPanel { Margin = new Thickness(28, 24, 28, 20) };
 
+        // ---- header and switches
         var head = new StackPanel();
         DockPanel.SetDock(head, Dock.Top);
         var title = new TextBlock { Text = L.T("Inteligencia artificial"), FontWeight = FontWeights.SemiBold };
         title.SetResourceReference(TextBlock.FontSizeProperty, "TitleFontSize");
         head.Children.Add(title);
         var intro = Muted(L.T("Conectá uno o más proveedores y elegí cuál usar. Nada se envía solo: cada función te muestra antes qué capturas van y a qué servicio. Con Ollama, nada sale de tu PC."));
-        intro.Margin = new Thickness(0, 4, 0, 14);
+        intro.Margin = new Thickness(0, 6, 0, 16);
         head.Children.Add(intro);
-        var switches = Card(new Thickness(16, 12, 16, 12));
-        var sw = new StackPanel();
-        sw.Children.Add(enabled);
-        sw.Children.Add(autoCaption);
-        var autoNote = Muted(L.T("Cada captura nueva se envía a la conexión activa para escribir su título y resumen. Apagado, lo pedís a mano desde el clic derecho → IA."));
-        autoNote.Margin = new Thickness(46, 2, 0, 0);
-        sw.Children.Add(autoNote);
-        switches.Child = sw;
-        head.Children.Add(switches);
+        var switches = new StackPanel();
+        switches.Children.Add(SwitchRow(enabled, L.T("Usar IA en BuzzPrint"), L.T("Muestra las funciones de IA en la barra lateral, los menús y el editor."), false));
+        switches.Children.Add(SwitchRow(autoCaption, L.T("Título y resumen automáticos en cada captura nueva"), L.T("Cada captura nueva se envía a la conexión en uso. Apagado, lo pedís a mano desde el clic derecho → IA."), true));
+        head.Children.Add(Card(switches, new Thickness(18, 6, 18, 6)));
         root.Children.Add(head);
 
-        var foot = new DockPanel { Margin = new Thickness(0, 14, 0, 0), LastChildFill = false };
+        // ---- footer
+        var foot = new DockPanel { Margin = new Thickness(0, 16, 0, 0), LastChildFill = false };
         DockPanel.SetDock(foot, Dock.Bottom);
-        var save = new Button { Content = L.T("Guardar"), IsDefault = true, MinWidth = 110, FontWeight = FontWeights.SemiBold, Margin = new Thickness(8, 0, 0, 0) };
-        save.SetResourceReference(BackgroundProperty, "Accent"); save.SetResourceReference(ForegroundProperty, "OnAccent"); save.SetResourceReference(BorderBrushProperty, "Accent");
-        var cancel = new Button { Content = L.T("Cancelar"), IsCancel = true, MinWidth = 100 };
+        var save = Primary(L.T("Guardar"));
+        save.IsDefault = true; save.MinWidth = 120;
+        var cancel = new Button { Content = L.T("Cancelar"), IsCancel = true, MinWidth = 110, Margin = new Thickness(0, 0, 8, 0) };
         DockPanel.SetDock(save, Dock.Right); DockPanel.SetDock(cancel, Dock.Right);
         foot.Children.Add(save); foot.Children.Add(cancel);
         root.Children.Add(foot);
 
-        var body = new Grid { Margin = new Thickness(0, 14, 0, 0) };
-        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(280) });
+        // ---- body
+        var body = new Grid { Margin = new Thickness(0, 18, 0, 0) };
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(300) });
         body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var left = new DockPanel { Margin = new Thickness(0, 0, 14, 0) };
-        var leftHead = new DockPanel { Margin = new Thickness(2, 0, 0, 8) };
-        var add = new Button { Content = "+ " + L.T("Agregar"), Padding = new Thickness(12, 0, 12, 0), Margin = new Thickness(0) };
-        DockPanel.SetDock(add, Dock.Right);
-        leftHead.Children.Add(add);
-        var connLabel = SectionLabel(L.T("CONEXIONES"));
-        connLabel.VerticalAlignment = VerticalAlignment.Center;
-        leftHead.Children.Add(connLabel);
-        DockPanel.SetDock(leftHead, Dock.Top);
-        left.Children.Add(leftHead);
+        var left = new DockPanel { Margin = new Thickness(0, 0, 18, 0) };
+        var label = Label(L.T("CONEXIONES"));
+        label.Margin = new Thickness(2, 0, 0, 10);
+        DockPanel.SetDock(label, Dock.Top);
+        left.Children.Add(label);
+        addButton.Content = Row("", L.T("Agregar conexión"));
+        DockPanel.SetDock(addButton, Dock.Bottom);
+        left.Children.Add(addButton);
         left.Children.Add(new ScrollViewer { Content = list, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
         body.Children.Add(left);
 
-        var right = Card(new Thickness(18, 14, 18, 16));
-        Grid.SetColumn(right, 1);
-        var rightStack = new StackPanel();
-        rightStack.Children.Add(emptyEditor);
         BuildEditor();
-        rightStack.Children.Add(editor);
-        right.Child = new ScrollViewer { Content = rightStack, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        var emptyIcon = new TextBlock { Text = "", FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"), FontSize = 30, HorizontalAlignment = HorizontalAlignment.Center };
+        emptyIcon.SetResourceReference(TextBlock.ForegroundProperty, "Accent");
+        emptyEditor.Children.Add(emptyIcon);
+        var emptyText = Muted(L.T("Agregá una conexión para empezar: elegís el proveedor, el modelo y pegás la API key."));
+        emptyText.TextAlignment = TextAlignment.Center; emptyText.MaxWidth = 320; emptyText.Margin = new Thickness(0, 10, 0, 0);
+        emptyEditor.Children.Add(emptyText);
+        var rightGrid = new Grid();
+        rightGrid.Children.Add(new ScrollViewer { Content = editor, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Padding = new Thickness(0, 0, 6, 0) });
+        rightGrid.Children.Add(emptyEditor);
+        var right = Card(rightGrid, new Thickness(24, 20, 20, 20));
+        Grid.SetColumn(right, 1);
         body.Children.Add(right);
         root.Children.Add(body);
         Content = root;
@@ -117,7 +121,7 @@ public sealed class AiSettingsWindow : Window
         enabled.IsChecked = st.AiEnabled;
         autoCaption.IsChecked = st.AiAutoCaption;
         enabled.Click += (_, _) => SyncEnabled();
-        add.Click += (_, _) => { var c = new AiConnection { Provider = "anthropic" }; working.Add(c); if (activeId.Length == 0) activeId = c.Id; Select(c); };
+        addButton.Click += (_, _) => { var c = new AiConnection { Provider = "anthropic" }; working.Add(c); if (activeId.Length == 0) activeId = c.Id; Select(c); };
         save.Click += (_, _) => { if (Commit()) Close(); };
         PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) Close(); };
         Select(working.FirstOrDefault(c => c.Id == activeId) ?? working.FirstOrDefault());
@@ -126,14 +130,34 @@ public sealed class AiSettingsWindow : Window
 
     void BuildEditor()
     {
-        provider.ItemsSource = AiProviders.All;
-        editor.Children.Add(SectionLabel(L.T("PROVEEDOR")));
-        editor.Children.Add(provider);
-        hint.Margin = new Thickness(0, 6, 0, 0);
-        editor.Children.Add(hint);
+        // Header: provider badge, connection name, use / in-use.
+        var header = new DockPanel { Margin = new Thickness(0, 0, 0, 18) };
+        headBadge.SetResourceReference(Border.CornerRadiusProperty, "ControlRadius");
+        headBadge.SetResourceReference(Border.BackgroundProperty, "AccentWeak");
+        headLetter.SetResourceReference(TextBlock.ForegroundProperty, "Accent");
+        headBadge.Child = headLetter;
+        DockPanel.SetDock(headBadge, Dock.Left);
+        header.Children.Add(headBadge);
+        DockPanel.SetDock(useButton, Dock.Right);
+        useButton.VerticalAlignment = VerticalAlignment.Center;
+        header.Children.Add(useButton);
+        var names = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        headTitle.SetResourceReference(TextBlock.FontSizeProperty, "SectionFontSize");
+        names.Children.Add(headTitle);
+        headSub.SetResourceReference(TextBlock.FontFamilyProperty, "MonoFont");
+        headSub.Margin = new Thickness(0, 2, 0, 0);
+        names.Children.Add(headSub);
+        header.Children.Add(names);
+        editor.Children.Add(header);
 
-        editor.Children.Add(SectionLabel(L.T("MODELO"), 16));
-        var modelRow = new DockPanel();
+        editor.Children.Add(Label(L.T("PROVEEDOR")));
+        editor.Children.Add(providerTiles);
+        providerHint.Margin = new Thickness(0, 8, 0, 0);
+        editor.Children.Add(providerHint);
+
+        editor.Children.Add(Label(L.T("MODELO"), 20));
+        var modelRow = new DockPanel { Margin = new Thickness(0, 6, 0, 0) };
+        loadModels.Content = Row("", L.T("Ver modelos"));
         DockPanel.SetDock(loadModels, Dock.Right);
         modelRow.Children.Add(loadModels);
         modelRow.Children.Add(model);
@@ -141,48 +165,87 @@ public sealed class AiSettingsWindow : Window
         modelNote.Margin = new Thickness(0, 6, 0, 0);
         editor.Children.Add(modelNote);
 
-        urlRow.Children.Add(SectionLabel(L.T("URL DEL SERVICIO (TERMINA EN /v1)"), 16));
-        urlRow.Children.Add(url);
-        editor.Children.Add(urlRow);
+        urlBlock.Children.Add(Label(L.T("URL DEL SERVICIO (TERMINA EN /v1)"), 20));
+        url.Margin = new Thickness(0, 6, 0, 0);
+        urlBlock.Children.Add(url);
+        editor.Children.Add(urlBlock);
 
-        keyRow.Children.Add(SectionLabel(L.T("API KEY"), 16));
-        keyRow.Children.Add(key);
-        var keyFoot = new DockPanel { Margin = new Thickness(0, 6, 0, 0) };
-        var linkText = new TextBlock(keyLink) { HorizontalAlignment = HorizontalAlignment.Right };
-        DockPanel.SetDock(linkText, Dock.Right);
-        keyFoot.Children.Add(linkText);
-        keyFoot.Children.Add(keyState);
-        keyRow.Children.Add(keyFoot);
+        var keyHead = new DockPanel { Margin = new Thickness(0, 20, 0, 0) };
+        keyLink.Style = (Style)FindResource("QuietButton");
+        keyLink.Content = Row("", L.T("Conseguir una API key"));
+        keyLink.Margin = new Thickness(0);
+        DockPanel.SetDock(keyLink, Dock.Right);
+        keyHead.Children.Add(keyLink);
+        var keyLabel = Label(L.T("API KEY"));
+        keyLabel.VerticalAlignment = VerticalAlignment.Center;
+        keyHead.Children.Add(keyLabel);
+        keyBlock.Children.Add(keyHead);
+        key.Margin = new Thickness(0, 6, 0, 0);
+        keyBlock.Children.Add(key);
+        keyState.Margin = new Thickness(0, 6, 0, 0);
+        keyBlock.Children.Add(keyState);
         var plans = Muted(L.T("ChatGPT Plus, Gemini Advanced o Claude Pro no incluyen la API: la key se saca aparte en la consola del proveedor y se paga por uso (algunas tienen un nivel gratuito)."));
-        plans.Margin = new Thickness(0, 6, 0, 0);
-        keyRow.Children.Add(plans);
-        editor.Children.Add(keyRow);
+        plans.Margin = new Thickness(0, 4, 0, 0);
+        keyBlock.Children.Add(plans);
+        editor.Children.Add(keyBlock);
 
-        editor.Children.Add(SectionLabel(L.T("NOMBRE (OPCIONAL)"), 16));
+        editor.Children.Add(Label(L.T("NOMBRE (OPCIONAL)"), 20));
+        name.Margin = new Thickness(0, 6, 0, 0);
         editor.Children.Add(name);
 
-        editor.Children.Add(status);
-        var actions = new WrapPanel { Margin = new Thickness(0, 14, 0, 0) };
-        actions.Children.Add(test); actions.Children.Add(makeActive); actions.Children.Add(remove);
+        // Actions: test + status on the left, delete on the right.
+        var actions = new DockPanel { Margin = new Thickness(0, 22, 0, 0) };
+        test.Content = Row("", L.T("Probar conexión"));
+        DockPanel.SetDock(test, Dock.Left);
+        actions.Children.Add(test);
+        remove.Content = Row("", L.T("Eliminar"));
+        remove.SetResourceReference(ForegroundProperty, "ErrorInk");
+        DockPanel.SetDock(remove, Dock.Right);
+        actions.Children.Add(remove);
+        status.Margin = new Thickness(14, 0, 12, 0);
+        actions.Children.Add(status);
         editor.Children.Add(actions);
 
-        provider.SelectionChanged += (_, _) =>
+        foreach (var p in AiProviders.All)
         {
-            if (loading || current == null || provider.SelectedItem is not AiProvider p) return;
-            current.Provider = p.Id; current.Model = ""; ShowProvider(); RenderList();
-        };
+            var provider = p;
+            var tile = new RadioButton { GroupName = "provider", Margin = new Thickness(4), Cursor = Cursors.Hand, Tag = p.Id, Style = (Style)FindResource("NavItem") };
+            var content = new DockPanel { Margin = new Thickness(0, 7, 0, 7) };
+            var letter = new Border { Width = 28, Height = 28, Margin = new Thickness(0, 0, 10, 0) };
+            letter.SetResourceReference(Border.CornerRadiusProperty, "ControlRadius");
+            letter.SetResourceReference(Border.BackgroundProperty, "AlternateRow");
+            letter.Child = new TextBlock { Text = p.Letter, FontWeight = FontWeights.Bold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            DockPanel.SetDock(letter, Dock.Left);
+            content.Children.Add(letter);
+            var texts = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            texts.Children.Add(new TextBlock { Text = L.T(p.Name), FontWeight = FontWeights.SemiBold });
+            var tag = Muted(L.T(p.Tag)); tag.TextWrapping = TextWrapping.NoWrap; tag.TextTrimming = TextTrimming.CharacterEllipsis;
+            tag.FontWeight = FontWeights.Normal;
+            texts.Children.Add(tag);
+            content.Children.Add(texts);
+            tile.Content = content;
+            tile.Checked += (_, _) =>
+            {
+                if (loading || current == null || current.Provider == provider.Id) return;
+                current.Provider = provider.Id; current.Model = "";
+                typedKeys.Remove(current.Id);   // a key belongs to the provider it was typed for
+                ShowProvider(); RenderList();
+            };
+            providerTiles.Children.Add(tile);
+        }
+
         model.AddHandler(System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent, new TextChangedEventHandler((_, _) =>
         {
             if (loading || current == null) return;
-            current.Model = (model.Text ?? "").Trim(); ShowModelNote(); RenderList();
+            current.Model = (model.Text ?? "").Trim(); ShowModelNote(); ShowHeader(); RenderList();
         }));
         url.TextChanged += (_, _) => { if (!loading && current != null) current.BaseUrl = url.Text.Trim(); };
-        name.TextChanged += (_, _) => { if (!loading && current != null) { current.Name = name.Text; RenderList(); } };
-        key.PasswordChanged += (_, _) => { if (!loading && current != null) { if (key.Password.Length > 0) typedKeys[current.Id] = key.Password; else typedKeys.Remove(current.Id); } };
+        name.TextChanged += (_, _) => { if (!loading && current != null) { current.Name = name.Text; ShowHeader(); RenderList(); } };
+        key.PasswordChanged += (_, _) => { if (!loading && current != null) { if (key.Password.Length > 0) typedKeys[current.Id] = key.Password; else typedKeys.Remove(current.Id); ShowKeyState(); } };
         keyLink.Click += (_, _) => { if (current == null) return; var p = AiProviders.Get(current.Provider); if (p.KeyHelpUrl.Length > 0) try { Process.Start(new ProcessStartInfo(p.KeyHelpUrl) { UseShellExecute = true }); } catch (System.ComponentModel.Win32Exception) { } };
         loadModels.Click += async (_, _) => await LoadModelsAsync();
         test.Click += async (_, _) => await TestAsync();
-        makeActive.Click += (_, _) => { if (current != null) { activeId = current.Id; RenderList(); ShowActiveButton(); } };
+        useButton.Click += (_, _) => { if (current != null) { activeId = current.Id; RenderList(); ShowHeader(); } };
         remove.Click += (_, _) =>
         {
             if (current == null) return;
@@ -202,7 +265,6 @@ public sealed class AiSettingsWindow : Window
         loading = true;
         try
         {
-            provider.SelectedItem = AiProviders.Get(c.Provider);
             url.Text = c.BaseUrl;
             name.Text = c.Name;
             key.Password = typedKeys.TryGetValue(c.Id, out var typed) ? typed : "";
@@ -218,22 +280,39 @@ public sealed class AiSettingsWindow : Window
         loading = true;
         try
         {
-            hint.Text = L.T(p.Hint);
+            foreach (RadioButton tile in providerTiles.Children) tile.IsChecked = (string)tile.Tag == p.Id;
+            providerHint.Text = L.T(p.Hint);
             model.ItemsSource = p.Models.Select(m => m.Id).ToList();
             if (current.Model.Length == 0) current.Model = p.SuggestedModel;
             model.Text = current.Model;
-            urlRow.Visibility = p.Id == "custom" ? Visibility.Visible : Visibility.Collapsed;
-            keyRow.Visibility = p.NeedsKey ? Visibility.Visible : Visibility.Collapsed;
-            keyLink.IsEnabled = p.KeyHelpUrl.Length > 0;
-            string? stored = AiKeys.Load(current.Id);
-            keyState.Text = typedKeys.ContainsKey(current.Id) ? L.T("Se guarda al tocar Guardar.")
-                : stored != null ? L.F("Guardada: {0}. Escribí otra para reemplazarla.", AiKeys.Masked(stored)) : L.T("Todavía no hay una key guardada.");
+            urlBlock.Visibility = p.Id == "custom" ? Visibility.Visible : Visibility.Collapsed;
+            keyBlock.Visibility = p.NeedsKey ? Visibility.Visible : Visibility.Collapsed;
+            keyLink.Visibility = p.KeyHelpUrl.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+            key.Password = typedKeys.TryGetValue(current.Id, out var typed) ? typed : "";
             status.Text = "";
         }
         finally { loading = false; }
-        ShowModelNote();
-        ShowActiveButton();
-        SyncEnabled();
+        ShowKeyState(); ShowModelNote(); ShowHeader(); SyncEnabled();
+    }
+
+    void ShowKeyState()
+    {
+        if (current == null) return;
+        string? stored = AiKeys.Load(current.Id, current.Provider);
+        keyState.Text = typedKeys.ContainsKey(current.Id) ? L.T("Se guarda al tocar Guardar.")
+            : stored != null ? L.F("Guardada: {0}. Escribí otra para reemplazarla.", AiKeys.Masked(stored)) : L.T("Todavía no hay una key guardada para este proveedor.");
+    }
+
+    void ShowHeader()
+    {
+        if (current == null) return;
+        var p = AiProviders.Get(current.Provider);
+        headLetter.Text = p.Letter;
+        headTitle.Text = current.Name.Trim().Length > 0 ? current.Name.Trim() : L.T(p.Name);
+        headSub.Text = AiProviders.ModelFor(current) is { Length: > 0 } m ? m : L.T("sin modelo");
+        bool inUse = current.Id == activeId;
+        useButton.Content = Row(inUse ? "" : "", inUse ? L.T("En uso") : L.T("Usar esta conexión"));
+        useButton.IsEnabled = !inUse && enabled.IsChecked == true;
     }
 
     void ShowModelNote()
@@ -246,13 +325,6 @@ public sealed class AiSettingsWindow : Window
             : L.T("Escribí el nombre del modelo o tocá «Ver modelos» para elegir de tu cuenta.");
     }
 
-    void ShowActiveButton()
-    {
-        bool isActive = current != null && current.Id == activeId;
-        makeActive.IsEnabled = !isActive && enabled.IsChecked == true;
-        makeActive.Content = isActive ? L.T("Conexión activa") : L.T("Usar esta conexión");
-    }
-
     void RenderList()
     {
         list.Children.Clear();
@@ -260,32 +332,42 @@ public sealed class AiSettingsWindow : Window
         foreach (var c in working)
         {
             var conn = c;
-            bool isActive = c.Id == activeId, isCurrent = c == current;
-            var row = new Border { Padding = new Thickness(12, 10, 12, 10), Margin = new Thickness(0, 0, 0, 6), BorderThickness = new Thickness(1), Cursor = Cursors.Hand };
+            var p = AiProviders.Get(c.Provider);
+            bool inUse = c.Id == activeId, isCurrent = c == current;
+            var row = new Border { Padding = new Thickness(12, 10, 12, 10), Margin = new Thickness(0, 0, 0, 8), BorderThickness = new Thickness(1), Cursor = Cursors.Hand };
             row.SetResourceReference(Border.CornerRadiusProperty, "StripRadius");
             row.SetResourceReference(Border.BackgroundProperty, isCurrent ? "AccentWeak" : "SurfaceRaised");
             row.SetResourceReference(Border.BorderBrushProperty, isCurrent ? "AccentCardRing" : "FaintBorder");
-            var stack = new StackPanel();
+            var grid = new DockPanel();
+            var letter = new Border { Width = 32, Height = 32, Margin = new Thickness(0, 0, 10, 0) };
+            letter.SetResourceReference(Border.CornerRadiusProperty, "ControlRadius");
+            letter.SetResourceReference(Border.BackgroundProperty, inUse ? "Accent" : "AlternateRow");
+            var lt = new TextBlock { Text = p.Letter, FontWeight = FontWeights.Bold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            lt.SetResourceReference(TextBlock.ForegroundProperty, inUse ? "OnAccent" : "Ink");
+            letter.Child = lt;
+            DockPanel.SetDock(letter, Dock.Left);
+            grid.Children.Add(letter);
+            var texts = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             var top = new DockPanel();
-            if (isActive)
+            if (inUse)
             {
-                var badge = new Border { Padding = new Thickness(7, 1, 7, 1), VerticalAlignment = VerticalAlignment.Center };
-                badge.SetResourceReference(Border.BackgroundProperty, "Accent");
-                badge.SetResourceReference(Border.CornerRadiusProperty, "PillRadius");
-                var bt = new TextBlock { Text = L.T("ACTIVA"), FontSize = 9.5, FontWeight = FontWeights.Bold };
-                bt.SetResourceReference(TextBlock.ForegroundProperty, "OnAccent");
-                badge.Child = bt;
+                var badge = Row("", L.T("En uso"));
+                badge.VerticalAlignment = VerticalAlignment.Center;
+                badge.SetResourceReference(TextElement.ForegroundProperty, "Accent");
+                foreach (TextBlock t in badge.Children) { t.FontSize = 11; t.FontWeight = FontWeights.SemiBold; }
+                ((TextBlock)badge.Children[0]).Margin = new Thickness(0, 0, 5, 0);
                 DockPanel.SetDock(badge, Dock.Right);
                 top.Children.Add(badge);
             }
-            var nameText = new TextBlock { Text = c.Name.Trim().Length > 0 ? c.Name.Trim() : AiProviders.Get(c.Provider).Name, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis };
-            top.Children.Add(nameText);
-            stack.Children.Add(top);
+            top.Children.Add(new TextBlock { Text = c.Name.Trim().Length > 0 ? c.Name.Trim() : L.T(p.Name), FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
+            texts.Children.Add(top);
             var sub = Muted(AiProviders.ModelFor(c) is { Length: > 0 } m ? m : L.T("sin modelo"));
             sub.SetResourceReference(TextBlock.FontFamilyProperty, "MonoFont");
-            sub.Margin = new Thickness(0, 3, 0, 0);
-            stack.Children.Add(sub);
-            row.Child = stack;
+            sub.TextWrapping = TextWrapping.NoWrap; sub.TextTrimming = TextTrimming.CharacterEllipsis;
+            sub.Margin = new Thickness(0, 2, 0, 0);
+            texts.Children.Add(sub);
+            grid.Children.Add(texts);
+            row.Child = grid;
             row.MouseLeftButtonUp += (_, _) => Select(conn);
             list.Children.Add(row);
         }
@@ -295,8 +377,8 @@ public sealed class AiSettingsWindow : Window
     {
         bool on = enabled.IsChecked == true;
         autoCaption.IsEnabled = on;
-        foreach (var c in new UIElement[] { provider, model, loadModels, url, key, name, test, remove }) c.IsEnabled = on;
-        makeActive.IsEnabled = on && current != null && current.Id != activeId;
+        foreach (var c in new UIElement[] { providerTiles, model, loadModels, url, key, name, test, remove, keyLink }) c.IsEnabled = on;
+        ShowHeader();
     }
 
     async Task LoadModelsAsync()
@@ -313,8 +395,8 @@ public sealed class AiSettingsWindow : Window
             loading = true;
             try { string keep = current.Model; model.ItemsSource = choices; model.Text = keep; }
             finally { loading = false; }
-            model.IsDropDownOpen = true;
-            SetStatus(L.F("{0} modelos disponibles en tu cuenta. Elegí uno de la lista.", ids.Count), "Muted");
+            if (choices.Count > 0) model.IsDropDownOpen = true;
+            SetStatus(ids.Count > 0 ? L.F("{0} modelos disponibles en tu cuenta. Elegí uno de la lista.", ids.Count) : L.T("La cuenta no devolvió modelos. Escribí el nombre a mano."), "Muted");
         }
         catch (AiException ex) { SetStatus(ex.Message, "ErrorInk"); }
         finally { loadModels.IsEnabled = enabled.IsChecked == true; }
@@ -329,7 +411,7 @@ public sealed class AiSettingsWindow : Window
         {
             var client = AiClient.FromConnection(current, typedKeys.GetValueOrDefault(current.Id));
             var answer = await client.CompleteAsync(new AiRequest("You are a connection test. Reply with exactly: OK", "Reply with exactly: OK", [], 50));
-            SetStatus(L.T("Conexión correcta. El modelo respondió: ") + (answer.Length > 60 ? answer[..60] + "…" : answer), "Ok");
+            SetStatus("✓ " + L.T("Conexión correcta. El modelo respondió: ") + (answer.Length > 40 ? answer[..40] + "…" : answer), "Ok");
         }
         catch (AiException ex) { SetStatus(ex.Message, "ErrorInk"); }
         finally { test.IsEnabled = enabled.IsChecked == true; }
@@ -337,7 +419,6 @@ public sealed class AiSettingsWindow : Window
 
     void SetStatus(string text, string brush) { status.Text = text; status.SetResourceReference(TextBlock.ForegroundProperty, brush); }
 
-    /// <summary>Validates and writes everything back: connections, active one, switches, typed keys, removed keys.</summary>
     bool Commit()
     {
         var st = Store.Settings;
@@ -347,10 +428,10 @@ public sealed class AiSettingsWindow : Window
         {
             var p = AiProviders.Get(c.Provider);
             if (AiProviders.ModelFor(c).Length == 0) { Select(c); SetStatus(L.T("Falta elegir el modelo de esta conexión."), "ErrorInk"); return false; }
-            if (p.NeedsKey && !typedKeys.ContainsKey(c.Id) && !AiKeys.Has(c.Id)) { Select(c); SetStatus(L.T("Falta la API key de esta conexión."), "ErrorInk"); return false; }
+            if (p.NeedsKey && !typedKeys.ContainsKey(c.Id) && !AiKeys.Has(c.Id, c.Provider)) { Select(c); SetStatus(L.T("Falta la API key de esta conexión."), "ErrorInk"); return false; }
         }
         foreach (var id in deleted) AiKeys.Delete(id);
-        foreach (var (id, k) in typedKeys) AiKeys.Save(id, k);
+        foreach (var c in working) if (typedKeys.TryGetValue(c.Id, out var k)) AiKeys.Save(c.Id, c.Provider, k);
         st.AiConnections = working.Select(Clone).ToList();
         st.AiActiveId = working.Any(c => c.Id == activeId) ? activeId : working.FirstOrDefault()?.Id ?? "";
         st.AiEnabled = on;
@@ -359,20 +440,54 @@ public sealed class AiSettingsWindow : Window
         return true;
     }
 
+    // ---- building blocks
+
     static AiConnection Clone(AiConnection c) => new() { Id = c.Id, Name = c.Name, Provider = c.Provider, Model = c.Model, BaseUrl = c.BaseUrl };
 
-    static Border Card(Thickness padding)
+    static UIElement SwitchRow(CheckBox box, string title, string description, bool last)
     {
-        var b = new Border { Padding = padding, BorderThickness = new Thickness(1) };
+        var row = new DockPanel { Margin = new Thickness(0, 12, 0, 12) };
+        DockPanel.SetDock(box, Dock.Right);
+        row.Children.Add(box);
+        var texts = new StackPanel { Margin = new Thickness(0, 0, 20, 0) };
+        texts.Children.Add(new TextBlock { Text = title, FontWeight = FontWeights.SemiBold });
+        var d = Muted(description); d.Margin = new Thickness(0, 2, 0, 0);
+        texts.Children.Add(d);
+        texts.Background = Brushes.Transparent; texts.Cursor = Cursors.Hand;
+        texts.MouseLeftButtonUp += (_, _) => { if (box.IsEnabled) { box.IsChecked = box.IsChecked != true; box.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent)); } };
+        row.Children.Add(texts);
+        var frame = new Border { Child = row, BorderThickness = new Thickness(0, 0, 0, last ? 0 : 1) };
+        frame.SetResourceReference(Border.BorderBrushProperty, "FaintBorder");
+        return frame;
+    }
+
+    static StackPanel Row(string glyph, string text)
+    {
+        var sp = new StackPanel { Orientation = Orientation.Horizontal };
+        sp.Children.Add(new TextBlock { Text = glyph, FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"), FontSize = 12, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center });
+        sp.Children.Add(new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center });
+        return sp;
+    }
+
+    static Button Primary(string text)
+    {
+        var b = new Button { Content = text, FontWeight = FontWeights.SemiBold };
+        b.SetResourceReference(BackgroundProperty, "Accent"); b.SetResourceReference(ForegroundProperty, "OnAccent"); b.SetResourceReference(BorderBrushProperty, "Accent");
+        return b;
+    }
+
+    static Border Card(UIElement child, Thickness padding)
+    {
+        var b = new Border { Child = child, Padding = padding, BorderThickness = new Thickness(1) };
         b.SetResourceReference(Border.BackgroundProperty, "Surface");
         b.SetResourceReference(Border.BorderBrushProperty, "FaintBorder");
         b.SetResourceReference(Border.CornerRadiusProperty, "PanelRadius");
         return b;
     }
 
-    static TextBlock SectionLabel(string text, double top = 0)
+    static TextBlock Label(string text, double top = 0)
     {
-        var t = new TextBlock { Text = text, FontSize = 10, FontWeight = FontWeights.Bold, Margin = new Thickness(0, top, 0, 0) };
+        var t = new TextBlock { Text = text, FontSize = 10.5, FontWeight = FontWeights.Bold, Margin = new Thickness(0, top, 0, 0) };
         t.SetResourceReference(TextBlock.ForegroundProperty, "LineNumber");
         return t;
     }

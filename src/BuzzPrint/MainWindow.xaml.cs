@@ -67,6 +67,7 @@ public partial class MainWindow : Window
         StateChanged += (_, _) => _ = bobertoDock?.PauseAsync(WindowState == WindowState.Minimized || !appearance.BobertoVisible);
         SizeChanged += (_, _) => AdaptHeader();
         HeaderLeft.SizeChanged += (_, _) => SizeBobertoBand();
+        OptionsPanel.SizeChanged += (_, _) => SizeBobertoBand();
         Closing += (_, e) => { if (!App.Current.Exiting && !App.IsShot) { e.Cancel = true; Hide(); } };
         Closed += (_, _) => { emptyBoberto?.Dispose(); emptyBoberto = null; if (bobertoDock != null) { BobertoHost.Content = null; bobertoDock.Dispose(); bobertoDock = null; } };
         Store.Changed += (_, _) => Dispatcher.BeginInvoke(() => { Reload(); OcrIndex.Refresh(); });
@@ -114,12 +115,11 @@ public partial class MainWindow : Window
     void AdaptHeader()
     {
         bool shortWindow = ActualHeight is > 0 and < 720;
-        Resources["TopMenuGlyph"] = ActualWidth is > 0 and < 1700 ? Visibility.Collapsed : Visibility.Visible;
+        Resources["TopMenuGlyph"] = ActualWidth is > 0 and < 1500 ? Visibility.Collapsed : Visibility.Visible;
         bool narrow = ActualWidth is > 0 and < 1180;
         var labels = narrow ? Visibility.Collapsed : Visibility.Visible;
         QuickText.Visibility = EditorText.Visibility = FolderText.Visibility = CaptureKeyHint.Visibility = labels;
-        PersonalizeText.Visibility = ActualWidth is > 0 and < 1600 ? Visibility.Collapsed : Visibility.Visible;
-        SearchBox.Width = narrow ? 190 : ActualWidth < 1600 ? 240 : 300;
+        SearchBox.Width = narrow ? 220 : ActualWidth < 1500 ? 280 : 340;
         HeaderBar.Padding = shortWindow ? new Thickness(20, 6, 16, 6) : new Thickness(20, 10, 16, 10);
         SidebarColumn.Width = new GridLength(ActualWidth is > 0 and < 1100 ? 0 : 236);
         SizeBobertoBand();
@@ -137,7 +137,9 @@ public partial class MainWindow : Window
     {
         if (!appearance.BobertoVisible || ActualWidth is > 0 and < BobertoMinWindow) return 0;
         double height = HeaderLeft.ActualHeight > 0 ? HeaderLeft.ActualHeight : 150;
-        double width = Math.Min(Math.Round(height * 16 / 9) + BobertoStrip, ActualWidth > 0 ? Math.Round(ActualWidth * BobertoMaxShare) : double.MaxValue);
+        // Boberto lines up with the right-hand panel (its width plus the window margin) when that panel is open.
+        double width = appearance.ShowMessages && OptionsPanel.ActualWidth > 0 ? Math.Round(OptionsPanel.ActualWidth + WorkArea.Margin.Right)
+            : Math.Min(Math.Round(height * 16 / 9) + BobertoStrip, ActualWidth > 0 ? Math.Round(ActualWidth * BobertoMaxShare) : double.MaxValue);
         return Math.Abs(BobertoColumn.Width.Value - width) <= 2 ? BobertoColumn.Width.Value : width;
     }
 
@@ -523,6 +525,13 @@ public partial class MainWindow : Window
     List<CaptureItem> Selected => Library.SelectedItems.Cast<CaptureCard>().Select(c => c.Item).ToList();
 
     void SearchChanged(object sender, TextChangedEventArgs e) => Reload();
+    /// <summary>Drive, an ellipsis and the last two folders; the full path goes in the tooltip.</summary>
+    static string ShortPath(string path)
+    {
+        var parts = path.TrimEnd('\\').Split('\\');
+        return parts.Length <= 4 ? path : parts[0] + "\\…\\" + parts[^2] + "\\" + parts[^1];
+    }
+
     void FilterChanged(object sender, SelectionChangedEventArgs e) { if (e.Source == Filters) Reload(); }
 
     // ------------------------------------------------------------------ sidebar
@@ -581,19 +590,18 @@ public partial class MainWindow : Window
     static string ProviderShort(AiConnection c)
     {
         if (c.Name.Trim().Length > 0) return c.Name.Trim();
-        string n = Ai.AiProviders.Get(c.Provider).Name; int i = n.IndexOf(" (", StringComparison.Ordinal);
-        return i > 0 ? n[..i] : n;
+        return L.T(Ai.AiProviders.Get(c.Provider).Name);
     }
 #endif
     void SyncAiChip()
     {
 #if PREVIEW
-        AiChip.Visibility = Visibility.Visible;
+        NavAiStatus.Visibility = Visibility.Visible;
         var st = Store.Settings;
         var conn = Ai.AiConnections.Active(st);
-        AiChipText.Text = st.AiEnabled && conn != null ? (L.Es ? "IA · " : "AI · ") + ProviderShort(conn) : L.T("IA apagada");
-        AiChip.ToolTip = st.AiEnabled && conn != null ? Ai.AiConnections.DisplayName(conn) : L.T("Configurar IA");
-        AiChipDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, st.AiEnabled && conn != null ? "Ok" : "Muted");
+        NavAiText.Text = st.AiEnabled && conn != null ? (L.Es ? "IA · " : "AI · ") + ProviderShort(conn) : L.T("IA apagada");
+        NavAiStatus.ToolTip = st.AiEnabled && conn != null ? Ai.AiConnections.DisplayName(conn) + " · " + L.T("Configurar IA") : L.T("Configurar IA");
+        NavAiDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, st.AiEnabled && conn != null ? "Ok" : "Muted");
 #endif
     }
     void LibrarySelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateStatus();
@@ -689,8 +697,8 @@ public partial class MainWindow : Window
     // ================================================================== folders and language
     void ShowFolders()
     {
-        StoragePath.Text = Store.CaptureDir;
-        RecordPath.Text = Store.RecordDir;
+        StoragePath.Text = ShortPath(Store.CaptureDir); StoragePath.ToolTip = Store.CaptureDir;
+        RecordPath.Text = ShortPath(Store.RecordDir); RecordPath.ToolTip = Store.RecordDir;
         FolderStatus.Text = Shorten(Store.CaptureDir);
     }
     static string Shorten(string path)

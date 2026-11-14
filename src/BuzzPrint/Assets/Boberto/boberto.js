@@ -17262,7 +17262,6 @@
     { id: 'ninguno',     name: 'Sin fondo', desc: 'El escenario limpio: sólo el piso y su reflejo.' },
     { id: 'cyberpunk',   grupo: 'cyberpunk', name: 'Cyberpunk', premium: true, desc: 'Carteles en los edificios de los costados y la calle vacía en el medio.' },
     { id: 'datacenter',  grupo: 'cyberpunk', name: 'Datacenter en el horizonte', premium: true, desc: 'Racks a los dos lados de una calle vacía.' },
-    { id: 'kame',        grupo: 'cyberpunk', name: 'Kame House', premium: true, desc: 'La casa a la izquierda, una palmera a la derecha y el mar en el medio.' },
     { id: 'cy-letreros', grupo: 'cyberpunk', name: 'Letreros', premium: true, desc: 'Un neón rosa a la izquierda y uno cian a la derecha, sobre la calle mojada.' },
     { id: 'cy-callejon', grupo: 'cyberpunk', name: 'Callejón', premium: true, desc: 'Carteles a la izquierda y una flecha de neón a la derecha.' },
     { id: 'arcade',      grupo: 'arcade', name: 'Arcade', premium: true, desc: 'Máquinas a los dos lados y el piso de neón libre en el centro.' },
@@ -17426,9 +17425,6 @@
 
     /* Pico a la izquierda, cordón bajo a la derecha, cielo en bandas planas. */
     nevado() { return fondoPlano('fondo-nevado.jpg?5'); },
-
-    /* La isla pintada: la casa rosa, las palmeras y el agua. */
-    kame() { return fondoPlano('fondo-kame.jpg?4'); },
 
     /* La luna a la izquierda, el cabo a la derecha, el agua vacía en el medio. */
     marea() { return fondoPlano('fondo-marea.jpg?5'); },
