@@ -104,7 +104,7 @@ public sealed class ExportWindow : Window
             opts.Children.Add(rb);
         }
         opts.Children.Add(Section(L.T("DOCUMENTO"), 18));
-        titleBox = new TextBox { Text = L.T("Capturas") + " — " + DateTime.Now.ToString("d"), Margin = new Thickness(0, 0, 0, 4) };
+        titleBox = new TextBox { Text = L.T("Capturas") + " — " + DateTime.Now.ToString("d", L.Culture), Margin = new Thickness(0, 0, 0, 4) };
         opts.Children.Add(titleBox);
         opts.Children.Add(Muted(L.T("Va en la portada y en el nombre del archivo."), new Thickness(0, 0, 0, 6)));
         introBox = new TextBox { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 64, MaxHeight = 140, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(0, 4, 0, 4), ToolTip = L.T("Introducción (opcional): un párrafo debajo del título en la portada") };
@@ -166,7 +166,8 @@ public sealed class ExportWindow : Window
         statusText.Text = L.T("La IA está redactando el documento…");
         try
         {
-            var draft = await Ai.AiDocument.DraftAsync(pages.Select(p => p.Item).ToList(), titleBox.Text);
+            Ai.DocDraft draft;
+            using (AiBusy.Show(this, L.F("Redactando el documento con {0} captura(s)…", pages.Count))) draft = await Ai.AiDocument.DraftAsync(pages.Select(p => p.Item).ToList(), titleBox.Text);
             if (draft.Title.Length > 0) titleBox.Text = draft.Title;
             introBox.Text = draft.Intro;
             for (int i = 0; i < pages.Count && i < draft.Steps.Count; i++)
@@ -262,7 +263,7 @@ public sealed class ExportWindow : Window
         var note = new TextBox { Text = p.Note, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MaxHeight = 90, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(0, 6, 0, 0), Padding = new Thickness(8, 5, 8, 5) };
         note.TextChanged += (_, _) => p.Note = note.Text;
         fields.Children.Add(Hinted(note, L.T("Nota o instrucción (opcional): va debajo de la imagen")));
-        var metaLine = Muted(p.Item.Created.ToString("g") + (p.Item.Width > 0 ? "  ·  " + p.Item.Width + "×" + p.Item.Height : "") + (string.IsNullOrEmpty(p.Item.Source) ? "" : "  ·  " + p.Item.Source), new Thickness(2, 5, 0, 0));
+        var metaLine = Muted(p.Item.Created.ToString("g", L.Culture) + (p.Item.Width > 0 ? "  ·  " + p.Item.Width + "×" + p.Item.Height : "") + (string.IsNullOrEmpty(p.Item.Source) ? "" : "  ·  " + p.Item.Source), new Thickness(2, 5, 0, 0));
         metaLine.SetResourceReference(TextBlock.FontFamilyProperty, "MonoFont");
         metaLine.TextTrimming = TextTrimming.CharacterEllipsis;
         fields.Children.Add(metaLine);

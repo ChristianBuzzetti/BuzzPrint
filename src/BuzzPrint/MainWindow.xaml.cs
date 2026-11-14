@@ -839,9 +839,10 @@ public partial class MainWindow : Window
         var sel = SelectedImages();
         if (!NeedSelection(sel, 50, title)) return;
         if (!AiReady(title, L.F("Se van a enviar {0} captura(s) y su texto para escribir un título corto y un resumen. Los títulos que escribiste vos no se tocan.", sel.Count))) return;
+        using var busy = AiBusy.Show(this, L.F("Describiendo {0} captura(s)…", sel.Count));
         try
         {
-            var progress = new Progress<(int done, int total)>(p => StatusText.Text = L.F("IA: describiendo capturas… {0}/{1}", p.done, p.total));
+            var progress = new Progress<(int done, int total)>(p => { StatusText.Text = L.F("IA: describiendo capturas… {0}/{1}", p.done, p.total); busy.Text = L.F("Describiendo capturas… {0}/{1}", p.done, p.total); });
             int n = await Ai.AiCaptions.ApplyAsync(sel, progress);
             StatusText.Text = L.F("IA: {0} captura(s) con título y resumen", n);
         }
@@ -878,7 +879,8 @@ public partial class MainWindow : Window
         StatusText.Text = L.T("Buscando datos sensibles…");
         try
         {
-            var spots = await Ai.AiRedaction.FindAsync(it, useAi);
+            List<Ai.SensitiveSpot> spots;
+            using (AiBusy.Show(this, L.T("Buscando datos sensibles en la captura…"))) spots = await Ai.AiRedaction.FindAsync(it, useAi);
             StatusText.Text = "";
             if (spots.Count == 0) { PromptWindow.Info(this, title, L.T("No se encontraron datos sensibles en esta captura.")); return; }
             var rows = spots.Select(s => (KindName(s.Kind) + ": " + Mask(s.Text), "")).ToList();
@@ -920,7 +922,8 @@ public partial class MainWindow : Window
         StatusText.Text = L.T("IA: armando el reporte…");
         try
         {
-            string text = await Ai.AiTicket.WriteAsync(sel);
+            string text;
+            using (AiBusy.Show(this, L.F("Armando el reporte con {0} captura(s)…", sel.Count))) text = await Ai.AiTicket.WriteAsync(sel);
             StatusText.Text = L.T("Reporte listo");
             AiTextWindow.Show(this, title, L.T("Revisalo antes de enviarlo: la IA solo sabe lo que muestran las capturas."), text);
         }
@@ -943,17 +946,20 @@ public partial class MainWindow : Window
         var client = Ai.AiClient.FromSettings(Store.Settings);
         var sections = Store.SectionNames().ToList();
         var results = new List<Ai.OrganizeSuggestion>();
+        var busy = AiBusy.Show(this, L.F("Ordenando… {0}/{1}", 0, sel.Count));
         try
         {
             for (int i = 0; i < sel.Count; i++)
             {
                 StatusText.Text = L.F("IA: ordenando… {0}/{1}", i, sel.Count);
+                busy.Text = L.F("Ordenando… {0}/{1}", i, sel.Count);
                 var r = await Ai.AiOrganize.SuggestAsync(client, sel[i], sections);
                 results.Add(r);
                 if (r.Section.Length > 0 && !sections.Contains(r.Section)) sections.Add(r.Section);
             }
         }
-        catch (Ai.AiException ex) { if (results.Count == 0) { AiError(title, ex); return; } PromptWindow.Info(this, title, ex.Message + "\n\n" + L.F("Se revisan las {0} que alcanzaron a procesarse.", results.Count)); }
+        catch (Ai.AiException ex) { busy.Dispose(); if (results.Count == 0) { AiError(title, ex); return; } PromptWindow.Info(this, title, ex.Message + "\n\n" + L.F("Se revisan las {0} que alcanzaron a procesarse.", results.Count)); }
+        busy.Dispose();
         StatusText.Text = "";
         var rows = results.Select(r => (r.Title, L.F("Sección: {0}   ·   antes: {1}", r.Section.Length > 0 ? r.Section : "—", r.Item.Display))).ToList();
         var keep = AiReviewWindow.Ask(this, title, L.T("Destildá lo que no quieras cambiar. Se renombran las capturas y se mueven a la sección sugerida."), rows, L.T("Aplicar"));

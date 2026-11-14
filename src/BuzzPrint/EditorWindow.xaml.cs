@@ -292,7 +292,8 @@ public partial class EditorWindow : Window
         try
         {
             var client = Ai.AiClient.FromSettings(Store.Settings);
-            var r = await Ai.AiCaptions.DescribeAsync(client, item);
+            Ai.CaptionResult r;
+            using (AiBusy.Show(this, L.T("Escribiendo el título y el resumen…"))) r = await Ai.AiCaptions.DescribeAsync(client, item);
             if (r.Caption.Length > 0) { SummaryBox.Text = r.Caption; summaryDirty = true; SaveSummary(); }
             if (r.Title.Length > 0 && Ai.AiCaptions.HasDefaultTitle(item)) { Store.UpdateMeta(item, "title", r.Title); DocTitle.Text = r.Title; Store.RaiseChanged(); }
         }

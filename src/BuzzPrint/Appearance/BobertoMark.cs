@@ -50,6 +50,8 @@ public sealed class BobertoMark : FrameworkElement
 
     /// <summary>Eyes follow the cursor (header mark). Off for picker tiles, which still blink and move.</summary>
     public bool Follow { get; set; } = true;
+    /// <summary>Turns without pause (loading indicator).</summary>
+    public bool Spinning { get; set; }
     /// <summary>Resting tilt in degrees, so a row of shapes looks hand-placed rather than stamped.</summary>
     public double Tilt { get => tilt; set { tilt = value; rotate.Angle = value; if (animated && IsLoaded) StartIdle(); } }
     double tilt;
@@ -212,7 +214,7 @@ public sealed class BobertoMark : FrameworkElement
             }
         }
         if (nextSpin == DateTime.MinValue) nextSpin = now.AddMilliseconds(3000 + random.Next(6000));
-        if (spinStart == DateTime.MinValue && now >= nextSpin) spinStart = now;
+        if (spinStart == DateTime.MinValue && (now >= nextSpin || Spinning)) spinStart = now;
         if (spinStart != DateTime.MinValue)
         {
             dirty = true;

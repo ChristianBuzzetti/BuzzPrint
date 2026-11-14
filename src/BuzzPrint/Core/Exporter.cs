@@ -67,11 +67,11 @@ public static class Exporter
     {
         var parts = new List<string>();
         if (!string.IsNullOrWhiteSpace(p.Item.Source) && p.Item.Source != p.Title) parts.Add(p.Item.Source.Trim());
-        parts.Add(p.Item.Created.ToString("g", CultureInfo.CurrentCulture));
+        parts.Add(p.Item.Created.ToString("g", L.Culture));
         if (p.Item.Width > 0) parts.Add(p.Item.Width + "×" + p.Item.Height);
         return string.Join("  ·  ", parts);
     }
-    static string Subtitle(int count) => L.Count(count, "captura", "capturas") + "  ·  " + DateTime.Now.ToString("D", CultureInfo.CurrentCulture);
+    static string Subtitle(int count) => L.Count(count, "captura", "capturas") + "  ·  " + DateTime.Now.ToString("D", L.Culture);
     static string X(string s) => SecurityElement.Escape(s ?? "") ?? "";
     static (int w, int h) Size(CaptureItem it)
     {

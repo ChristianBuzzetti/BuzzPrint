@@ -88,20 +88,68 @@ public abstract class AiWindowBase : Window
 /// <summary>A text result (incident report…) with Copy.</summary>
 public sealed class AiTextWindow : AiWindowBase
 {
-    AiTextWindow(Window? owner, string title, string purpose, string text) : base(owner, title, purpose, 760, 640)
+    AiTextWindow(Window? owner, string title, string purpose, string text) : base(owner, title, purpose, 980, 680)
     {
         var box = new TextBox { Text = text, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalContentAlignment = VerticalAlignment.Top };
         box.SetResourceReference(TextBox.FontFamilyProperty, "UiFont");
         var copied = Muted("");
         copied.VerticalAlignment = VerticalAlignment.Center;
+        copied.TextTrimming = TextTrimming.CharacterEllipsis;
+        void Done(string message) => copied.Text = message;
+        string Accent() => ExportWindow.AccentHex();
         FootButton(L.T("Cerrar"), false, (_, _) => Close()).IsCancel = true;
-        FootButton(L.T("Copiar"), true, (_, _) => { try { Clipboard.SetText(box.Text); copied.Text = L.T("Copiado al portapapeles."); } catch (System.Runtime.InteropServices.COMException ex) { copied.Text = ex.Message; } });
+        FootButton(L.T("Copiar"), true, (_, _) => { try { Clipboard.SetText(box.Text); Done(L.T("Texto copiado al portapapeles.")); } catch (System.Runtime.InteropServices.COMException ex) { Done(ex.Message); } });
+        // Designed version: pastes formatted (headings, severity pill, log lines) into Outlook, Teams, Jira or Word.
+        FootButton(L.T("Copiar con formato"), false, (_, _) =>
+        {
+            try { ReportFormat.CopyHtml(ReportFormat.Html(title, box.Text, Accent()), box.Text); Done(L.T("Copiado con formato: pegalo en un mail, Teams, Jira o Word.")); }
+            catch (System.Runtime.InteropServices.COMException ex) { Done(ex.Message); }
+        });
+        FootButton(L.T("Guardar imagen"), false, (_, _) =>
+        {
+            var dlg = new Microsoft.Win32.SaveFileDialog { Filter = "PNG|*.png", FileName = SafeName(title) + ".png" };
+            if (dlg.ShowDialog(this) != true) return;
+            try
+            {
+                var png = ReportFormat.Image(title, box.Text, (Color)ColorConverter.ConvertFromString("#" + Accent()));
+                var enc = new PngBitmapEncoder(); enc.Frames.Add(BitmapFrame.Create(png));
+                using (var f = System.IO.File.Create(dlg.FileName)) enc.Save(f);
+                Done(L.T("Imagen guardada: ") + System.IO.Path.GetFileName(dlg.FileName));
+            }
+            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException) { Done(ex.Message); }
+        });
+        FootButton(L.T("Guardar texto"), false, (_, _) =>
+        {
+            var dlg = new Microsoft.Win32.SaveFileDialog { Filter = L.T("Texto") + "|*.txt|Markdown|*.md|HTML|*.html", FileName = SafeName(title) + ".txt" };
+            if (dlg.ShowDialog(this) != true) return;
+            try
+            {
+                string ext = System.IO.Path.GetExtension(dlg.FileName).ToLowerInvariant();
+                string content = ext switch
+                {
+                    ".md" => ReportFormat.Markdown(title, box.Text),
+                    ".html" or ".htm" => ReportFormat.FullHtmlPage(title, ReportFormat.Html(title, box.Text, Accent())),
+                    _ => box.Text,
+                };
+                System.IO.File.WriteAllText(dlg.FileName, content, new System.Text.UTF8Encoding(false));
+                Done(L.T("Archivo guardado: ") + System.IO.Path.GetFileName(dlg.FileName));
+            }
+            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException) { Done(ex.Message); }
+        });
         DockPanel.SetDock(copied, Dock.Left);
+        Foot.LastChildFill = true;
         Foot.Children.Add(copied);
         Root.Children.Add(box);
     }
 
+    static string SafeName(string title)
+    {
+        var bad = System.IO.Path.GetInvalidFileNameChars();
+        return new string(title.Select(c => bad.Contains(c) ? '_' : c).ToArray()) + " " + DateTime.Now.ToString("yyyy-MM-dd HHmm");
+    }
+
     public static void Show(Window? owner, string title, string purpose, string text) => new AiTextWindow(owner, title, purpose, text).ShowDialog();
+    public static Window ForShot(Window owner, string title, string purpose, string text) => new AiTextWindow(owner, title, purpose, text);
 }
 
 /// <summary>Questions and answers about one capture, the capture on the left.</summary>
@@ -160,7 +208,7 @@ public sealed class AiAskWindow : AiWindowBase
         var thinking = Muted(L.T("Pensando…")); thinking.Margin = new Thickness(0, 0, 0, 12);
         transcript.Children.Add(thinking); scroller.ScrollToEnd();
         send.IsEnabled = false;
-        try { string a = await conversation.AskAsync(q); transcript.Children.Remove(thinking); Add(a, false); }
+        try { string a; using (AiBusy.Show(this, L.T("Mirando la captura para responder…"))) a = await conversation.AskAsync(q); transcript.Children.Remove(thinking); Add(a, false); }
         catch (AiException ex) { transcript.Children.Remove(thinking); var err = Muted(ex.Message); err.SetResourceReference(TextBlock.ForegroundProperty, "ErrorInk"); err.Margin = new Thickness(0, 0, 0, 12); transcript.Children.Add(err); }
         finally { send.IsEnabled = true; input.Focus(); scroller.ScrollToEnd(); }
     }

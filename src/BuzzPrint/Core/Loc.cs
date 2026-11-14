@@ -8,6 +8,8 @@ public static class L
 {
     public static string Lang { get; set; } = "en";
     public static bool Es => Lang == "es";
+    /// <summary>Dates and numbers in the app's language (not Windows' regional format), for exports and titles.</summary>
+    public static System.Globalization.CultureInfo Culture => System.Globalization.CultureInfo.GetCultureInfo(Es ? "es-AR" : "en-US");
     public static string T(string es) => Es ? es : LocEn.Map.TryGetValue(es, out var en) ? en : es;
     public static string F(string es, params object[] args) => string.Format(T(es), args);
     /// <summary>"1 captura" / "3 capturas" in the current language.</summary>

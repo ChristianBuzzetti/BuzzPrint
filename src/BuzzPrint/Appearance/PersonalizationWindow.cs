@@ -25,7 +25,8 @@ public sealed class PersonalizationWindow:Window
     private readonly TextBlock previewTitle=new(),previewSql=new(),previewStatus=new();
     // The preview shows the configured Boberto live (same engine and profile as the console dock): look, accessory,
     // background, frame and idle animation, at the 16:9 proportion of the art.
-    private readonly Border bobertoPreview=new() {Margin=new Thickness(0,14,0,0),MinHeight=158,ClipToBounds=true,BorderThickness=new Thickness(1)};
+    private readonly Border bobertoPreview=new() {Margin=new Thickness(0,14,0,0),Height=158,VerticalAlignment=VerticalAlignment.Top,ClipToBounds=true,BorderThickness=new Thickness(1)};
+    private double previewWidth=348;private Grid? previewColumns;private ScrollViewer? previewScroll;private FrameworkElement? previewScene;
     public BobertoDockControl? PreviewDock {get;private set;}
     private readonly Button studioButton;
     public Button SectionSwitch=>studioButton;
@@ -60,7 +61,7 @@ public sealed class PersonalizationWindow:Window
         var saved=new StackPanel {Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};var check=Glyph("",12);check.SetResourceReference(TextBlock.ForegroundProperty,"Ok");saved.Children.Add(check);saved.Children.Add(Muted(L.T("Los cambios se aplican al instante · se guardan localmente para BuzzPrint")));foot.Children.Add(saved);
         DockPanel.SetDock(foot,Dock.Bottom);root.Children.Add(foot);
 
-        var columns=new Grid();columns.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(348)});columns.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(20)});columns.ColumnDefinitions.Add(new ColumnDefinition());
+        var columns=new Grid();previewColumns=columns;columns.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(previewWidth)});columns.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(20)});columns.ColumnDefinitions.Add(new ColumnDefinition());
         var preview=BuildPreview(testProfile);columns.Children.Add(preview);
         Sections.SetResourceReference(StyleProperty,"SegmentedTabs");
         Grid.SetColumn(Sections,2);columns.Children.Add(Sections);root.Children.Add(columns);Content=root;
@@ -69,7 +70,7 @@ public sealed class PersonalizationWindow:Window
             if(closed||args.Source!=Sections)return;
             bool full=Sections.SelectedIndex==4;
             // The header action always leads to the opposite place: Studio from the workspace sections, and back.
-            studioButton.Content=full?L.T("Personalizar espacio de trabajo"):L.T("Boberto Studio");preview.Visibility=full?Visibility.Collapsed:Visibility.Visible;columns.ColumnDefinitions[0].Width=new GridLength(full?0:348);columns.ColumnDefinitions[1].Width=new GridLength(full?0:20);
+            studioButton.Content=full?L.T("Personalizar espacio de trabajo"):L.T("Boberto Studio");preview.Visibility=full?Visibility.Collapsed:Visibility.Visible;columns.ColumnDefinitions[0].Width=new GridLength(full?0:previewWidth);columns.ColumnDefinitions[1].Width=new GridLength(full?0:20);
             if(full && Studio==null){Studio=new BobertoStudioControl(settings,isolatedProfile);Studio.FrameReady+=image=>frameChanged?.Invoke(image);((DockPanel)((TabItem)Sections.Items[4]).Content).Children.Add(Studio);}
             if(PreviewDock!=null)_=PreviewDock.PauseAsync(full||!settings.BobertoVisible);
             if(Studio!=null)await Studio.PauseAsync(!full);
@@ -83,10 +84,11 @@ public sealed class PersonalizationWindow:Window
     {
         var card=new ContentControl();card.SetResourceReference(StyleProperty,"NeoCard");
         var scroll=new ScrollViewer {VerticalScrollBarVisibility=ScrollBarVisibility.Auto};var scene=new StackPanel();
-        // Boberto's stage takes whatever height the column has left (at least 158 px), so no empty strip sits under it;
-        // when the window is short the column still scrolls.
-        var column=new DockPanel {Margin=new Thickness(18,16,18,18),LastChildFill=true};DockPanel.SetDock(scene,Dock.Top);column.Children.Add(scene);
-        scroll.ScrollChanged+=(_,e)=>{if(e.ViewportHeightChange!=0)column.MinHeight=Math.Max(0,scroll.ViewportHeight-34);};
+        // Boberto's scene is 16:9 art: his stage is always exactly 16:9 (never cropped or zoomed), and the column widens
+        // just enough for that 16:9 stage to fill the height left under the miniature, so no empty strip remains.
+        var column=new DockPanel {Margin=new Thickness(18,16,18,18),LastChildFill=false};DockPanel.SetDock(scene,Dock.Top);column.Children.Add(scene);
+        previewScroll=scroll;previewScene=scene;
+        scroll.ScrollChanged+=(_,e)=>{if(e.ViewportHeightChange!=0)FitPreview();};scene.SizeChanged+=(_,_)=>FitPreview();
         scroll.Content=column;card.Content=scroll;
         var top=new DockPanel {Margin=new Thickness(0,0,0,12)};var badge=new Border {BorderThickness=new Thickness(1),Padding=new Thickness(6,1,6,1),VerticalAlignment=VerticalAlignment.Center};badge.SetResourceReference(Border.BorderBrushProperty,"FaintBorder");var badgeText=Mono(L.T("DATOS DE EJEMPLO"),9);badgeText.SetResourceReference(TextBlock.ForegroundProperty,"Muted");badge.Child=badgeText;DockPanel.SetDock(badge,Dock.Right);top.Children.Add(badge);top.Children.Add(SectionTitle(L.T("VISTA PREVIA")));scene.Children.Add(top);
         previewTitle.FontWeight=FontWeights.SemiBold;previewTitle.SetResourceReference(TextBlock.FontSizeProperty,"SectionFontSize");scene.Children.Add(previewTitle);
@@ -119,8 +121,20 @@ public sealed class PersonalizationWindow:Window
         stack.Children.Add(statusFrame);scene.Children.Add(app);
 
         bobertoPreview.SetResourceReference(Border.BorderBrushProperty,"StrongBorder");
-        PreviewDock=new BobertoDockControl(settings,testProfile,cacheSnapshot:false,suspendRenderer:false);PreviewDock.StudioRequested+=()=>Dispatcher.BeginInvoke(()=> {if(!closed)Sections.SelectedIndex=4;});bobertoPreview.Child=PreviewDock;column.Children.Add(bobertoPreview);
+        PreviewDock=new BobertoDockControl(settings,testProfile,cacheSnapshot:false,suspendRenderer:false);PreviewDock.StudioRequested+=()=>Dispatcher.BeginInvoke(()=> {if(!closed)Sections.SelectedIndex=4;});bobertoPreview.Child=PreviewDock;DockPanel.SetDock(bobertoPreview,Dock.Top);column.Children.Add(bobertoPreview);
         return card;
+    }
+    private void FitPreview()
+    {
+        if(previewScroll==null||previewScene==null||previewColumns==null||previewColumns.ColumnDefinitions[0].Width.Value==0)return;
+        double chrome=previewColumns.ColumnDefinitions[0].ActualWidth-bobertoPreview.ActualWidth;   // card border + column margins
+        if(chrome<=0||chrome>120)chrome=40;
+        double room=previewScroll.ViewportHeight-34-previewScene.ActualHeight-14;   // height left under the miniature
+        double max=Math.Max(348,Math.Min(560,ActualWidth*.42));
+        double width=Math.Clamp(Math.Round(Math.Max(158,room)*16/9+chrome),320,max);
+        if(Math.Abs(width-previewWidth)>2){previewWidth=width;previewColumns.ColumnDefinitions[0].Width=new GridLength(width);}
+        double stage=Math.Round((previewWidth-chrome)*9/16);
+        if(Math.Abs(bobertoPreview.Height-stage)>1)bobertoPreview.Height=stage;
     }
     private static Border GridRow(string name,string state,string id,bool header=false,bool selectedRow=false)
     {

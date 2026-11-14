@@ -380,6 +380,44 @@ public partial class App : Application
         if (!hotkeys.Register(4, st.HotkeyRecord)) fails += L.F("No se pudo registrar {0}.", st.HotkeyRecord) + "\n";
         if (fails.Length > 0) Toast(L.T("Atajos de teclado"), fails.Trim());
         StartHotkeyRetry();
+        if (CaptureHotkeyText == "PrintScreen" || st.HotkeyCapture.Equals("PrintScreen", StringComparison.OrdinalIgnoreCase))
+            Dispatcher.BeginInvoke(OfferPrintScreen, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+    }
+
+    // Windows 11 ships "Use the Print screen key to open screen capture" on. With it on, Windows takes Print Screen
+    // before any app (RegisterHotKey still succeeds), so the key opens the Snipping Tool instead of BuzzPrint.
+    // Missing value = Windows default, which is on from Windows 11.
+    static bool SnippingOwnsPrintScreen()
+    {
+        using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Control Panel\Keyboard");
+        object? v = key?.GetValue("PrintScreenKeyForSnippingEnabled");
+        if (v is int i) return i != 0;
+        return Environment.OSVersion.Version.Build >= 22000;
+    }
+
+    /// <summary>Asks once, with the person's consent, to hand Print Screen to BuzzPrint (the same per-user setting
+    /// as Settings → Accessibility → Keyboard). Never changed silently.</summary>
+    void OfferPrintScreen()
+    {
+        if (Store.Settings.SnippingPromptAnswered || Exiting || !SnippingOwnsPrintScreen()) return;
+        bool yes = PromptWindow.Confirm(main, L.T("ImprPant abre Recortes"),
+            L.T("Windows está usando la tecla ImprPant para abrir la Herramienta Recortes, así que no llega a BuzzPrint.") + "\n\n" +
+            L.T("Ajuste: Configuración → Accesibilidad → Teclado → Usar ImprPant para abrir la captura de pantalla") + "\n" +
+            L.T("Atajo alternativo: Ctrl+ImprPant sigue funcionando"),
+            L.T("Usar ImprPant en BuzzPrint"), L.T("Dejar así"));
+        Store.Settings.SnippingPromptAnswered = true; Store.SaveSettings();
+        if (!yes) return;
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Control Panel\Keyboard");
+            key.SetValue("PrintScreenKeyForSnippingEnabled", 0, Microsoft.Win32.RegistryValueKind.DWord);
+            RegisterHotkeys();
+            PromptWindow.Info(main, L.T("ImprPant es de BuzzPrint"), L.T("Listo. Si Recortes se sigue abriendo, cerrá sesión en Windows y volvé a entrar."));
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+        {
+            PromptWindow.Info(main, L.T("ImprPant abre Recortes"), L.T("No se pudo cambiar el ajuste. Desactivalo a mano en Configuración → Accesibilidad → Teclado."));
+        }
     }
 
     // A key can be taken by another app when BuzzPrint starts (the other BuzzPrint build, the Snipping Tool) and be

@@ -46,6 +46,7 @@ namespace BuzzPrint
         public bool CopyAfterCapture = true;
         public bool OpenEditorAfterCapture = false;
         public bool EditKeepOriginal = true;
+        public bool SnippingPromptAnswered = false;   // asked once whether BuzzPrint should own Print Screen
         public bool WebView2Declined = false;   // asked once at startup; Help > Check components asks again   // first save of an edit creates "<name>_editada" and leaves the original as it was
         public bool PasteOnPick = true;
         public int DelaySeconds = 3;

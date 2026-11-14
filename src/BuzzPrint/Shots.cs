@@ -134,6 +134,25 @@ static class Shots
                 Save(w, Path.Combine(dir, file), log);
                 w.Close();
             }
+#if PREVIEW
+            {
+                string sampleReport = "Summary\nDisk almost full on the demo app server\n\nDescription\nThe monitoring screen shows the data volume of DEMO-APP-01 at 96% after the nightly batch.\n\nSteps to reproduce\n1. Open the storage dashboard\n2. Filter by DEMO-APP-01\n\nActual result\n\"ALERT: /data 96% used (threshold 90%)\"\n\nEnvironment\n- Server: DEMO-APP-01\n- Volume: /data\n\nSuggested severity\nMedium — the batch still finishes, but the next run may fail.";
+                var report = AiTextWindow.ForShot(main, "Incident report", "Sample data, invented for the screenshot run.", sampleReport);
+                report.Show();
+                await Task.Delay(600);
+                Save(report, Path.Combine(dir, "15-report.png"), log);
+                report.Close();
+                var png = ReportFormat.Image("Incident report", sampleReport, (Color)ColorConverter.ConvertFromString("#" + ExportWindow.AccentHex()));
+                var pngEnc = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                pngEnc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(png));
+                using (var f = File.Create(Path.Combine(dir, "16-report-image.png"))) pngEnc.Save(f);
+                File.WriteAllText(Path.Combine(dir, "17-report.html"), ReportFormat.FullHtmlPage("Incident report", ReportFormat.Html("Incident report", sampleReport, ExportWindow.AccentHex())));
+                var busy = AiBusy.Show(main, "Writing the report from 3 capture(s)…");
+                await Task.Delay(900);
+                Save(busy.Veil, Path.Combine(dir, "18-ai-busy.png"), log);
+                busy.Dispose();
+            }
+#endif
             // The 3D head turn: every shape looking left, front, right, up and down, at 96 px and at 32 px.
             {
                 var sheet = new DrawingVisual();
