@@ -378,28 +378,75 @@ public sealed class PersonalizationWindow:Window
         var group=Group(section,L.T("LOGO"),L.T("El Boberto junto al nombre de la app, que también es el ícono de la ventana y de la bandeja. Mira el cursor y parpadea; hacele clic."));
         var row=new DockPanel();
         var left=new StackPanel {Margin=new Thickness(0,0,22,0)};
-        var big=new BobertoMark {Width=104,Height=104,Animated=settings.BobertoMotion&&SystemParameters.ClientAreaAnimation};big.SetResourceReference(BobertoMark.TileProperty,"Accent");left.Children.Add(big);
+        var big=new BobertoMark {Width=120,Height=120,Animated=settings.BobertoMotion&&SystemParameters.ClientAreaAnimation};big.SetResourceReference(BobertoMark.TileProperty,"Accent");left.Children.Add(big);
         var reset=new Button {Content=L.T("Restablecer logo"),Margin=new Thickness(0,12,0,0),HorizontalAlignment=HorizontalAlignment.Stretch};reset.Click+=(_,_)=>{App.Current.SetMark(new MarkStyle());UpdatePreview();};left.Children.Add(reset);
         DockPanel.SetDock(left,Dock.Left);row.Children.Add(left);
         var options=new StackPanel();row.Children.Add(options);group.Children.Add(row);
-        void Line(string title,(string value,string name)[] items,Func<MarkStyle,string> get,Func<MarkStyle,string,MarkStyle> with)
+        // Shapes and eyes: round tiles with a live little mark, each resting at its own slight angle; the name is the
+        // tooltip. The chosen one gets an accent ring. Colors are plain dots.
+        bool lively=settings.BobertoMotion&&SystemParameters.ClientAreaAnimation;
+        // Shape tiles show the bare silhouette in color (a dark head borrows the accent so it reads on a dark surface).
+        static MarkStyle Bare(MarkStyle m)
         {
-            options.Children.Add(Heading(title,new Thickness(0,2,0,6)));
-            var wrap=new WrapPanel {Margin=new Thickness(0,0,0,6)};
-            foreach(var (value,name) in items)
+            var c=MarkStyle.ToColor(m.Head);double lum=(.2126*c.R+.7152*c.G+.0722*c.B)/255;
+            string head=m.Head;
+            if(lum<.25&&Application.Current.Resources["Accent"] is SolidColorBrush a)head="#"+a.Color.R.ToString("X2")+a.Color.G.ToString("X2")+a.Color.B.ToString("X2");
+            return m with {Tile="none",Head=head};
+        }
+        void Tiles(string title,(string value,string name)[] items,Func<MarkStyle,string> get,Func<MarkStyle,string,MarkStyle> with,bool bare=false)
+        {
+            options.Children.Add(Heading(title,new Thickness(0,4,0,8)));
+            var wrap=new WrapPanel {Margin=new Thickness(0,0,0,10)};
+            double[] tilts={-7,5,-3,8,-6,3,-8,6,-4,7,-5,4,-2,6};
+            for(int i=0;i<items.Length;i++)
             {
-                var mini=new BobertoMark {Width=34,Height=34,Animated=false,HorizontalAlignment=HorizontalAlignment.Center,IsHitTestVisible=false};mini.SetResourceReference(BobertoMark.TileProperty,"Accent");
-                refreshControls.Add(()=>mini.Style=with(BobertoMark.Current,value));
-                mini.Style=with(BobertoMark.Current,value);
-                var card=OptionCard(mini,L.T(name),null,()=>get(BobertoMark.Current)==value,()=> {App.Current.SetMark(with(BobertoMark.Current,value));UpdatePreview();});
-                card.Width=106;wrap.Children.Add(card);
+                var (value,name)=items[i];
+                var mini=new BobertoMark {Width=40,Height=40,Animated=lively,Follow=false,Tilt=tilts[i%tilts.Length],IsHitTestVisible=false};mini.SetResourceReference(BobertoMark.TileProperty,"Accent");
+                refreshControls.Add(()=>mini.Style=bare?Bare(with(BobertoMark.Current,value)):with(BobertoMark.Current,value));
+                mini.Style=bare?Bare(with(BobertoMark.Current,value)):with(BobertoMark.Current,value);
+                var ring=new Border {Width=54,Height=54,CornerRadius=new CornerRadius(27),BorderThickness=new Thickness(2),Child=mini,Background=Brushes.Transparent};
+                void Paint(){if(get(BobertoMark.Current)==value)ring.SetResourceReference(Border.BorderBrushProperty,"Accent");else ring.BorderBrush=Brushes.Transparent;}
+                Paint();refreshControls.Add(Paint);
+                var tile=new Button {Content=ring,ToolTip=L.T(name),Margin=new Thickness(2),Padding=new Thickness(0),Cursor=Cursors.Hand,Background=Brushes.Transparent,BorderBrush=Brushes.Transparent,Template=BareTemplate()};
+                tile.MouseEnter+=(_,_)=>{if(lively)mini.Squish();};
+                tile.Click+=(_,_)=>{App.Current.SetMark(with(BobertoMark.Current,value));UpdatePreview();big.Squish();};
+                System.Windows.Automation.AutomationProperties.SetName(tile,L.T(name));
+                wrap.Children.Add(tile);
             }
             options.Children.Add(wrap);
         }
-        Line(L.T("Forma"),[("hex","Hexágono"),("circle","Círculo"),("squircle","Redondeado"),("diamond","Rombo"),("ghost","Fantasma")],m=>m.Shape,(m,v)=>m with {Shape=v});
-        Line(L.T("Ojos"),[("oval","Ovalados"),("round","Redondos"),("happy","Felices"),("line","Rayitas"),("pixel","Píxel")],m=>m.Eyes,(m,v)=>m with {Eyes=v});
-        Line(L.T("Cabeza"),[("#0E1015","Negro"),("#F4F4F5","Blanco"),("#2684FF","Azul"),("#10B981","Verde"),("#F59E0B","Ámbar"),("#8B5CF6","Violeta"),("#F43F5E","Rosa")],m=>m.Head,(m,v)=>m with {Head=v});
-        Line(L.T("Fondo"),[("accent","Acento"),("#F43F5E","Rosa"),("#0E1015","Negro"),("#F4F4F5","Blanco"),("#2684FF","Azul"),("#10B981","Verde"),("#F59E0B","Ámbar"),("#8B5CF6","Violeta"),("none","Sin fondo")],m=>m.Tile,(m,v)=>m with {Tile=v});
+        void Dots(string title,(string value,string name)[] items,Func<MarkStyle,string> get,Func<MarkStyle,string,MarkStyle> with)
+        {
+            options.Children.Add(Heading(title,new Thickness(0,4,0,8)));
+            var wrap=new WrapPanel {Margin=new Thickness(0,0,0,10)};
+            foreach(var (value,name) in items)
+            {
+                var dot=new Border {Width=24,Height=24,CornerRadius=new CornerRadius(12),BorderThickness=new Thickness(1)};
+                if(value=="accent")dot.SetResourceReference(Border.BackgroundProperty,"Accent");
+                else if(value=="none"){dot.Background=Brushes.Transparent;dot.Child=new TextBlock {Text="\uE711",FontFamily=new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),FontSize=11,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};}
+                else dot.Background=new SolidColorBrush(MarkStyle.ToColor(value));
+                dot.SetResourceReference(Border.BorderBrushProperty,"StrongBorder");
+                var ring=new Border {Width=34,Height=34,CornerRadius=new CornerRadius(17),BorderThickness=new Thickness(2),Child=dot,Background=Brushes.Transparent};
+                void Paint(){if(get(BobertoMark.Current)==value)ring.SetResourceReference(Border.BorderBrushProperty,"Accent");else ring.BorderBrush=Brushes.Transparent;}
+                Paint();refreshControls.Add(Paint);
+                var b=new Button {Content=ring,ToolTip=L.T(name),Margin=new Thickness(2),Padding=new Thickness(0),Cursor=Cursors.Hand,Template=BareTemplate()};
+                b.Click+=(_,_)=>{App.Current.SetMark(with(BobertoMark.Current,value));UpdatePreview();big.Squish();};
+                System.Windows.Automation.AutomationProperties.SetName(b,L.T(name));
+                wrap.Children.Add(b);
+            }
+            options.Children.Add(wrap);
+        }
+        Tiles(L.T("Forma"),[("hex","Hexágono"),("circle","Círculo"),("blob","Burbuja"),("pebble","Piedra"),("cloud","Nube"),("drop","Gota"),("clover","Trébol"),("flower","Flor"),("star","Estrella"),("burst","Destello"),("heart","Corazón"),("squircle","Redondeado"),("diamond","Rombo"),("ghost","Fantasma")],m=>m.Shape,(m,v)=>m with {Shape=v},bare:true);
+        Tiles(L.T("Ojos"),[("pill","Cápsula"),("oval","Ovalados"),("round","Redondos"),("happy","Felices"),("line","Rayitas"),("pixel","Píxel")],m=>m.Eyes,(m,v)=>m with {Eyes=v});
+        Dots(L.T("Cabeza"),[("#0E1015","Negro"),("#F4F4F5","Blanco"),("#A86B3C","Caramelo"),("#F43F5E","Rosa"),("#F97316","Naranja"),("#F59E0B","Ámbar"),("#10B981","Verde"),("#14B8A6","Turquesa"),("#2684FF","Azul"),("#8B5CF6","Violeta"),("#EC4899","Fucsia"),("#71717A","Gris")],m=>m.Head,(m,v)=>m with {Head=v});
+        Dots(L.T("Fondo"),[("accent","Acento"),("none","Sin fondo"),("#0E1015","Negro"),("#F4F4F5","Blanco"),("#F43F5E","Rosa"),("#F59E0B","Ámbar"),("#10B981","Verde"),("#2684FF","Azul"),("#8B5CF6","Violeta")],m=>m.Tile,(m,v)=>m with {Tile=v});
+    }
+    private static ControlTemplate BareTemplate()
+    {
+        var t=new ControlTemplate(typeof(Button));
+        var f=new FrameworkElementFactory(typeof(ContentPresenter));
+        t.VisualTree=f;
+        return t;
     }
     // Studio's page: reached from the header action, so its tab stays out of the section strip.
     private void BuildBoberto()=>Sections.Items.Add(new TabItem {Header=TabHeader("Boberto"),Content=new DockPanel(),Visibility=Visibility.Collapsed});

@@ -9,8 +9,9 @@ namespace BuzzPrint;
 /// <summary>How the BuzzPrint mark looks (Personalize → Effects → Logo). Tile "accent" follows the palette, "none" drops it.</summary>
 public sealed record MarkStyle(string Shape = "hex", string Head = "#0E1015", string Eyes = "oval", string Tile = "accent")
 {
-    public static readonly string[] Shapes = { "hex", "circle", "squircle", "diamond", "ghost" };
-    public static readonly string[] EyeStyles = { "oval", "round", "happy", "line", "pixel" };
+    // Classic shapes plus soft, organic ones (each drawn from its own curve, see BobertoMark.HeadGeometry).
+    public static readonly string[] Shapes = { "hex", "circle", "squircle", "diamond", "ghost", "blob", "pebble", "cloud", "drop", "clover", "flower", "star", "burst", "heart" };
+    public static readonly string[] EyeStyles = { "oval", "pill", "round", "happy", "line", "pixel" };
     public static readonly string[] HeadColors = { "#0E1015", "#F4F4F5", "#2684FF", "#10B981", "#F59E0B", "#8B5CF6", "#F43F5E" };
     public static readonly string[] TileColors = { "accent", "#F43F5E", "#0E1015", "#F4F4F5", "#2684FF", "#10B981", "#F59E0B", "#8B5CF6", "none" };
 
@@ -44,6 +45,16 @@ public sealed class BobertoMark : FrameworkElement
     public MarkStyle? Style { get => style; set { style = value; InvalidateVisual(); } }
     MarkStyle? style;
 
+    /// <summary>Eyes follow the cursor (header mark). Off for picker tiles, which still blink, sway and wiggle.</summary>
+    public bool Follow { get; set; } = true;
+    /// <summary>Resting tilt in degrees, so a row of shapes looks hand-placed rather than stamped.</summary>
+    public double Tilt { get => tilt; set { tilt = value; InvalidateVisual(); } }
+    double tilt;
+    readonly DateTime born = DateTime.Now;
+    DateTime squishStart = DateTime.MinValue, wiggleStart = DateTime.MinValue;
+    /// <summary>A springy squash, as when the shape changes.</summary>
+    public void Squish() { if (animated) { squishStart = DateTime.Now; Sync(); } }
+
     /// <summary>Follow the cursor and blink. Off = still mark (reduced motion).</summary>
     public bool Animated { get => animated; set { animated = value; if (!value) { eye = target = default; blinkL = blinkR = 1; InvalidateVisual(); } Sync(); } }
 
@@ -62,11 +73,14 @@ public sealed class BobertoMark : FrameworkElement
         Cursor = Cursors.Hand;
         timer.Tick += (_, _) => Step();
         IsVisibleChanged += (_, _) => Sync();
-        Loaded += (_, _) => { CurrentChanged += InvalidateVisual; Sync(); };
-        Unloaded += (_, _) => { CurrentChanged -= InvalidateVisual; timer.Stop(); };
+        Loaded += (_, _) => { CurrentChanged += OnCurrentChanged; Sync(); };
+        Unloaded += (_, _) => { CurrentChanged -= OnCurrentChanged; timer.Stop(); };
+        MouseEnter += (_, _) => { if (animated) wiggleStart = DateTime.Now; };
         // Click: both eyes, one after the other, or a quick double blink.
         MouseLeftButtonDown += (_, _) => { if (animated) Start((Blink)random.Next(3), 170); };
     }
+
+    void OnCurrentChanged() { if (style == null) Squish(); InvalidateVisual(); }
 
     void Start(Blink kind, double unit) { blink = kind; blinkUnit = unit; blinkStart = DateTime.Now; }
 
@@ -86,7 +100,7 @@ public sealed class BobertoMark : FrameworkElement
         var window = Window.GetWindow(this);
         if (window == null || window.WindowState == WindowState.Minimized) return;
         // Eyes: look toward the cursor, wherever it is on screen; the reach eases off with distance.
-        if (GetCursorPos(out var p) && PresentationSource.FromVisual(this) != null)
+        if (Follow && GetCursorPos(out var p) && PresentationSource.FromVisual(this) != null)
         {
             Point centre = PointToScreen(new Point(ActualWidth / 2, ActualHeight * .48));
             var d = new Vector(p.X - centre.X, p.Y - centre.Y);
@@ -123,7 +137,23 @@ public sealed class BobertoMark : FrameworkElement
         double s = Math.Min(ActualWidth, ActualHeight);
         if (s <= 0) return;
         dc.PushTransform(new TranslateTransform((ActualWidth - s) / 2, (ActualHeight - s) / 2));
+        // Life: a slow sway and breath at rest, a springy squash on change, a quick wiggle under the mouse.
+        double angle = tilt, sx = 1, sy = 1;
+        if (animated)
+        {
+            double t = (DateTime.Now - born).TotalSeconds + tilt;
+            angle += Math.Sin(t * 0.9) * 2.2;
+            double breath = Math.Sin(t * 1.7) * 0.012;
+            sx += breath; sy -= breath;
+            double q = (DateTime.Now - squishStart).TotalSeconds;
+            if (q < 0.7) { double k = Math.Exp(-q * 6) * Math.Cos(q * 22); sx += 0.16 * k; sy -= 0.16 * k; }
+            double w = (DateTime.Now - wiggleStart).TotalSeconds;
+            if (w < 0.6) angle += Math.Exp(-w * 7) * Math.Sin(w * 30) * 10;
+        }
+        dc.PushTransform(new RotateTransform(angle, s / 2, s / 2));
+        dc.PushTransform(new ScaleTransform(sx, sy, s / 2, s * 0.6));
         Draw(dc, s, style ?? current, Tile, eye, blinkL, blinkR);
+        dc.Pop(); dc.Pop();
         dc.Pop();
     }
 
@@ -148,7 +178,8 @@ public sealed class BobertoMark : FrameworkElement
             case "ghost":
                 var ghost = Geometry.Parse("M14.5 32 A17.5 17.5 0 0 1 49.5 32 V49 Q46.6 52.5 43.7 49 Q40.8 45.5 37.9 49 Q35 52.5 32 49 Q29 45.5 26.1 49 Q23.2 52.5 20.3 49 Q17.4 45.5 14.5 49 Z");
                 g.DrawGeometry(ink, null, ghost); cy = 31; break;
-            default: g.DrawGeometry(ink, round, Poly((32, 13), (48.5, 22.5), (48.5, 41.5), (32, 51), (15.5, 41.5), (15.5, 22.5))); break;
+            case "hex": g.DrawGeometry(ink, round, Poly((32, 13), (48.5, 22.5), (48.5, 41.5), (32, 51), (15.5, 41.5), (15.5, 22.5))); break;
+            default: { var head = HeadGeometry(st.Shape, out cy); g.DrawGeometry(ink, null, head); break; }
         }
 
         // Eyes contrast with the head: white on dark heads, ink on light ones.
@@ -167,6 +198,7 @@ public sealed class BobertoMark : FrameworkElement
         switch (kind)
         {
             case "round": g.DrawEllipse(b, null, c, 4.6 * k, 4.6 * k * open); break;
+            case "pill": { double h = 11.5 * k * open, w = 5.2 * k; g.DrawRoundedRectangle(b, null, new Rect(c.X - w / 2, c.Y - h / 2, w, h), w / 2, Math.Min(w / 2, h / 2)); break; }
             case "line": g.DrawRoundedRectangle(b, null, new Rect(c.X - 4.6 * k, c.Y - 1.6 * k * open, 9.2 * k, 3.2 * k * open), 1.6 * k, 1.6 * k * open); break;
             case "pixel": { double h = 7 * k * open; g.DrawRoundedRectangle(b, null, new Rect(c.X - 3.5 * k, c.Y - h / 2, 7 * k, h), 1.2, 1.2); break; }
             case "happy":
@@ -179,6 +211,54 @@ public sealed class BobertoMark : FrameworkElement
             }
             default: g.DrawEllipse(b, null, c, 3.6 * k, 5.4 * k * open); break;
         }
+    }
+
+    /// <summary>The organic heads, in the 64-unit square: polar curves (smooth lobes, no corners) and a few paths.
+    /// Each was drawn for BuzzPrint; <paramref name="eyeY"/> is where the eyes sit.</summary>
+    static Geometry HeadGeometry(string shape, out double eyeY)
+    {
+        eyeY = 32;
+        switch (shape)
+        {
+            case "blob": return Polar(a => 19.2 * (1 + .055 * Math.Cos(3 * a + .5) + .035 * Math.Sin(2 * a)));
+            case "pebble": eyeY = 33; return Polar(a => 19 * (1 + .09 * Math.Cos(2 * a + .9) + .045 * Math.Cos(3 * a + 2.1)), 1.08, .92);
+            case "clover": return Polar(a => 16.8 + 4.4 * Math.Cos(4 * a + Math.PI / 4));
+            case "flower": return Polar(a => 17.2 + 3 * Math.Cos(6 * a));
+            case "star": return Polar(a => 13.6 + 9 * Math.Pow((1 + Math.Cos(4 * a)) / 2, 2.4));
+            case "burst": return Polar(a => 17.6 + 2.4 * Math.Cos(9 * a));
+            case "cloud":
+            {
+                eyeY = 35;
+                var g = new GeometryGroup { FillRule = FillRule.Nonzero };
+                g.Children.Add(new EllipseGeometry(new Point(23, 37), 10.5, 10.5));
+                g.Children.Add(new EllipseGeometry(new Point(33, 28.5), 13, 13));
+                g.Children.Add(new EllipseGeometry(new Point(43, 36), 10, 10));
+                g.Children.Add(new RectangleGeometry(new Rect(22, 34, 22, 13), 6, 6));
+                g.Freeze();
+                return g;
+            }
+            case "drop": eyeY = 36; return Frozen(Geometry.Parse("M32 11 C39 20 50.5 28.5 50.5 38.5 A18.5 18.5 0 0 1 13.5 38.5 C13.5 28.5 25 20 32 11 Z"));
+            case "heart": eyeY = 31; return Frozen(Geometry.Parse("M32 51 C19 43 11.5 35 12.5 25.5 C13.5 17.5 22.5 14 28.5 18.5 C30.5 20 31.5 21.5 32 23 C32.5 21.5 33.5 20 35.5 18.5 C41.5 14 50.5 17.5 51.5 25.5 C52.5 35 45 43 32 51 Z"));
+            default: return Polar(a => 19.5);
+        }
+    }
+
+    static Geometry Frozen(Geometry g) { g.Freeze(); return g; }
+
+    /// <summary>Closed smooth outline r(angle) around (32,32), optionally stretched on x/y.</summary>
+    static Geometry Polar(Func<double, double> r, double sx = 1, double sy = 1)
+    {
+        var geo = new StreamGeometry();
+        using (var c = geo.Open())
+        {
+            const int n = 144;
+            var pts = new List<Point>(n);
+            for (int i = 0; i < n; i++) { double a = i * 2 * Math.PI / n; double rr = r(a); pts.Add(new Point(32 + Math.Cos(a) * rr * sx, 32 + Math.Sin(a) * rr * sy)); }
+            c.BeginFigure(pts[0], true, true);
+            c.PolyLineTo(pts.Skip(1).ToList(), true, true);
+        }
+        geo.Freeze();
+        return geo;
     }
 
     static Geometry Poly(params (double x, double y)[] pts)
