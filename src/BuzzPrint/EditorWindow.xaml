@@ -36,6 +36,7 @@
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
           <Border x:Name="DirtyChip" Visibility="Collapsed" Background="{DynamicResource AccentTint}" BorderBrush="{DynamicResource AccentRing}" BorderThickness="1" Padding="10,4" CornerRadius="{DynamicResource ControlRadius}" VerticalAlignment="Center"><TextBlock Text="{local:T 'SIN GUARDAR'}" FontFamily="{DynamicResource MonoFont}" FontWeight="Bold" FontSize="{DynamicResource SmallFontSize}" Foreground="{DynamicResource Accent}"/></Border>
+          <Button x:Name="EditorAiButton" Style="{StaticResource PillButton}" Visibility="Collapsed" Margin="0,0,8,0" Click="EditorAiClick" ToolTip="{local:T 'Funciones de IA para esta captura'}"><StackPanel Orientation="Horizontal"><TextBlock Text="✦" Margin="0,0,7,0" VerticalAlignment="Center"/><TextBlock Text="{local:T 'IA'}" VerticalAlignment="Center"/><TextBlock Style="{StaticResource GlyphText}" Text="&#xE70D;" FontSize="9" Margin="7,1,0,0"/></StackPanel></Button>
           <Button Style="{StaticResource PillButton}" Click="PersonalizeClick" ToolTip="{local:T 'Personalizar: paleta, tipografía, interfaz y Boberto'}"><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource GlyphText}" Text="&#xE713;" Margin="0,0,7,0"/><TextBlock Text="{local:T 'Personalizar'}" VerticalAlignment="Center"/></StackPanel></Button>
         </StackPanel>
       </Grid>

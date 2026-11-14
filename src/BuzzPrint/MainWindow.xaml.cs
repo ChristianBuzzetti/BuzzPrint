@@ -816,30 +816,56 @@ public partial class MainWindow : Window
     /// <summary>Checks AI is on and has a connection (opening the settings otherwise), then asks before sending.</summary>
     bool AiReady(string title, string what)
     {
-        if (!Store.Settings.AiEnabled || Ai.AiConnections.Active(Store.Settings) == null) { AiSettingsWindow.ShowFor(this); Reload(); if (!Store.Settings.AiEnabled || Ai.AiConnections.Active(Store.Settings) == null) return false; }
+        if (!Store.Settings.AiEnabled || Ai.AiConnections.Active(Store.Settings) == null) { AiSettingsWindow.ShowFor(AiOwner); Reload(); if (!Store.Settings.AiEnabled || Ai.AiConnections.Active(Store.Settings) == null) return false; }
         var conn = Ai.AiConnections.Active(Store.Settings)!;
-        return PromptWindow.Confirm(this, title, what + "\n\n" + L.F("Servicio: {0}", Ai.AiConnections.DisplayName(conn)), L.T("Enviar"));
+        return PromptWindow.Confirm(AiOwner, title, what + "\n\n" + L.F("Servicio: {0}", Ai.AiConnections.DisplayName(conn)), L.T("Enviar"));
     }
 
-    List<CaptureItem> SelectedImages() => Selected.Where(x => !x.IsRecording).ToList();
+    List<CaptureItem> SelectedImages() => aiItems ?? Selected.Where(x => !x.IsRecording).ToList();
+
+    /// <summary>The AI actions also run from the editor: its window owns the dialogs and its capture is the selection.</summary>
+    public sealed record AiRun(Window Owner, IReadOnlyList<CaptureItem> Items);
+    Window? aiOwner;
+    List<CaptureItem>? aiItems;
+    Window AiOwner => aiOwner is { IsVisible: true } w ? w : this;
+    void Bind(object? sender)
+    {
+        if (sender is AiRun run) { aiOwner = run.Owner; aiItems = run.Items.Where(x => !x.IsRecording).ToList(); }
+        else { aiOwner = null; aiItems = null; }
+    }
+
+    /// <summary>Runs one AI action ("caption", "document", "redact", "ask", "ticket") for these captures.</summary>
+    public void RunAi(Window owner, IReadOnlyList<CaptureItem> items, string action)
+    {
+        var run = new AiRun(owner, items);
+        switch (action)
+        {
+            case "caption": AiCaptionClick(run, new RoutedEventArgs()); break;
+            case "document": AiDocumentClick(run, new RoutedEventArgs()); break;
+            case "redact": AiRedactClick(run, new RoutedEventArgs()); break;
+            case "ask": AiAskClick(run, new RoutedEventArgs()); break;
+            case "ticket": AiTicketClick(run, new RoutedEventArgs()); break;
+        }
+    }
     bool NeedSelection(List<CaptureItem> sel, int max, string title)
     {
-        if (sel.Count == 0) { PromptWindow.Info(this, title, L.T("Elegí una o más capturas en la biblioteca (Ctrl+clic o Shift+clic).")); return false; }
-        if (sel.Count > max) { PromptWindow.Info(this, title, L.F("Elegí hasta {0} capturas para esta función.", max)); return false; }
+        if (sel.Count == 0) { PromptWindow.Info(AiOwner, title, L.T("Elegí una o más capturas en la biblioteca (Ctrl+clic o Shift+clic).")); return false; }
+        if (sel.Count > max) { PromptWindow.Info(AiOwner, title, L.F("Elegí hasta {0} capturas para esta función.", max)); return false; }
         return true;
     }
-    void AiError(string title, Ai.AiException ex) { StatusText.Text = ""; PromptWindow.Info(this, title, ex.Message); }
+    void AiError(string title, Ai.AiException ex) { StatusText.Text = ""; PromptWindow.Info(AiOwner, title, ex.Message); }
 #endif
 
     /// <summary>Title (short) and summary for the selected captures, one at a time.</summary>
     async void AiCaptionClick(object sender, RoutedEventArgs e)
     {
 #if PREVIEW
+        Bind(sender);
         string title = L.T("Título y resumen");
         var sel = SelectedImages();
         if (!NeedSelection(sel, 50, title)) return;
         if (!AiReady(title, L.F("Se van a enviar {0} captura(s) y su texto para escribir un título corto y un resumen. Los títulos que escribiste vos no se tocan.", sel.Count))) return;
-        using var busy = AiBusy.Show(this, L.F("Describiendo {0} captura(s)…", sel.Count));
+        using var busy = AiBusy.Show(AiOwner, L.F("Describiendo {0} captura(s)…", sel.Count));
         try
         {
             var progress = new Progress<(int done, int total)>(p => { StatusText.Text = L.F("IA: describiendo capturas… {0}/{1}", p.done, p.total); busy.Text = L.F("Describiendo capturas… {0}/{1}", p.done, p.total); });
@@ -847,7 +873,7 @@ public partial class MainWindow : Window
             StatusText.Text = L.F("IA: {0} captura(s) con título y resumen", n);
         }
         catch (Ai.AiException ex) { AiError(title, ex); }
-        catch (OperationCanceledException) { busy.Dispose(); StatusText.Text = AiBusy.Stopped(this, title); }
+        catch (OperationCanceledException) { busy.Dispose(); StatusText.Text = AiBusy.Stopped(AiOwner, title); }
 #else
         await Task.CompletedTask;
 #endif
@@ -857,11 +883,12 @@ public partial class MainWindow : Window
     void AiDocumentClick(object sender, RoutedEventArgs e)
     {
 #if PREVIEW
-        var (items, picked) = ExportSelection();
+        Bind(sender);
+        var (items, picked) = aiItems != null ? (aiItems, false) : ExportSelection();
         items = items.Where(x => !x.IsRecording).ToList();
         if (!NeedSelection(items, 40, L.T("Documento paso a paso"))) return;
-        if (!Store.Settings.AiEnabled || Ai.AiConnections.Active(Store.Settings) == null) { AiSettingsWindow.ShowFor(this); Reload(); if (!Store.Settings.AiEnabled) return; }
-        ExportWindow.Open(this, items, picked, aiDraft: true);
+        if (!Store.Settings.AiEnabled || Ai.AiConnections.Active(Store.Settings) == null) { AiSettingsWindow.ShowFor(AiOwner); Reload(); if (!Store.Settings.AiEnabled) return; }
+        ExportWindow.Open(AiOwner, items, picked, aiDraft: true);
 #endif
     }
 
@@ -869,29 +896,30 @@ public partial class MainWindow : Window
     async void AiRedactClick(object sender, RoutedEventArgs e)
     {
 #if PREVIEW
+        Bind(sender);
         string title = L.T("Proteger datos sensibles");
         var sel = SelectedImages();
         if (!NeedSelection(sel, 1, title)) return;
         var it = sel[0];
         bool useAi = Store.Settings.AiEnabled && Ai.AiConnections.Active(Store.Settings) != null;
-        if (useAi && !PromptWindow.Confirm(this, title,
+        if (useAi && !PromptWindow.Confirm(AiOwner, title,
                 L.F("BuzzPrint busca mails, IPs, tokens y números largos en tu PC. Para encontrar también nombres, usuarios y cuentas, envía SOLO el texto de la captura (no la imagen) a {0}.", Ai.AiConnections.DisplayName(Ai.AiConnections.Active(Store.Settings)!)),
                 L.T("Buscar"))) return;
         StatusText.Text = L.T("Buscando datos sensibles…");
         try
         {
             List<Ai.SensitiveSpot> spots;
-            using (var busy = AiBusy.Show(this, L.T("Buscando datos sensibles en la captura…"))) spots = await Ai.AiRedaction.FindAsync(it, useAi, busy.Token);
+            using (var busy = AiBusy.Show(AiOwner, L.T("Buscando datos sensibles en la captura…"))) spots = await Ai.AiRedaction.FindAsync(it, useAi, busy.Token);
             StatusText.Text = "";
-            if (spots.Count == 0) { PromptWindow.Info(this, title, L.T("No se encontraron datos sensibles en esta captura.")); return; }
+            if (spots.Count == 0) { PromptWindow.Info(AiOwner, title, L.T("No se encontraron datos sensibles en esta captura.")); return; }
             var rows = spots.Select(s => (KindName(s.Kind) + ": " + Mask(s.Text), "")).ToList();
-            var keep = AiReviewWindow.Ask(this, title, L.T("Marcá lo que querés tapar. Se guarda una copia pixelada; la captura original no se modifica."), rows, L.T("Guardar copia protegida"), it);
+            var keep = AiReviewWindow.Ask(AiOwner, title, L.T("Marcá lo que querés tapar. Se guarda una copia pixelada; la captura original no se modifica."), rows, L.T("Guardar copia protegida"), it);
             if (keep == null || keep.Count == 0) return;
             var copy = Ai.AiRedaction.SaveRedactedCopy(it, keep.Select(i => spots[i]).ToList());
             StatusText.Text = L.F("Copia protegida: {0} dato(s) tapado(s) · {1}", keep.Count, copy.Display);
         }
         catch (Ai.AiException ex) { AiError(title, ex); }
-        catch (OperationCanceledException) { StatusText.Text = AiBusy.Stopped(this, title); }
+        catch (OperationCanceledException) { StatusText.Text = AiBusy.Stopped(AiOwner, title); }
 #else
         await Task.CompletedTask;
 #endif
@@ -907,16 +935,18 @@ public partial class MainWindow : Window
     void AiAskClick(object sender, RoutedEventArgs e)
     {
 #if PREVIEW
+        Bind(sender);
         var sel = SelectedImages();
         if (!NeedSelection(sel, 1, L.T("Preguntar sobre la captura"))) return;
-        if (!Store.Settings.AiEnabled || Ai.AiConnections.Active(Store.Settings) == null) { AiSettingsWindow.ShowFor(this); Reload(); if (!Store.Settings.AiEnabled) return; }
-        AiAskWindow.Open(this, sel[0]);
+        if (!Store.Settings.AiEnabled || Ai.AiConnections.Active(Store.Settings) == null) { AiSettingsWindow.ShowFor(AiOwner); Reload(); if (!Store.Settings.AiEnabled) return; }
+        AiAskWindow.Open(AiOwner, sel[0]);
 #endif
     }
 
     async void AiTicketClick(object sender, RoutedEventArgs e)
     {
 #if PREVIEW
+        Bind(sender);
         string title = L.T("Reporte de incidente");
         var sel = SelectedImages().OrderBy(x => x.Created).ToList();
         if (!NeedSelection(sel, 6, title)) return;
@@ -925,12 +955,12 @@ public partial class MainWindow : Window
         try
         {
             string text;
-            using (var busy = AiBusy.Show(this, L.F("Armando el reporte con {0} captura(s)…", sel.Count))) text = await Ai.AiTicket.WriteAsync(sel, busy.Token);
+            using (var busy = AiBusy.Show(AiOwner, L.F("Armando el reporte con {0} captura(s)…", sel.Count))) text = await Ai.AiTicket.WriteAsync(sel, busy.Token);
             StatusText.Text = L.T("Reporte listo");
-            AiTextWindow.Show(this, title, L.T("Revisalo antes de enviarlo: la IA solo sabe lo que muestran las capturas."), text);
+            AiTextWindow.Show(AiOwner, title, L.T("Revisalo antes de enviarlo: la IA solo sabe lo que muestran las capturas."), text);
         }
         catch (Ai.AiException ex) { AiError(title, ex); }
-        catch (OperationCanceledException) { StatusText.Text = AiBusy.Stopped(this, title); }
+        catch (OperationCanceledException) { StatusText.Text = AiBusy.Stopped(AiOwner, title); }
 #else
         await Task.CompletedTask;
 #endif
@@ -940,16 +970,17 @@ public partial class MainWindow : Window
     async void AiOrganizeClick(object sender, RoutedEventArgs e)
     {
 #if PREVIEW
+        Bind(sender);
         string title = L.T("Ordenar la biblioteca");
         var sel = SelectedImages();
         if (sel.Count == 0) sel = Store.All().Where(x => Ai.AiCaptions.HasDefaultTitle(x)).Take(20).ToList();
-        if (sel.Count == 0) { PromptWindow.Info(this, title, L.T("Elegí las capturas a ordenar. Sin selección, se toman las que todavía tienen nombre automático, y no quedan.")); return; }
+        if (sel.Count == 0) { PromptWindow.Info(AiOwner, title, L.T("Elegí las capturas a ordenar. Sin selección, se toman las que todavía tienen nombre automático, y no quedan.")); return; }
         if (sel.Count > 30) sel = sel.Take(30).ToList();
         if (!AiReady(title, L.F("Se van a enviar {0} captura(s), de a una, para sugerir un nombre corto y una sección. Vas a poder revisar todo antes de aplicarlo.", sel.Count))) return;
         var client = Ai.AiClient.FromSettings(Store.Settings);
         var sections = Store.SectionNames().ToList();
         var results = new List<Ai.OrganizeSuggestion>();
-        var busy = AiBusy.Show(this, L.F("Ordenando… {0}/{1}", 0, sel.Count));
+        var busy = AiBusy.Show(AiOwner, L.F("Ordenando… {0}/{1}", 0, sel.Count));
         try
         {
             for (int i = 0; i < sel.Count; i++)
@@ -961,12 +992,12 @@ public partial class MainWindow : Window
                 if (r.Section.Length > 0 && !sections.Contains(r.Section)) sections.Add(r.Section);
             }
         }
-        catch (OperationCanceledException) { busy.Dispose(); StatusText.Text = AiBusy.Stopped(this, title); if (results.Count == 0) return; }
-        catch (Ai.AiException ex) { busy.Dispose(); if (results.Count == 0) { AiError(title, ex); return; } PromptWindow.Info(this, title, ex.Message + "\n\n" + L.F("Se revisan las {0} que alcanzaron a procesarse.", results.Count)); }
+        catch (OperationCanceledException) { busy.Dispose(); StatusText.Text = AiBusy.Stopped(AiOwner, title); if (results.Count == 0) return; }
+        catch (Ai.AiException ex) { busy.Dispose(); if (results.Count == 0) { AiError(title, ex); return; } PromptWindow.Info(AiOwner, title, ex.Message + "\n\n" + L.F("Se revisan las {0} que alcanzaron a procesarse.", results.Count)); }
         busy.Dispose();
         StatusText.Text = "";
         var rows = results.Select(r => (r.Title, L.F("Sección: {0}   ·   antes: {1}", r.Section.Length > 0 ? r.Section : "—", r.Item.Display))).ToList();
-        var keep = AiReviewWindow.Ask(this, title, L.T("Destildá lo que no quieras cambiar. Se renombran las capturas y se mueven a la sección sugerida."), rows, L.T("Aplicar"));
+        var keep = AiReviewWindow.Ask(AiOwner, title, L.T("Destildá lo que no quieras cambiar. Se renombran las capturas y se mueven a la sección sugerida."), rows, L.T("Aplicar"));
         if (keep == null) return;
         foreach (int i in keep)
         {
@@ -984,7 +1015,7 @@ public partial class MainWindow : Window
     void AiSettingsClick(object sender, RoutedEventArgs e)
     {
 #if PREVIEW
-        AiSettingsWindow.ShowFor(this);
+        AiSettingsWindow.ShowFor(AiOwner);
         Reload();
 #endif
     }

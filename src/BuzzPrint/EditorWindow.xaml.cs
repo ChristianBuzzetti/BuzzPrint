@@ -216,6 +216,7 @@ public partial class EditorWindow : Window
         loadingSummary = true; SummaryBox.Text = it.Note; loadingSummary = false; summaryDirty = false;
 #if PREVIEW
         SummaryAiButton.Visibility = Store.Settings.AiEnabled ? Visibility.Visible : Visibility.Collapsed;
+        EditorAiButton.Visibility = SummaryAiButton.Visibility;
 #endif
         RenderCommitted();
         Dispatcher.BeginInvoke(FitZoom, System.Windows.Threading.DispatcherPriority.Loaded);
@@ -283,6 +284,22 @@ public partial class EditorWindow : Window
         try { Store.UpdateMeta(item, "note", SummaryBox.Text.Trim()); item.Note = SummaryBox.Text.Trim(); Store.RaiseChanged(); StatusText.Text = L.T("Resumen guardado"); }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException) { StatusText.Text = ex.Message; }
     }
+    /// <summary>The same AI actions as the library, for the capture open here (this window owns their dialogs).</summary>
+    void EditorAiClick(object sender, RoutedEventArgs e)
+    {
+#if PREVIEW
+        if (item == null || App.Current.Main is not { } main) return;
+        var menu = new ContextMenu { PlacementTarget = EditorAiButton, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        void Add(string text, Action run) { var mi = new MenuItem { Header = text }; mi.Click += (_, _) => run(); menu.Items.Add(mi); }
+        Add(L.T("Título y resumen"), () => SummaryAiClick(SummaryAiButton, new RoutedEventArgs()));
+        Add(L.T("Consultar la captura") + "…", () => main.RunAi(this, [item], "ask"));
+        Add(L.T("Proteger datos") + "…", () => main.RunAi(this, [item], "redact"));
+        Add(L.T("Reporte de incidente") + "…", () => main.RunAi(this, [item], "ticket"));
+        Add(L.T("Guía paso a paso") + "…", () => main.RunAi(this, [item], "document"));
+        menu.IsOpen = true;
+#endif
+    }
+
     async void SummaryAiClick(object sender, RoutedEventArgs e)
     {
 #if PREVIEW

@@ -555,6 +555,7 @@ static class LocEn
         ["Fucsia"] = "Fuchsia",
         ["Gris"] = "Gray",
         ["Color propio"] = "Custom color",
+        ["Funciones de IA para esta captura"] = "AI features for this capture",
         ["Puede tardar unos segundos. Si pasan 2 minutos sin avances, se cancela sola."] = "It can take a few seconds. After 2 minutes without progress it cancels by itself.",
         ["Tardó demasiado: cancelando…"] = "Taking too long: cancelling…",
         ["Cancelando…"] = "Cancelling…",
