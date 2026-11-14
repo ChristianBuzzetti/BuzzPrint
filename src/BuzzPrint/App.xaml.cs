@@ -87,7 +87,15 @@ public partial class App : Application
                 try
                 {
                     var client = Ai.AiClient.FromSettings(trial, Environment.GetEnvironmentVariable("BUZZPRINT_AI_TEST_KEY"));
-                    result = "OK " + await client.CompleteAsync(new Ai.AiRequest("Reply with exactly: OK", "Reply with exactly: OK", [], 50));
+                    // Optional 4th argument: a PNG to describe with the title-and-caption prompt (never the library).
+                    string? png = i + 4 < e.Args.Length ? e.Args[i + 4] : null;
+                    if (png != null)
+                    {
+                        var probe = new CaptureItem { Id = "ai-test-" + Guid.NewGuid().ToString("N"), Path = png, Title = "" };
+                        var r = await Ai.AiCaptions.DescribeAsync(client, probe);
+                        result = "OK title=" + r.Title + "\ncaption=" + r.Caption;
+                    }
+                    else result = "OK " + await client.CompleteAsync(new Ai.AiRequest("Reply with exactly: OK", "Reply with exactly: OK", [], 50));
                 }
                 catch (Ai.AiException ex) { result = "FAIL " + ex.Message; }
                 File.WriteAllText(aiLog, result);
@@ -409,6 +417,9 @@ public partial class App : Application
             CaptureItem it;
             using (r.Image) it = Store.Add(r.Image, r.Source);
             if (Store.Settings.CopyAfterCapture) Store.CopyToClipboard(it);
+#if PREVIEW
+            if (Store.Settings.AiEnabled && Store.Settings.AiAutoCaption) _ = AutoCaptionAsync(it);
+#endif
             if (Store.Settings.OpenEditorAfterCapture) EditorWindow.Open(it);
             else Toast(L.T(Store.Settings.CopyAfterCapture ? "Captura copiada y guardada" : "Captura guardada"),
                        L.T("Clic acá para editarla") + " · " + Store.Settings.HotkeyPick + " " + L.T("para elegir otra"), it);
@@ -420,6 +431,21 @@ public partial class App : Application
             if (restore && hideWhileCapturing != null) { hideWhileCapturing.Show(); hideWhileCapturing.Activate(); }
         }
     }
+
+#if PREVIEW
+    bool autoCaptionWarned;
+    /// <summary>Pie automático: title and caption for a new capture in the background; one warning if it fails.</summary>
+    async Task AutoCaptionAsync(CaptureItem it)
+    {
+        try { await Ai.AiCaptions.ApplyAsync([it], null); autoCaptionWarned = false; }
+        catch (Ai.AiException ex)
+        {
+            if (autoCaptionWarned) return;
+            autoCaptionWarned = true;
+            Toast(L.T("Pie automático con IA"), ex.Message);
+        }
+    }
+#endif
 
     // ------------------------------------------------------------------ recording flow
     public bool IsRecording => Recorder.Current != null || recordStarting;

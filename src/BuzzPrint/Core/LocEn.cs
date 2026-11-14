@@ -538,5 +538,14 @@ static class LocEn
         ["No responde Ollama en esta PC. ¿Está instalado y abierto?"] = "Ollama isn't answering on this PC. Is it installed and running?",
         ["El servicio devolvió un error: "] = "The service returned an error: ",
         ["La respuesta del servicio no se pudo leer."] = "The service's answer couldn't be read.",
+        ["Título y pie con IA"] = "Title and caption with AI",
+        ["Elegí una o más capturas"] = "Pick one or more captures",
+        ["Enviar"] = "Send",
+        ["Se van a enviar {0} captura(s) y su texto a {1} ({2}) para escribir un título y un pie explicativo. Los títulos que escribiste vos no se tocan."] = "{0} capture(s) and their text will be sent to {1} ({2}) to write a title and an explanatory caption. Titles you typed yourself are kept.",
+        ["IA: describiendo capturas… {0}/{1}"] = "AI: describing captures… {0}/{1}",
+        ["IA: {0} captura(s) con título y pie"] = "AI: {0} capture(s) with title and caption",
+        ["Pie automático con IA"] = "Automatic AI caption",
+        ["Pie automático en cada captura nueva"] = "Automatic caption on every new capture",
+        ["Cada captura nueva se envía al proveedor elegido para escribir su título y pie. Si lo dejás apagado, lo pedís a mano: clic derecho → Título y pie con IA."] = "Every new capture is sent to the chosen provider to write its title and caption. Leave it off to ask by hand: right-click → Title and caption with AI.",
     };
 }

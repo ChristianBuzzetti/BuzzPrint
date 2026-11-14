@@ -101,7 +101,7 @@
                   <MenuItem x:Name="LangEsMenu" Header="Español" IsCheckable="True" Click="LangEsClick"/>
                 </MenuItem>
               </MenuItem>
-              <MenuItem x:Name="MenuAi" Header="{local:T 'IA'}" Tag="&#xEA80;" Visibility="Collapsed"><MenuItem Header="{local:T 'Configurar IA…'}" Click="AiSettingsClick"/></MenuItem>
+              <MenuItem x:Name="MenuAi" Header="{local:T 'IA'}" Tag="&#xEA80;" Visibility="Collapsed"><MenuItem Header="{local:T 'Título y pie con IA'}" Click="AiCaptionClick"/><Separator/><MenuItem Header="{local:T 'Configurar IA…'}" Click="AiSettingsClick"/></MenuItem>
               <MenuItem Header="{local:T 'Ayuda'}" Tag="&#xE897;"><MenuItem Header="{local:T 'Revisar componentes…'}" Click="ComponentsClick"/><MenuItem Header="{local:T 'Acerca de BuzzPrint'}" Click="AboutClick"/></MenuItem>
             </Menu>
             <Border Padding="{DynamicResource ToolbarPadding}">
@@ -257,6 +257,7 @@
                   <MenuItem x:Name="CtxCopy" Header="{local:T 'Copiar imagen'}" InputGestureText="Ctrl+C" Click="CopyClick"/>
                   <MenuItem Header="{local:T 'Copiar como archivo'}" Click="CopyFileClick"/>
                   <MenuItem x:Name="CtxCopyText" Header="{local:T 'Copiar el texto de la imagen'}" InputGestureText="Ctrl+Shift+T" Click="CopyTextClick"/>
+                  <MenuItem x:Name="CtxAiCaption" Header="{local:T 'Título y pie con IA'}" Click="AiCaptionClick" Visibility="Collapsed"/>
                   <MenuItem x:Name="CtxEdit" Header="{local:T 'Editar y anotar'}" InputGestureText="Enter" Click="EditClick"/>
                   <MenuItem Header="{local:T 'Renombrar'}" InputGestureText="F2" Click="RenameClick"/>
                   <MenuItem Header="{local:T 'Fijar / soltar'}" InputGestureText="Ctrl+P" Click="PinClick"/>
@@ -270,7 +271,7 @@
                 </ContextMenu>
               </ListBox.ContextMenu>
               <ListBox.ItemTemplate><DataTemplate>
-                <StackPanel Width="{Binding CardWidth}">
+                <StackPanel Width="{Binding CardWidth}" ToolTip="{Binding Caption}" ToolTipService.ShowDuration="20000">
                   <Grid Margin="8,8,8,0" Height="{Binding ThumbHeight}" Background="{DynamicResource Canvas}">
                     <Image Source="{Binding Thumb}" Stretch="Uniform" Margin="6" RenderOptions.BitmapScalingMode="HighQuality"/>
                     <TextBlock Visibility="{Binding NoThumbVisibility}" Text="{Binding KindGlyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="34" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"/>

@@ -14,6 +14,7 @@ namespace BuzzPrint;
 public sealed class AiSettingsWindow : Window
 {
     readonly CheckBox enabled = new() { Content = L.T("Usar IA en BuzzPrint") };
+    readonly CheckBox autoCaption = new() { Content = L.T("Pie automático en cada captura nueva"), Margin = new Thickness(0, 14, 0, 0) };
     readonly ComboBox provider = new() { DisplayMemberPath = nameof(AiProvider.Name), Margin = new Thickness(0, 4, 0, 0) };
     readonly TextBlock hint = Muted("");
     readonly TextBox model = new();
@@ -72,6 +73,10 @@ public sealed class AiSettingsWindow : Window
         keyRow.Children.Add(plans);
         root.Children.Add(keyRow);
 
+        root.Children.Add(autoCaption);
+        var autoNote = Muted(L.T("Cada captura nueva se envía al proveedor elegido para escribir su título y pie. Si lo dejás apagado, lo pedís a mano: clic derecho → Título y pie con IA."));
+        autoNote.Margin = new Thickness(0, 4, 0, 0);
+        root.Children.Add(autoNote);
         root.Children.Add(status);
 
         var foot = new DockPanel { Margin = new Thickness(0, 16, 0, 0), LastChildFill = false };
@@ -86,6 +91,7 @@ public sealed class AiSettingsWindow : Window
 
         var st = Store.Settings;
         enabled.IsChecked = st.AiEnabled;
+        autoCaption.IsChecked = st.AiAutoCaption;
         provider.SelectedItem = AiProviders.Get(st.AiProvider);
         model.Text = st.AiModel;
         url.Text = st.AiBaseUrl;
@@ -118,13 +124,14 @@ public sealed class AiSettingsWindow : Window
     void Sync()
     {
         bool on = enabled.IsChecked == true;
-        foreach (var c in new UIElement[] { provider, model, url, key, test }) c.IsEnabled = on;
+        foreach (var c in new UIElement[] { provider, model, url, key, test, autoCaption }) c.IsEnabled = on;
     }
 
     /// <summary>Copies the form into settings; the key only when one was typed (an empty box keeps the stored one).</summary>
     void Apply(Settings s, bool saveKey)
     {
         s.AiEnabled = enabled.IsChecked == true;
+        s.AiAutoCaption = autoCaption.IsChecked == true;
         s.AiProvider = Current.Id;
         s.AiModel = model.Text.Trim();
         s.AiBaseUrl = url.Text.Trim();

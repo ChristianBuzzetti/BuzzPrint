@@ -79,6 +79,7 @@ namespace BuzzPrint
         public string AiProvider = "anthropic";   // id from AiProviders.All
         public string AiModel = "";               // empty = the provider's suggested model
         public string AiBaseUrl = "";             // only for "custom" (any OpenAI-compatible endpoint)
+        public bool AiAutoCaption = false;        // title + caption for every new capture (sends each one to the provider)
     }
 
     public static class Store

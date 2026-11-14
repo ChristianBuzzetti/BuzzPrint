@@ -24,6 +24,7 @@ public sealed class CaptureCard
     public Visibility KindVisibility => Item.IsRecording ? Visibility.Visible : Visibility.Collapsed;
     public Visibility PlayVisibility => Item.Kind == "video" && Thumb != null ? Visibility.Visible : Visibility.Collapsed;
     public Visibility NoThumbVisibility => Thumb == null || Item.Kind == "audio" ? Visibility.Visible : Visibility.Collapsed;
+    public string? Caption => string.IsNullOrWhiteSpace(Item.Note) ? null : Item.Note;
     public string KindGlyph => Item.Kind == "audio" ? "\uE8D6" : Item.Kind == "video" ? "\uE714" : "\uEB9F";
     public string KindText => (Item.Kind == "video" ? "VIDEO" : "AUDIO") + "  " + Recorder.Clock(TimeSpan.FromSeconds(Item.Duration));
 }
@@ -248,6 +249,7 @@ public partial class MainWindow : Window
         CtxCopy.Header = L.T(recordings ? "Copiar archivo" : "Copiar imagen");
         CtxExport.Visibility = CtxStitch.Visibility = recordings ? Visibility.Collapsed : Visibility.Visible;
         CtxCopyText.Visibility = recordings || !Ocr.Supported ? Visibility.Collapsed : Visibility.Visible;
+        CtxAiCaption.Visibility = recordings || !AppInfo.IsPreview ? Visibility.Collapsed : Visibility.Visible;
         CtxEdit.Header = L.T(recordings ? "Reproducir" : "Editar y anotar");
         cards.Clear();
         foreach (var it in list)
@@ -673,6 +675,30 @@ public partial class MainWindow : Window
         int words = all.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
         StatusText.Text = L.F("Texto copiado · {0} palabras", words);
     }
+    /// <summary>IA → Título y pie: asks first (which captures, which service), then writes title and caption one by one.</summary>
+    async void AiCaptionClick(object sender, RoutedEventArgs e)
+    {
+#if PREVIEW
+        var sel = Selected.Where(x => !x.IsRecording).ToList();
+        if (sel.Count == 0) { StatusText.Text = L.T("Elegí una o más capturas"); return; }
+        if (!Store.Settings.AiEnabled) { AiSettingsWindow.ShowFor(this); if (!Store.Settings.AiEnabled) return; }
+        var st = Store.Settings;
+        var prov = Ai.AiProviders.Get(st.AiProvider);
+        if (!PromptWindow.Confirm(this, L.T("Título y pie con IA"),
+                L.F("Se van a enviar {0} captura(s) y su texto a {1} ({2}) para escribir un título y un pie explicativo. Los títulos que escribiste vos no se tocan.", sel.Count, prov.Name, Ai.AiProviders.ModelFor(st)),
+                L.T("Enviar"))) return;
+        try
+        {
+            var progress = new Progress<(int done, int total)>(p => StatusText.Text = L.F("IA: describiendo capturas… {0}/{1}", p.done, p.total));
+            int n = await Ai.AiCaptions.ApplyAsync(sel, progress);
+            StatusText.Text = L.F("IA: {0} captura(s) con título y pie", n);
+        }
+        catch (Ai.AiException ex) { StatusText.Text = ""; PromptWindow.Info(this, L.T("Título y pie con IA"), ex.Message); }
+#else
+        await Task.CompletedTask;
+#endif
+    }
+
     void AiSettingsClick(object sender, RoutedEventArgs e)
     {
 #if PREVIEW
