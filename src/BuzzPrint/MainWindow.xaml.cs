@@ -277,7 +277,8 @@ public partial class MainWindow : Window
 
     void Reload()
     {
-        if (Library == null) return;
+        // A dialog can return after the app began closing or restarting (language change, Exit): nothing to refresh.
+        if (Library == null || Application.Current is not App { Exiting: false }) return;
         var keep = new HashSet<string>(Selected.Select(x => x.Id));
         var view = System.Windows.Data.CollectionViewSource.GetDefaultView(cards);
         view.GroupDescriptions.Clear();

@@ -53,9 +53,9 @@
         <Border x:Name="ToolStrip" Padding="2" BorderThickness="1" BorderBrush="{DynamicResource FaintBorder}" Background="{DynamicResource Header}" CornerRadius="{DynamicResource StripRadius}" Margin="0,0,10,0"><StackPanel x:Name="Tools" Orientation="Horizontal"/></Border>
         <Border Padding="4,2" BorderThickness="1" BorderBrush="{DynamicResource FaintBorder}" Background="{DynamicResource Header}" CornerRadius="{DynamicResource StripRadius}" Margin="0,0,10,0"><StackPanel x:Name="Swatches" Orientation="Horizontal" VerticalAlignment="Center"/></Border>
         <TextBlock Text="{local:T 'GROSOR'}" Style="{StaticResource SectionLabel}" Margin="2,0,6,0"/>
-        <ComboBox x:Name="WidthBox" Width="70" SelectionChanged="WidthChanged" Margin="0,0,10,0"/>
+        <ComboBox x:Name="WidthBox" Width="84" SelectionChanged="WidthChanged" Margin="0,0,10,0"/>
         <TextBlock Text="{local:T 'TEXTO'}" Style="{StaticResource SectionLabel}" Margin="0,0,6,0"/>
-        <ComboBox x:Name="FontBox" Width="70" SelectionChanged="FontChanged"/>
+        <ComboBox x:Name="FontBox" Width="84" SelectionChanged="FontChanged"/>
       </StackPanel>
     </Border>
     <Border DockPanel.Dock="Bottom" Background="{DynamicResource Header}">

@@ -112,7 +112,7 @@ public sealed class PersonalizationWindow:Window
         // Result grid: uppercase mono headers on the accent rule, row rules and a selected row with the accent bar.
         var grid=new StackPanel();grid.SetResourceReference(Panel.BackgroundProperty,"Surface");
         var head=GridRow(L.T("CAPTURA"),L.T("ORIGEN"),L.T("TAMAÑO"),header:true);head.BorderThickness=new Thickness(0,1,0,2);head.SetResourceReference(Border.BorderBrushProperty,"AccentRule");grid.Children.Add(head);
-        grid.Children.Add(GridRow("10:49:24",L.T("Región"),"1280×943"));var current=GridRow("10:48:28",L.T("Ventana"),"1366×768",selectedRow:true);grid.Children.Add(current);grid.Children.Add(GridRow("10:41:02",L.T("Pantalla"),L.T("sin guardar")));
+        grid.Children.Add(GridRow("10:49:24",L.T("Región"),"1280×943"));var current=GridRow("10:48:28",L.T("Ventana"),"1366×768",selectedRow:true);grid.Children.Add(current);grid.Children.Add(GridRow("10:41:02",L.T("Pantalla"),L.T("borrador")));
         stack.Children.Add(grid);
         var status=new DockPanel();var statusFrame=new Border {Padding=new Thickness(10,4,10,5),Child=status,BorderThickness=new Thickness(0,1,0,0)};statusFrame.SetResourceReference(Border.BackgroundProperty,"Header");statusFrame.SetResourceReference(Border.BorderBrushProperty,"AccentRule");
         var session=Mono("PrtSc · Ctrl+Alt+V",10);session.SetResourceReference(TextBlock.ForegroundProperty,"Ink");DockPanel.SetDock(session,Dock.Right);status.Children.Add(session);var ready=Mono(L.T("Listo · 3 capturas · 1.2 MB"),10);ready.SetResourceReference(TextBlock.ForegroundProperty,"Muted");status.Children.Add(ready);
