@@ -158,7 +158,7 @@ public sealed class PersonalizationWindow:Window
     {
         string glyph=name switch {"Style"=>"","Text"=>"","Interface"=>"","Effects"=>"","Boberto"=>"",_=>""};
         var header=new StackPanel {Orientation=Orientation.Horizontal};var icon=new TextBlock {Text=glyph};icon.SetResourceReference(StyleProperty,"TabIcon");
-        header.Children.Add(icon);header.Children.Add(new TextBlock {Text=name switch {"Style"=>L.T("Estilo"),"Text"=>L.T("Texto"),"Interface"=>L.T("Interfaz"),"Effects"=>L.T("Efectos"),_=>name},VerticalAlignment=VerticalAlignment.Center});return header;
+        header.Children.Add(icon);header.Children.Add(new TextBlock {Text=name switch {"Style"=>L.T("Estilo"),"Text"=>L.T("Texto"),"Interface"=>L.T("Interfaz"),"Effects"=>L.T("Efectos y logo"),_=>name},VerticalAlignment=VerticalAlignment.Center});return header;
     }
     // A setting group: a hairline card with a ▚ section title, a muted purpose line and its controls.
     private static StackPanel Group(StackPanel section,string name,string description)

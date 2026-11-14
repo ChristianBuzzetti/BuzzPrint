@@ -277,6 +277,7 @@ static class LocEn
         ["Estilo"] = "Style",
         ["Interfaz"] = "Interface",
         ["Efectos"] = "Effects",
+        ["Efectos y logo"] = "Effects & Logo",
         ["oscura"] = "dark",
         ["clara"] = "light",
         [" · acento "] = " · accent ",
