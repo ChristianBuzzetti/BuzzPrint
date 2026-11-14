@@ -843,10 +843,11 @@ public partial class MainWindow : Window
         try
         {
             var progress = new Progress<(int done, int total)>(p => { StatusText.Text = L.F("IA: describiendo capturas… {0}/{1}", p.done, p.total); busy.Text = L.F("Describiendo capturas… {0}/{1}", p.done, p.total); });
-            int n = await Ai.AiCaptions.ApplyAsync(sel, progress);
+            int n = await Ai.AiCaptions.ApplyAsync(sel, progress, busy.Token);
             StatusText.Text = L.F("IA: {0} captura(s) con título y resumen", n);
         }
         catch (Ai.AiException ex) { AiError(title, ex); }
+        catch (OperationCanceledException) { busy.Dispose(); StatusText.Text = AiBusy.Stopped(this, title); }
 #else
         await Task.CompletedTask;
 #endif
@@ -880,7 +881,7 @@ public partial class MainWindow : Window
         try
         {
             List<Ai.SensitiveSpot> spots;
-            using (AiBusy.Show(this, L.T("Buscando datos sensibles en la captura…"))) spots = await Ai.AiRedaction.FindAsync(it, useAi);
+            using (var busy = AiBusy.Show(this, L.T("Buscando datos sensibles en la captura…"))) spots = await Ai.AiRedaction.FindAsync(it, useAi, busy.Token);
             StatusText.Text = "";
             if (spots.Count == 0) { PromptWindow.Info(this, title, L.T("No se encontraron datos sensibles en esta captura.")); return; }
             var rows = spots.Select(s => (KindName(s.Kind) + ": " + Mask(s.Text), "")).ToList();
@@ -890,6 +891,7 @@ public partial class MainWindow : Window
             StatusText.Text = L.F("Copia protegida: {0} dato(s) tapado(s) · {1}", keep.Count, copy.Display);
         }
         catch (Ai.AiException ex) { AiError(title, ex); }
+        catch (OperationCanceledException) { StatusText.Text = AiBusy.Stopped(this, title); }
 #else
         await Task.CompletedTask;
 #endif
@@ -923,11 +925,12 @@ public partial class MainWindow : Window
         try
         {
             string text;
-            using (AiBusy.Show(this, L.F("Armando el reporte con {0} captura(s)…", sel.Count))) text = await Ai.AiTicket.WriteAsync(sel);
+            using (var busy = AiBusy.Show(this, L.F("Armando el reporte con {0} captura(s)…", sel.Count))) text = await Ai.AiTicket.WriteAsync(sel, busy.Token);
             StatusText.Text = L.T("Reporte listo");
             AiTextWindow.Show(this, title, L.T("Revisalo antes de enviarlo: la IA solo sabe lo que muestran las capturas."), text);
         }
         catch (Ai.AiException ex) { AiError(title, ex); }
+        catch (OperationCanceledException) { StatusText.Text = AiBusy.Stopped(this, title); }
 #else
         await Task.CompletedTask;
 #endif
@@ -953,11 +956,12 @@ public partial class MainWindow : Window
             {
                 StatusText.Text = L.F("IA: ordenando… {0}/{1}", i, sel.Count);
                 busy.Text = L.F("Ordenando… {0}/{1}", i, sel.Count);
-                var r = await Ai.AiOrganize.SuggestAsync(client, sel[i], sections);
+                var r = await Ai.AiOrganize.SuggestAsync(client, sel[i], sections, busy.Token);
                 results.Add(r);
                 if (r.Section.Length > 0 && !sections.Contains(r.Section)) sections.Add(r.Section);
             }
         }
+        catch (OperationCanceledException) { busy.Dispose(); StatusText.Text = AiBusy.Stopped(this, title); if (results.Count == 0) return; }
         catch (Ai.AiException ex) { busy.Dispose(); if (results.Count == 0) { AiError(title, ex); return; } PromptWindow.Info(this, title, ex.Message + "\n\n" + L.F("Se revisan las {0} que alcanzaron a procesarse.", results.Count)); }
         busy.Dispose();
         StatusText.Text = "";

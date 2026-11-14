@@ -167,7 +167,7 @@ public sealed class ExportWindow : Window
         try
         {
             Ai.DocDraft draft;
-            using (AiBusy.Show(this, L.F("Redactando el documento con {0} captura(s)…", pages.Count))) draft = await Ai.AiDocument.DraftAsync(pages.Select(p => p.Item).ToList(), titleBox.Text);
+            using (var aiBusy = AiBusy.Show(this, L.F("Redactando el documento con {0} captura(s)…", pages.Count))) draft = await Ai.AiDocument.DraftAsync(pages.Select(p => p.Item).ToList(), titleBox.Text, aiBusy.Token);
             if (draft.Title.Length > 0) titleBox.Text = draft.Title;
             introBox.Text = draft.Intro;
             for (int i = 0; i < pages.Count && i < draft.Steps.Count; i++)
@@ -179,6 +179,7 @@ public sealed class ExportWindow : Window
             statusText.Text = L.T("Listo: revisá y corregí lo que haga falta antes de exportar.");
         }
         catch (Ai.AiException ex) { statusText.Text = ""; PromptWindow.Info(this, L.T("Redactar con IA"), ex.Message); }
+        catch (OperationCanceledException) { statusText.Text = AiBusy.Stopped(this, L.T("Redactar con IA")); }
         finally { busy = false; button.IsEnabled = true; Sync(); }
     }
 #endif

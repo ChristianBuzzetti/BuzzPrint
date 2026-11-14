@@ -293,11 +293,12 @@ public partial class EditorWindow : Window
         {
             var client = Ai.AiClient.FromSettings(Store.Settings);
             Ai.CaptionResult r;
-            using (AiBusy.Show(this, L.T("Escribiendo el título y el resumen…"))) r = await Ai.AiCaptions.DescribeAsync(client, item);
+            using (var busy = AiBusy.Show(this, L.T("Escribiendo el título y el resumen…"))) r = await Ai.AiCaptions.DescribeAsync(client, item, busy.Token);
             if (r.Caption.Length > 0) { SummaryBox.Text = r.Caption; summaryDirty = true; SaveSummary(); }
             if (r.Title.Length > 0 && Ai.AiCaptions.HasDefaultTitle(item)) { Store.UpdateMeta(item, "title", r.Title); DocTitle.Text = r.Title; Store.RaiseChanged(); }
         }
         catch (Ai.AiException ex) { StatusText.Text = ""; PromptWindow.Info(this, L.T("Título y resumen"), ex.Message); }
+        catch (OperationCanceledException) { StatusText.Text = AiBusy.Stopped(this, L.T("Título y resumen")); }
         finally { SummaryAiButton.IsEnabled = true; }
 #else
         await Task.CompletedTask;

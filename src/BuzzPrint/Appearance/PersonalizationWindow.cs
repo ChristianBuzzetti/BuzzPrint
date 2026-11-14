@@ -61,7 +61,7 @@ public sealed class PersonalizationWindow:Window
         var saved=new StackPanel {Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};var check=Glyph("",12);check.SetResourceReference(TextBlock.ForegroundProperty,"Ok");saved.Children.Add(check);saved.Children.Add(Muted(L.T("Los cambios se aplican al instante · se guardan localmente para BuzzPrint")));foot.Children.Add(saved);
         DockPanel.SetDock(foot,Dock.Bottom);root.Children.Add(foot);
 
-        var columns=new Grid();previewColumns=columns;columns.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(previewWidth)});columns.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(20)});columns.ColumnDefinitions.Add(new ColumnDefinition());
+        var columns=new Grid();previewColumns=columns;columns.SizeChanged+=(_,_)=>FitPreview();columns.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(previewWidth)});columns.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(20)});columns.ColumnDefinitions.Add(new ColumnDefinition());
         var preview=BuildPreview(testProfile);columns.Children.Add(preview);
         Sections.SetResourceReference(StyleProperty,"SegmentedTabs");
         Grid.SetColumn(Sections,2);columns.Children.Add(Sections);root.Children.Add(columns);Content=root;
@@ -82,13 +82,13 @@ public sealed class PersonalizationWindow:Window
     // ---- Live preview: a miniature of the console in the current palette, accent and editor type. ----
     private ContentControl BuildPreview(string? testProfile)
     {
-        var card=new ContentControl();card.SetResourceReference(StyleProperty,"NeoCard");
+        var card=new ContentControl {VerticalAlignment=VerticalAlignment.Top};card.SetResourceReference(StyleProperty,"NeoCard");   /* hugs its content: no empty band inside */
         var scroll=new ScrollViewer {VerticalScrollBarVisibility=ScrollBarVisibility.Auto};var scene=new StackPanel();
         // Boberto's scene is 16:9 art: his stage is always exactly 16:9 (never cropped or zoomed), and the column widens
         // just enough for that 16:9 stage to fill the height left under the miniature, so no empty strip remains.
         var column=new DockPanel {Margin=new Thickness(18,16,18,18),LastChildFill=false};DockPanel.SetDock(scene,Dock.Top);column.Children.Add(scene);
         previewScroll=scroll;previewScene=scene;
-        scroll.ScrollChanged+=(_,e)=>{if(e.ViewportHeightChange!=0)FitPreview();};scene.SizeChanged+=(_,_)=>FitPreview();
+        scene.SizeChanged+=(_,_)=>FitPreview();
         scroll.Content=column;card.Content=scroll;
         var top=new DockPanel {Margin=new Thickness(0,0,0,12)};var badge=new Border {BorderThickness=new Thickness(1),Padding=new Thickness(6,1,6,1),VerticalAlignment=VerticalAlignment.Center};badge.SetResourceReference(Border.BorderBrushProperty,"FaintBorder");var badgeText=Mono(L.T("DATOS DE EJEMPLO"),9);badgeText.SetResourceReference(TextBlock.ForegroundProperty,"Muted");badge.Child=badgeText;DockPanel.SetDock(badge,Dock.Right);top.Children.Add(badge);top.Children.Add(SectionTitle(L.T("VISTA PREVIA")));scene.Children.Add(top);
         previewTitle.FontWeight=FontWeights.SemiBold;previewTitle.SetResourceReference(TextBlock.FontSizeProperty,"SectionFontSize");scene.Children.Add(previewTitle);
@@ -129,8 +129,8 @@ public sealed class PersonalizationWindow:Window
         if(previewScroll==null||previewScene==null||previewColumns==null||previewColumns.ColumnDefinitions[0].Width.Value==0)return;
         double chrome=previewColumns.ColumnDefinitions[0].ActualWidth-bobertoPreview.ActualWidth;   // card border + column margins
         if(chrome<=0||chrome>120)chrome=40;
-        double room=previewScroll.ViewportHeight-34-previewScene.ActualHeight-14;   // height left under the miniature
-        double max=Math.Max(348,Math.Min(560,ActualWidth*.42));
+        double room=previewColumns.ActualHeight-2-34-previewScene.ActualHeight-14;   // height left under the miniature
+        double max=Math.Max(348,Math.Min(392,ActualWidth*.36));   // capped: a wider column made Boberto too big
         double width=Math.Clamp(Math.Round(Math.Max(158,room)*16/9+chrome),320,max);
         if(Math.Abs(width-previewWidth)>2){previewWidth=width;previewColumns.ColumnDefinitions[0].Width=new GridLength(width);}
         double stage=Math.Round((previewWidth-chrome)*9/16);

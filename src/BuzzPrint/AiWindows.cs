@@ -208,7 +208,8 @@ public sealed class AiAskWindow : AiWindowBase
         var thinking = Muted(L.T("Pensando…")); thinking.Margin = new Thickness(0, 0, 0, 12);
         transcript.Children.Add(thinking); scroller.ScrollToEnd();
         send.IsEnabled = false;
-        try { string a; using (AiBusy.Show(this, L.T("Mirando la captura para responder…"))) a = await conversation.AskAsync(q); transcript.Children.Remove(thinking); Add(a, false); }
+        try { string a; using (var busy = AiBusy.Show(this, L.T("Mirando la captura para responder…"))) a = await conversation.AskAsync(q, busy.Token); transcript.Children.Remove(thinking); Add(a, false); }
+        catch (OperationCanceledException) { transcript.Children.Remove(thinking); var note = Muted(AiBusy.Stopped(this, Title)); note.Margin = new Thickness(0, 0, 0, 12); transcript.Children.Add(note); }
         catch (AiException ex) { transcript.Children.Remove(thinking); var err = Muted(ex.Message); err.SetResourceReference(TextBlock.ForegroundProperty, "ErrorInk"); err.Margin = new Thickness(0, 0, 0, 12); transcript.Children.Add(err); }
         finally { send.IsEnabled = true; input.Focus(); scroller.ScrollToEnd(); }
     }

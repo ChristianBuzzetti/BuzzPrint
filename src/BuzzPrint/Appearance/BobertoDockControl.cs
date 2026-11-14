@@ -151,7 +151,7 @@ public sealed class BobertoDockControl:Grid,IDisposable
     {
         bool motion=appearance.BobertoMotion&&SystemParameters.ClientAreaAnimation;
         var surface=new Border();surface.SetResourceReference(Border.BackgroundProperty,"Header");placeholder.Children.Add(surface);
-        var snapshot=LoadSnapshot();ShowsSnapshot=snapshot!=null;
+        var snapshot=cacheSnapshot?LoadSnapshot():null;ShowsSnapshot=snapshot!=null;   /* previews: no header snapshot (other proportions, looked zoomed) */
         if(snapshot!=null){
             placeholder.Children.Add(new Image {Source=snapshot,Stretch=Stretch.UniformToFill,Opacity=.92});
             var shine=new LinearGradientBrush {StartPoint=new Point(0,0),EndPoint=new Point(1,.35)};

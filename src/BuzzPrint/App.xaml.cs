@@ -412,7 +412,12 @@ public partial class App : Application
             using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Control Panel\Keyboard");
             key.SetValue("PrintScreenKeyForSnippingEnabled", 0, Microsoft.Win32.RegistryValueKind.DWord);
             RegisterHotkeys();
-            PromptWindow.Info(main, L.T("ImprPant es de BuzzPrint"), L.T("Listo. Si Recortes se sigue abriendo, cerrá sesión en Windows y volvé a entrar."));
+            if (PromptWindow.Confirm(main, L.T("ImprPant es de BuzzPrint"),
+                    L.T("Listo. Windows puede seguir reteniendo la tecla hasta que cerrás sesión.") + "\n\n" +
+                    L.T("Para que tome efecto ya: abrí el ajuste, encendelo y apagalo una vez."),
+                    L.T("Abrir el ajuste"), L.T("Más tarde")))
+                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("ms-settings:easeofaccess-keyboard") { UseShellExecute = true }); }
+                catch (System.ComponentModel.Win32Exception) { }
         }
         catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException)
         {
