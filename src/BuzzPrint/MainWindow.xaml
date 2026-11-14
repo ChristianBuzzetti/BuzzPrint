@@ -128,12 +128,8 @@
         </Border>
       </DockPanel>
       <Canvas Grid.Column="1" ClipToBounds="False">
-        <Border x:Name="BobertoPanel" Background="{DynamicResource Header}" BorderBrush="{DynamicResource FaintBorder}" BorderThickness="1,0,0,1">
+        <Border x:Name="BobertoPanel" Background="{DynamicResource Header}" BorderBrush="{DynamicResource FaintBorder}" BorderThickness="1,0,1,1">
           <DockPanel>
-            <StackPanel DockPanel.Dock="Right" Width="34" Background="{DynamicResource Header}">
-              <Button Style="{StaticResource IconButton}" Content="&#xE771;" Click="BobertoClick" ToolTip="{local:T 'Personalizar a Boberto: gestos, ropa, accesorios, fondos y bordes'}"/>
-              <Button Style="{StaticResource IconButton}" Content="&#xE8BB;" Click="BobertoHideClick" ToolTip="{local:T 'Ocultar a Boberto · Vista → Boberto lo vuelve a mostrar'}"/>
-            </StackPanel>
             <ContentControl x:Name="BobertoHost" Focusable="False"/>
           </DockPanel>
         </Border>
