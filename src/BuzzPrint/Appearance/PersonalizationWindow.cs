@@ -410,7 +410,7 @@ public sealed class PersonalizationWindow:Window
                 void Paint(){if(get(BobertoMark.Current)==value)ring.SetResourceReference(Border.BorderBrushProperty,"Accent");else ring.BorderBrush=Brushes.Transparent;}
                 Paint();markRefresh.Add(Paint);
                 var tile=new Button {Content=ring,ToolTip=L.T(name),Margin=new Thickness(2),Padding=new Thickness(0),Cursor=Cursors.Hand,Background=Brushes.Transparent,BorderBrush=Brushes.Transparent,Template=BareTemplate()};
-                tile.MouseEnter+=(_,_)=>mini.Hover(true);tile.MouseLeave+=(_,_)=>mini.Hover(false);
+                
                 tile.Click+=(_,_)=>Pick(with(BobertoMark.Current,value));
                 System.Windows.Automation.AutomationProperties.SetName(tile,L.T(name));
                 wrap.Children.Add(tile);

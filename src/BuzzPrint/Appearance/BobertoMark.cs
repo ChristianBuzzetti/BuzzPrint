@@ -74,6 +74,9 @@ public sealed class BobertoMark : FrameworkElement
     Blink blink;
     double blinkUnit = 150;
     DateTime nextGlance = DateTime.Now.AddMilliseconds(600);
+    DateTime nextSpin = DateTime.MinValue, spinStart = DateTime.MinValue;
+    double spin;                      // head rotation in degrees while a turn plays
+    const double SpinMs = 1150;
     Outline? morphFrom; DateTime morphStart = DateTime.MinValue;
     const double MorphMs = 420;
     MarkStyle? lastDrawn;
@@ -88,8 +91,6 @@ public sealed class BobertoMark : FrameworkElement
         Loaded += (_, _) => { CurrentChanged += OnCurrentChanged; if (animated) StartIdle(); Sync(); };
         Unloaded += (_, _) => { CurrentChanged -= OnCurrentChanged; timer.Stop(); StopMotion(); };
         MouseLeftButtonDown += (_, _) => { if (animated) Start((Blink)random.Next(3), 170); };
-        MouseEnter += (_, _) => Hover(true);
-        MouseLeave += (_, _) => Hover(false);
     }
 
     /// <summary>The living mark beside a window's title, so Boberto is present across the app. Watches the cursor.</summary>
@@ -107,15 +108,8 @@ public sealed class BobertoMark : FrameworkElement
     // ------------------------------------------------------------------ motion (composited)
     void StartIdle()
     {
-        if (!animated) return;
-        double phase = random.NextDouble();
-        var sway = new DoubleAnimation(tilt - 3.2, tilt + 3.2, TimeSpan.FromSeconds(2.4 + phase))
-            { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } };
-        rotate.BeginAnimation(RotateTransform.AngleProperty, sway);
-        double lift = Math.Max(1, Math.Min(Width is > 0 ? Width : ActualWidth, Height is > 0 ? Height : ActualHeight) * .035);
-        var floatY = new DoubleAnimation(lift * .4, -lift * .6, TimeSpan.FromSeconds(1.7 + phase * .6))
-            { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } };
-        bob.BeginAnimation(TranslateTransform.YProperty, floatY);
+        // Still body: no sway, float or hover bounce. The mark watches with its eyes and turns now and then.
+        rotate.BeginAnimation(RotateTransform.AngleProperty, null); rotate.Angle = tilt;
     }
 
     void StopMotion()
@@ -128,20 +122,7 @@ public sealed class BobertoMark : FrameworkElement
     }
 
     /// <summary>Grow with a spring and wiggle when the pointer arrives (also called by picker tiles).</summary>
-    public void Hover(bool over)
-    {
-        if (!animated) return;
-        var grow = new DoubleAnimation(over ? 1.14 : 1, TimeSpan.FromMilliseconds(over ? 420 : 300)) { EasingFunction = new ElasticEase { Oscillations = 1, Springiness = 4, EasingMode = EasingMode.EaseOut } };
-        hover.BeginAnimation(ScaleTransform.ScaleXProperty, grow);
-        hover.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
-        if (over)
-        {
-            var w = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(520) };
-            foreach (var (ms, a) in new[] { (0, 0.0), (90, -10.0), (200, 8.0), (310, -4.5), (420, 2.0), (520, 0.0) })
-                w.KeyFrames.Add(new EasingDoubleKeyFrame(a, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(ms)), new SineEase { EasingMode = EasingMode.EaseInOut }));
-            wiggle.BeginAnimation(RotateTransform.AngleProperty, w);
-        }
-    }
+    public void Hover(bool over) { }   // kept for callers; hovering no longer animates
 
     /// <summary>A springy squash, as when the shape changes.</summary>
     public void Squish()
@@ -230,6 +211,17 @@ public sealed class BobertoMark : FrameworkElement
                 nextBlink = now.AddMilliseconds(2500 + random.Next(3500));
             }
         }
+        if (nextSpin == DateTime.MinValue) nextSpin = now.AddMilliseconds(3000 + random.Next(6000));
+        if (spinStart == DateTime.MinValue && now >= nextSpin) spinStart = now;
+        if (spinStart != DateTime.MinValue)
+        {
+            dirty = true;
+            double t = Math.Min(1, (now - spinStart).TotalMilliseconds / SpinMs);
+            // Ease in, a quick whirl, ease out back to upright.
+            double e = t < .5 ? 4 * t * t * t : 1 - Math.Pow(-2 * t + 2, 3) / 2;
+            spin = 360 * e;
+            if (t >= 1) { spin = 0; spinStart = DateTime.MinValue; nextSpin = now.AddMilliseconds(8000 + random.Next(7000)); }
+        }
         if (morphFrom != null) { dirty = true; if ((now - morphStart).TotalMilliseconds >= MorphMs) morphFrom = null; }
         if (dirty) InvalidateVisual();
     }
@@ -247,14 +239,14 @@ public sealed class BobertoMark : FrameworkElement
             double k = 1 + 2.2 * Math.Pow(t - 1, 3) + 1.2 * Math.Pow(t - 1, 2);   // ease out with a jelly overshoot
             head = Outline.Lerp(morphFrom, Outline.For(Effective.Shape), k);
         }
-        Draw(dc, s, Effective, Tile, eye, blinkL, blinkR, head);
+        Draw(dc, s, Effective, Tile, eye, blinkL, blinkR, head, spin);
         dc.Pop();
     }
 
     // ------------------------------------------------------------------ drawing
 
     /// <summary>Draws the mark in a square of <paramref name="size"/> px. Eye offset is in 64-unit space.</summary>
-    public static void Draw(DrawingContext g, double size, MarkStyle st, Brush accent, Vector eye = default, double blinkLeft = 1, double blinkRight = 1, Outline? headOverride = null)
+    public static void Draw(DrawingContext g, double size, MarkStyle st, Brush accent, Vector eye = default, double blinkLeft = 1, double blinkRight = 1, Outline? headOverride = null, double spin = 0)
     {
         bool tiny = size <= 40;
         g.PushTransform(new ScaleTransform(size / 64, size / 64));
@@ -264,7 +256,13 @@ public sealed class BobertoMark : FrameworkElement
 
         var headColor = MarkStyle.ToColor(st.Head);
         var outline = headOverride ?? Outline.For(st.Shape);
-        var shape = outline.Geometry();
+        Geometry shape = outline.Geometry();
+        if (spin % 360 != 0)
+        {
+            var turned = new GeometryGroup { Children = { shape }, Transform = new RotateTransform(spin, 32, 32) };
+            turned.Freeze();
+            shape = turned;
+        }
         double cy = outline.EyeY;
 
         // A 2.5D turn, the way a solid toy head reads: where the eyes look, the head turns. Yaw/pitch come from the
