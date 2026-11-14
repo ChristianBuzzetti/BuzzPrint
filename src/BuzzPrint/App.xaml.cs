@@ -253,13 +253,17 @@ public partial class App : Application
 
     // ------------------------------------------------------------------ logo
     /// <summary>Restyles the BuzzPrint logo everywhere (header marks, window and tray icons) and saves it.</summary>
+    System.Windows.Threading.DispatcherTimer? markCommit;
     public void SetMark(MarkStyle style)
     {
         BobertoMark.Current = style;
         style.Save(Store.Settings);
-        Store.SaveSettings();
-        ApplyMarkIcon();
+        // Window/tray icons and the settings file follow a moment later, once the person stops clicking.
+        markCommit ??= new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(450) };
+        markCommit.Tick -= MarkCommitTick; markCommit.Tick += MarkCommitTick;
+        markCommit.Stop(); markCommit.Start();
     }
+    void MarkCommitTick(object? sender, EventArgs e) { markCommit!.Stop(); Store.SaveSettings(); ApplyMarkIcon(); }
 
     /// <summary>Window and tray icons follow the custom logo (the .exe file keeps the shipped icon).</summary>
     void ApplyMarkIcon()

@@ -379,12 +379,14 @@ public sealed class PersonalizationWindow:Window
         var row=new DockPanel();
         var left=new StackPanel {Margin=new Thickness(0,0,22,0)};
         var big=new BobertoMark {Width=120,Height=120,Animated=settings.BobertoMotion&&SystemParameters.ClientAreaAnimation};big.SetResourceReference(BobertoMark.TileProperty,"Accent");left.Children.Add(big);
-        var reset=new Button {Content=L.T("Restablecer logo"),Margin=new Thickness(0,12,0,0),HorizontalAlignment=HorizontalAlignment.Stretch};reset.Click+=(_,_)=>{App.Current.SetMark(new MarkStyle());UpdatePreview();};left.Children.Add(reset);
+        var markRefresh=new List<Action>();
+        var reset=new Button {Content=L.T("Restablecer logo"),Margin=new Thickness(0,12,0,0),HorizontalAlignment=HorizontalAlignment.Stretch};reset.Click+=(_,_)=>Pick(new MarkStyle());left.Children.Add(reset);
         DockPanel.SetDock(left,Dock.Left);row.Children.Add(left);
         var options=new StackPanel();row.Children.Add(options);group.Children.Add(row);
         // Shapes and eyes: round tiles with a live little mark, each resting at its own slight angle; the name is the
         // tooltip. The chosen one gets an accent ring. Colors are plain dots.
         bool lively=settings.BobertoMotion&&SystemParameters.ClientAreaAnimation;
+        void Pick(MarkStyle m){App.Current.SetMark(m);foreach(var a in markRefresh)a();}
         // Shape tiles show the bare silhouette in color (a dark head borrows the accent so it reads on a dark surface).
         static MarkStyle Bare(MarkStyle m)
         {
@@ -402,14 +404,14 @@ public sealed class PersonalizationWindow:Window
             {
                 var (value,name)=items[i];
                 var mini=new BobertoMark {Width=40,Height=40,Animated=lively,Follow=false,Tilt=tilts[i%tilts.Length],IsHitTestVisible=false};mini.SetResourceReference(BobertoMark.TileProperty,"Accent");
-                refreshControls.Add(()=>mini.Style=bare?Bare(with(BobertoMark.Current,value)):with(BobertoMark.Current,value));
+                markRefresh.Add(()=>mini.Style=bare?Bare(with(BobertoMark.Current,value)):with(BobertoMark.Current,value));
                 mini.Style=bare?Bare(with(BobertoMark.Current,value)):with(BobertoMark.Current,value);
                 var ring=new Border {Width=54,Height=54,CornerRadius=new CornerRadius(27),BorderThickness=new Thickness(2),Child=mini,Background=Brushes.Transparent};
                 void Paint(){if(get(BobertoMark.Current)==value)ring.SetResourceReference(Border.BorderBrushProperty,"Accent");else ring.BorderBrush=Brushes.Transparent;}
-                Paint();refreshControls.Add(Paint);
+                Paint();markRefresh.Add(Paint);
                 var tile=new Button {Content=ring,ToolTip=L.T(name),Margin=new Thickness(2),Padding=new Thickness(0),Cursor=Cursors.Hand,Background=Brushes.Transparent,BorderBrush=Brushes.Transparent,Template=BareTemplate()};
-                tile.MouseEnter+=(_,_)=>{if(lively)mini.Squish();};
-                tile.Click+=(_,_)=>{App.Current.SetMark(with(BobertoMark.Current,value));UpdatePreview();big.Squish();};
+                tile.MouseEnter+=(_,_)=>mini.Hover(true);tile.MouseLeave+=(_,_)=>mini.Hover(false);
+                tile.Click+=(_,_)=>Pick(with(BobertoMark.Current,value));
                 System.Windows.Automation.AutomationProperties.SetName(tile,L.T(name));
                 wrap.Children.Add(tile);
             }
@@ -419,21 +421,46 @@ public sealed class PersonalizationWindow:Window
         {
             options.Children.Add(Heading(title,new Thickness(0,4,0,8)));
             var wrap=new WrapPanel {Margin=new Thickness(0,0,0,10)};
+            Button Dot(UIElement face,string tip,Func<bool> chosen,Action click)
+            {
+                var ring=new Border {Width=34,Height=34,CornerRadius=new CornerRadius(17),BorderThickness=new Thickness(2),Child=face,Background=Brushes.Transparent};
+                void Paint(){if(chosen())ring.SetResourceReference(Border.BorderBrushProperty,"Accent");else ring.BorderBrush=Brushes.Transparent;}
+                Paint();markRefresh.Add(Paint);
+                var b=new Button {Content=ring,ToolTip=tip,Margin=new Thickness(2),Padding=new Thickness(0),Cursor=Cursors.Hand,Template=BareTemplate()};
+                b.Click+=(_,_)=>click();
+                System.Windows.Automation.AutomationProperties.SetName(b,tip);
+                wrap.Children.Add(b);
+                return b;
+            }
+            Border Disc(){var d=new Border {Width=24,Height=24,CornerRadius=new CornerRadius(12),BorderThickness=new Thickness(1),HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};d.SetResourceReference(Border.BorderBrushProperty,"StrongBorder");return d;}
             foreach(var (value,name) in items)
             {
-                var dot=new Border {Width=24,Height=24,CornerRadius=new CornerRadius(12),BorderThickness=new Thickness(1)};
-                if(value=="accent")dot.SetResourceReference(Border.BackgroundProperty,"Accent");
-                else if(value=="none"){dot.Background=Brushes.Transparent;dot.Child=new TextBlock {Text="\uE711",FontFamily=new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"),FontSize=11,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};}
-                else dot.Background=new SolidColorBrush(MarkStyle.ToColor(value));
-                dot.SetResourceReference(Border.BorderBrushProperty,"StrongBorder");
-                var ring=new Border {Width=34,Height=34,CornerRadius=new CornerRadius(17),BorderThickness=new Thickness(2),Child=dot,Background=Brushes.Transparent};
-                void Paint(){if(get(BobertoMark.Current)==value)ring.SetResourceReference(Border.BorderBrushProperty,"Accent");else ring.BorderBrush=Brushes.Transparent;}
-                Paint();refreshControls.Add(Paint);
-                var b=new Button {Content=ring,ToolTip=L.T(name),Margin=new Thickness(2),Padding=new Thickness(0),Cursor=Cursors.Hand,Template=BareTemplate()};
-                b.Click+=(_,_)=>{App.Current.SetMark(with(BobertoMark.Current,value));UpdatePreview();big.Squish();};
-                System.Windows.Automation.AutomationProperties.SetName(b,L.T(name));
-                wrap.Children.Add(b);
+                var disc=Disc();
+                if(value=="accent")disc.SetResourceReference(Border.BackgroundProperty,"Accent");
+                else if(value=="none")
+                {
+                    // A drawn cross, centred on the disc (a font glyph sat off-centre).
+                    var cross=new System.Windows.Shapes.Path {Data=Geometry.Parse("M0,0 L8,8 M8,0 L0,8"),StrokeThickness=1.6,StrokeStartLineCap=PenLineCap.Round,StrokeEndLineCap=PenLineCap.Round,Width=8,Height=8,Stretch=Stretch.None,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};
+                    cross.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty,"Muted");
+                    disc.Child=cross;
+                }
+                else disc.Background=new SolidColorBrush(MarkStyle.ToColor(value));
+                Dot(disc,L.T(name),()=>get(BobertoMark.Current)==value,()=>Pick(with(BobertoMark.Current,value)));
             }
+            // Custom: a rainbow disc with "+", or the custom color itself once chosen; opens a color mixer.
+            var customDisc=Disc();
+            var hues=new LinearGradientBrush {StartPoint=new Point(0,0),EndPoint=new Point(1,1)};
+            for(int i=0;i<=6;i++)hues.GradientStops.Add(new GradientStop(CustomAccentPicker.ColorFromHsv(i*60,.75,1),i/6d));
+            var plus=new TextBlock {Text="+",FontWeight=FontWeights.Bold,FontSize=14,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,-2,0,0)};
+            customDisc.Child=plus;
+            bool IsCustom()=>items.All(i=>i.value!=get(BobertoMark.Current));
+            void PaintCustom(){if(IsCustom()){customDisc.Background=new SolidColorBrush(MarkStyle.ToColor(get(BobertoMark.Current)));plus.Text="";}else{customDisc.Background=hues;plus.Text="+";}plus.Foreground=Brushes.White;}
+            PaintCustom();markRefresh.Add(PaintCustom);
+            var popup=new System.Windows.Controls.Primitives.Popup {StaysOpen=false,AllowsTransparency=true,Placement=System.Windows.Controls.Primitives.PlacementMode.Bottom};
+            var picker=new CustomAccentPicker(hex=>{Pick(with(BobertoMark.Current,hex));popup.IsOpen=false;});
+            popup.Child=picker;
+            var customButton=Dot(customDisc,L.T("Color propio"),IsCustom,()=>{});
+            customButton.Click+=(_,_)=>{string now=get(BobertoMark.Current);picker.Load(MarkStyle.IsHex(now)?now:"#A86B3C");popup.PlacementTarget=customButton;popup.IsOpen=true;};
             options.Children.Add(wrap);
         }
         Tiles(L.T("Forma"),[("hex","Hexágono"),("circle","Círculo"),("blob","Burbuja"),("pebble","Piedra"),("cloud","Nube"),("drop","Gota"),("clover","Trébol"),("flower","Flor"),("star","Estrella"),("burst","Destello"),("heart","Corazón"),("squircle","Redondeado"),("diamond","Rombo"),("ghost","Fantasma")],m=>m.Shape,(m,v)=>m with {Shape=v},bare:true);

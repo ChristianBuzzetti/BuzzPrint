@@ -31,6 +31,8 @@ public sealed class AiSettingsWindow : Window
     readonly ComboBox model = new() { IsEditable = true, MinHeight = 38 };
     readonly Button loadModels = new() { MinWidth = 120, Margin = new Thickness(8, 0, 0, 0) };
     readonly TextBlock modelNote = Muted("");
+    readonly Button showAll = new() { Style = null, Padding = new Thickness(0), Margin = new Thickness(0, 4, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, Visibility = Visibility.Collapsed, Cursor = Cursors.Hand };
+    readonly Dictionary<string, List<string>> listed = [];   // connection id → every chat model its account offers (this window only)
     readonly TextBox url = new() { MinHeight = 38 };
     readonly TextBox name = new() { MinHeight = 38 };
     readonly PasswordBox key = new() { MinHeight = 38 };
@@ -164,6 +166,8 @@ public sealed class AiSettingsWindow : Window
         editor.Children.Add(modelRow);
         modelNote.Margin = new Thickness(0, 6, 0, 0);
         editor.Children.Add(modelNote);
+        showAll.SetResourceReference(StyleProperty, "QuietButton");
+        editor.Children.Add(showAll);
 
         urlBlock.Children.Add(Label(L.T("URL DEL SERVICIO (TERMINA EN /v1)"), 20));
         url.Margin = new Thickness(0, 6, 0, 0);
@@ -246,13 +250,20 @@ public sealed class AiSettingsWindow : Window
         loadModels.Click += async (_, _) => await LoadModelsAsync();
         test.Click += async (_, _) => await TestAsync();
         useButton.Click += (_, _) => { if (current != null) { activeId = current.Id; RenderList(); ShowHeader(); } };
-        remove.Click += (_, _) =>
+        remove.Click += (_, _) => { if (current != null) Delete(current); };
+        showAll.Click += (_, _) =>
         {
-            if (current == null) return;
-            deleted.Add(current.Id); typedKeys.Remove(current.Id); working.Remove(current);
-            if (activeId == current.Id) activeId = working.FirstOrDefault()?.Id ?? "";
-            Select(working.FirstOrDefault());
+            if (current == null || !listed.TryGetValue(current.Id, out var all)) return;
+            Offer(all, L.F("Todos los modelos de chat de tu cuenta ({0}).", all.Count), "Muted", open: true);
+            showAll.Visibility = Visibility.Collapsed;
         };
+    }
+
+    void Delete(AiConnection c)
+    {
+        deleted.Add(c.Id); typedKeys.Remove(c.Id); listed.Remove(c.Id); working.Remove(c);
+        if (activeId == c.Id) activeId = working.FirstOrDefault()?.Id ?? "";
+        Select(c == current || current == null ? working.FirstOrDefault() : current);
     }
 
     void Select(AiConnection? c)
@@ -292,7 +303,11 @@ public sealed class AiSettingsWindow : Window
             status.Text = "";
         }
         finally { loading = false; }
+        showAll.Visibility = Visibility.Collapsed;
         ShowKeyState(); ShowModelNote(); ShowHeader(); SyncEnabled();
+        // Fresh models arrive by themselves: with a key on hand the list is fetched (and curated) quietly.
+        if (enabled.IsChecked == true && (!p.NeedsKey || typedKeys.ContainsKey(current.Id) || AiKeys.Has(current.Id, current.Provider)))
+            _ = LoadModelsAsync(quiet: true);
     }
 
     void ShowKeyState()
@@ -320,6 +335,7 @@ public sealed class AiSettingsWindow : Window
         if (current == null) return;
         var p = AiProviders.Get(current.Provider);
         var known = p.Models.FirstOrDefault(m => m.Id == current.Model);
+        modelNote.SetResourceReference(TextBlock.ForegroundProperty, "Muted");
         modelNote.Text = known != null ? L.T(known.Note)
             : p.Models.Count > 0 ? L.T("Modelo elegido a mano. Los recomendados están en la lista.")
             : L.T("Escribí el nombre del modelo o tocá «Ver modelos» para elegir de tu cuenta.");
@@ -347,6 +363,14 @@ public sealed class AiSettingsWindow : Window
             letter.Child = lt;
             DockPanel.SetDock(letter, Dock.Left);
             grid.Children.Add(letter);
+            var trash = new Button { Content = new TextBlock { Text = "", FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"), FontSize = 13 },
+                ToolTip = L.T("Eliminar esta conexión"), Width = 30, Height = 30, Padding = new Thickness(0), Margin = new Thickness(8, 0, -4, 0), VerticalAlignment = VerticalAlignment.Center, IsEnabled = enabled.IsChecked == true };
+            trash.SetResourceReference(StyleProperty, "QuietButton");
+            System.Windows.Automation.AutomationProperties.SetName(trash, L.T("Eliminar esta conexión"));
+            trash.Click += (_, e) => { e.Handled = true; Delete(conn); };
+            trash.MouseLeftButtonUp += (_, e) => e.Handled = true;
+            DockPanel.SetDock(trash, Dock.Right);
+            grid.Children.Add(trash);
             var texts = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             var top = new DockPanel();
             if (inUse)
@@ -381,26 +405,44 @@ public sealed class AiSettingsWindow : Window
         ShowHeader();
     }
 
-    async Task LoadModelsAsync()
+    async Task LoadModelsAsync(bool quiet = false)
     {
         if (current == null) return;
+        var conn = current;
         loadModels.IsEnabled = false;
-        SetStatus(L.T("Buscando los modelos de tu cuenta…"), "Muted");
+        if (!quiet) Note(L.T("Buscando los modelos de tu cuenta…"), "Muted");
         try
         {
-            var ids = await AiClient.ListModelsAsync(current, typedKeys.GetValueOrDefault(current.Id));
-            var p = AiProviders.Get(current.Provider);
-            var choices = p.Models.Select(m => m.Id).ToList();
-            foreach (var id in ids) if (!choices.Contains(id)) choices.Add(id);
-            loading = true;
-            try { string keep = current.Model; model.ItemsSource = choices; model.Text = keep; }
-            finally { loading = false; }
-            if (choices.Count > 0) model.IsDropDownOpen = true;
-            SetStatus(ids.Count > 0 ? L.F("{0} modelos disponibles en tu cuenta. Elegí uno de la lista.", ids.Count) : L.T("La cuenta no devolvió modelos. Escribí el nombre a mano."), "Muted");
+            var all = await AiClient.ListModelsAsync(conn, typedKeys.GetValueOrDefault(conn.Id));
+            if (conn != current) return;
+            all = all.Where(ModelCuration.IsChat).ToList();
+            listed[conn.Id] = all;
+            var curated = ModelCuration.Curate(conn.Provider, all);
+            if (curated.Count == 0) { Note(L.T("La cuenta no devolvió modelos de chat. Escribí el nombre a mano."), "Muted"); return; }
+            Offer(curated, L.F("{0} modelos recientes de tu cuenta. Elegí uno de la lista.", curated.Count), "Muted", open: !quiet);
+            showAll.Content = L.F("Mostrar todos ({0})", all.Count);
+            showAll.Visibility = all.Count > curated.Count ? Visibility.Visible : Visibility.Collapsed;
         }
-        catch (AiException ex) { SetStatus(ex.Message, "ErrorInk"); }
+        catch (AiException ex) { if (conn == current && !quiet) Note(ex.Message, "ErrorInk"); }
         finally { loadModels.IsEnabled = enabled.IsChecked == true; }
     }
+
+    /// <summary>Puts these models in the combo (the provider's recommended ones that the account has come first).</summary>
+    void Offer(List<string> ids, string note, string brush, bool open)
+    {
+        if (current == null) return;
+        var p = AiProviders.Get(current.Provider);
+        var choices = p.Models.Select(m => m.Id).Where(ids.Contains).ToList();
+        foreach (var id in ids) if (!choices.Contains(id)) choices.Add(id);
+        loading = true;
+        try { string keep = current.Model; model.ItemsSource = choices; model.Text = keep; }
+        finally { loading = false; }
+        Note(note, brush);
+        if (open && choices.Count > 0) { model.Focus(); model.IsDropDownOpen = true; }
+    }
+
+    /// <summary>Status of the model field, right under it (the bottom status line is out of sight while choosing).</summary>
+    void Note(string text, string brush) { modelNote.Text = text; modelNote.SetResourceReference(TextBlock.ForegroundProperty, brush); }
 
     async Task TestAsync()
     {

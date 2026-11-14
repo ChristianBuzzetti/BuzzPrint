@@ -125,13 +125,16 @@ public partial class MainWindow : Window
         SizeBobertoBand();
     }
 
-    const double BobertoStrip = 35, BobertoMinWindow = 900, BobertoMaxShare = 0.30;
+    const double BobertoStrip = 35, BobertoMinWindow = 900, BobertoMaxShare = 0.30, BobertoMaxHeight = 200;
     void SizeBobertoBand()
     {
         double width = BobertoBandWidth();
         BobertoColumn.Width = new GridLength(width);
         BobertoPanel.Width = width;
-        BobertoPanel.Height = Math.Max(0, HeaderLeft.ActualHeight);
+        // The header grows so Boberto's scene keeps its 16:9 shape at that width instead of a thin letterbox.
+        double tall = width > 0 ? Math.Min(Math.Round((width - BobertoStrip) * 9 / 16), BobertoMaxHeight) : 0;
+        if (Math.Abs(HeaderLeft.MinHeight - tall) > 1) HeaderLeft.MinHeight = tall;
+        BobertoPanel.Height = Math.Max(tall, HeaderLeft.ActualHeight);
     }
     double BobertoBandWidth()
     {
