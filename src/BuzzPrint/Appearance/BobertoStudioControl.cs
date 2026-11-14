@@ -121,6 +121,6 @@ public sealed class BobertoStudioControl:Grid,IDisposable
     public void Dispose()
     {
         if(disposed)return;disposed=true;lifetime.Cancel();ready.TrySetCanceled();view.Dispose();environment=null;FrameReady=null;
-        if(lastFrame!=null&&cacheAvatar)try{Directory.CreateDirectory(Path.GetDirectoryName(AvatarPath)!);if(!File.Exists(AvatarPath)||!File.ReadAllBytes(AvatarPath).AsSpan().SequenceEqual(lastFrame)){string staging=AvatarPath+"."+Guid.NewGuid().ToString("N")+".tmp";try{File.WriteAllBytes(staging,lastFrame);File.Move(staging,AvatarPath,true);}finally{if(File.Exists(staging))File.Delete(staging);}}}catch(Exception ex)when(ex is IOException or UnauthorizedAccessException){System.Diagnostics.Debug.WriteLine("Boberto avatar cache: "+ex.Message);}
+        if(lastFrame!=null&&cacheAvatar)try{Directory.CreateDirectory(Path.GetDirectoryName(AvatarPath)!);if(!File.Exists(AvatarPath)||!File.ReadAllBytes(AvatarPath).AsSpan().SequenceEqual(lastFrame))File.WriteAllBytes(AvatarPath,lastFrame); /* plain write (see BobertoDockControl snapshot) */}catch(Exception ex)when(ex is IOException or UnauthorizedAccessException){System.Diagnostics.Debug.WriteLine("Boberto avatar cache: "+ex.Message);}
     }
 }

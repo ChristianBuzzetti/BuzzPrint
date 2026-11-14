@@ -56,7 +56,7 @@ public static class Ocr
         var r = await RecognizeAsync(it.Path, ct);
         if (r == null) return null;
         r.Stamp = stamp;
-        try { Directory.CreateDirectory(CacheDir); AtomicFiles.SaveUtf8(CachePath(it), JsonSerializer.Serialize(r, JsonOptions)); }
+        try { Directory.CreateDirectory(CacheDir); File.WriteAllText(CachePath(it), JsonSerializer.Serialize(r, JsonOptions)); /* plain write: temp-and-replace per file looks like ransomware to some antivirus */ }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { System.Diagnostics.Debug.WriteLine("OCR cache: " + ex.Message); }
         return r;
     }

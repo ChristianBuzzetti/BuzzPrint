@@ -425,11 +425,22 @@ namespace BuzzPrint
             return All().FirstOrDefault(x => x.Id == id) ?? it;
         }
 
-        public static void Delete(CaptureItem it)
+        public static void Delete(CaptureItem it) { DeleteMany(new[] { it }); }
+
+        /// <summary>
+        /// Sends the captures (image, original, metadata, thumbnail) to the Recycle Bin in one Windows shell operation,
+        /// then refreshes the library once. Deleting file by file while the library re-read every remaining image
+        /// after each one looked like ransomware to behaviour monitors (Trend Micro quarantined the exe); one recycle
+        /// call is the same operation Explorer performs, and the person can undo it from the Recycle Bin.
+        /// </summary>
+        public static void DeleteMany(IEnumerable<CaptureItem> items)
         {
-            foreach (var p in new[] { it.Path, it.OrigPath, it.MetaPath, it.ThumbPath })
-                try { if (p != null && File.Exists(p)) File.Delete(p); } catch { }
-            lock (thumbs) thumbs.Remove(it.Id);
+            var list = items.ToList();
+            var files = list.SelectMany(it => new[] { it.Path, it.OrigPath, it.MetaPath, it.ThumbPath })
+                            .Where(p => p != null && File.Exists(p)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            if (files.Count > 0 && !RecycleBin.Send(files))
+                foreach (var p in files) try { File.Delete(p); } catch { }
+            lock (thumbs) foreach (var it in list) thumbs.Remove(it.Id);
             RaiseChanged();
         }
 

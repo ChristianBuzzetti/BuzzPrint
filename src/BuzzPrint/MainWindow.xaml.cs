@@ -963,8 +963,9 @@ public partial class MainWindow : Window
         var sel = Selected;
         if (sel.Count == 0) return;
         bool recs = sel[0].IsRecording;
-        if (!PromptWindow.Confirm(this, L.T("Eliminar") + " " + (recs ? L.Count(sel.Count, "grabación", "grabaciones") : L.Count(sel.Count, "captura", "capturas")), L.T(recs ? "Se borran del disco. No se puede deshacer." : "Se borran del disco junto con sus anotaciones. No se puede deshacer."), L.T("Eliminar"))) return;
-        foreach (var it in sel) { Imaging.Forget(it.Path); Store.Delete(it); }
+        if (!PromptWindow.Confirm(this, L.T("Eliminar") + " " + (recs ? L.Count(sel.Count, "grabación", "grabaciones") : L.Count(sel.Count, "captura", "capturas")), L.T(recs ? "Van a la Papelera de reciclaje; desde ahí se pueden recuperar." : "Van a la Papelera de reciclaje junto con sus anotaciones; desde ahí se pueden recuperar."), L.T("Eliminar"))) return;
+        foreach (var it in sel) Imaging.Forget(it.Path);
+        Store.DeleteMany(sel);
     }
     // ================================================================== export
     /// <summary>Selected captures in the order they were picked; whether that order was chosen on purpose (Ctrl+clic in

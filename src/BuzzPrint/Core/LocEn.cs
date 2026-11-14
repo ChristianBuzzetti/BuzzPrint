@@ -554,6 +554,8 @@ static class LocEn
         ["Fucsia"] = "Fuchsia",
         ["Gris"] = "Gray",
         ["Color propio"] = "Custom color",
+        ["Van a la Papelera de reciclaje; desde ahí se pueden recuperar."] = "They go to the Recycle Bin; you can restore them from there.",
+        ["Van a la Papelera de reciclaje junto con sus anotaciones; desde ahí se pueden recuperar."] = "They go to the Recycle Bin with their annotations; you can restore them from there.",
         ["Instalado · muestra a Boberto"] = "Installed · shows Boberto",
         ["LICENCIA"] = "LICENSE",
         ["CÓDIGO"] = "SOURCE",

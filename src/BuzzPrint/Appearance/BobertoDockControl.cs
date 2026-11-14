@@ -135,8 +135,7 @@ public sealed class BobertoDockControl:Grid,IDisposable
             byte[] png=await CaptureAsync();
             if(png.Length is < 24 or > 2*1024*1024)return;
             Directory.CreateDirectory(Path.GetDirectoryName(snapshotPath)!);
-            string staging=snapshotPath+"."+Guid.NewGuid().ToString("N")+".tmp";
-            try{await File.WriteAllBytesAsync(staging,png);File.Move(staging,snapshotPath,true);}finally{if(File.Exists(staging))File.Delete(staging);}
+            await File.WriteAllBytesAsync(snapshotPath,png); /* plain write: temp-and-rename over an image looks like ransomware to some antivirus */
         }catch(Exception ex)when(ex is IOException or UnauthorizedAccessException or InvalidOperationException or COMException or ObjectDisposedException or TimeoutException or TaskCanceledException){System.Diagnostics.Debug.WriteLine("Boberto snapshot: "+ex.Message);}
     }
     private BitmapSource? LoadSnapshot()
