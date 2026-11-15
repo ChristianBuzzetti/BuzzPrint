@@ -1,6 +1,6 @@
 # BuzzPrint
 
-**Screen capture, recording and step-by-step docs for Windows.** Capture a region or window, record video and audio, annotate, pick any capture from a quick menu to paste it anywhere, and export a set of captures, in order, to PowerPoint, Word, PDF or a single image with professional templates. An optional **AI Preview** build adds titles, summaries, step-by-step guides, incident reports and data redaction with the AI service you choose. With Boberto, a live companion you can dress up, and a built-in guide (`F1`). English by default, Spanish built in. MIT licensed.
+**Screen capture, recording and step-by-step docs for Windows.** Capture a region or window, record video and audio, annotate, pick any capture from a quick menu to paste it anywhere, and export a set of captures, in order, to PowerPoint, Word, PDF or a single image with professional templates. Optional **AI** (off until you turn it on) adds titles, summaries, step-by-step guides, incident reports and data redaction with the AI service you choose. With Boberto, a live companion you can dress up, and a built-in guide (`F1`). English by default, Spanish built in. MIT licensed.
 
 ![Library](docs/library.png)
 
@@ -12,9 +12,9 @@
 
 ## Download (no build needed)
 
-1. Download **`BuzzPrint-<version>-win-x64.zip`** from the [latest release](https://github.com/ChristianBuzzetti/BuzzPrint/releases/latest) — or **`BuzzPrint-AI-Preview-<version>-win-x64.zip`** for the build with AI features.
+1. Download **`BuzzPrint-AI-Preview-<version>-win-x64.zip`** from the [latest release](https://github.com/ChristianBuzzetti/BuzzPrint/releases/latest).
 2. Extract it anywhere, for example `C:\Apps`. Avoid running it from inside the zip.
-3. Open `BuzzPrint\BuzzPrint.exe` (or `BuzzPrint-AI-Preview\BuzzPrint.exe`). Both builds can run side by side: they keep separate settings.
+3. Open `BuzzPrint-AI-Preview\BuzzPrint.exe`. AI stays off until you set it up; if you don't want it, just don't use it.
 
 Nothing else to install: .NET is included. If FFmpeg (for recording) or WebView2 (for Boberto) is missing, BuzzPrint offers to download it when it's needed.
 
@@ -105,7 +105,7 @@ Your captures, recordings and settings are kept: they live outside the app folde
 - **Personalize** (sidebar or View menu): palette (23 palettes, 17 dark and 6 light, with an independent accent), fonts, rounded or square panels and controls (separately), language, Boberto and animations. Clicking Boberto opens Boberto Studio.
 - **Logo** (Personalize → Effects & Logo): 14 head shapes, 6 eye styles, head and background colors (or any custom color, or your palette's accent). The head turns in 2.5D toward where it looks and spins now and then. It restyles the header logo and the window and tray icons; the `.exe` icon stays the original. The logo is alive: its eyes follow the cursor, it blinks, and clicking it blinks both eyes, alternates them or double-blinks. It stays still with animations off.
 - **Boberto**: ships with a black body, blue eyes, samurai helmet, Mirai night background and crossed frame (change it all in Studio). With an empty library he appears in the middle, watches the cursor and plays gestures; click for another one.
-- **AI Preview build** (optional, separate download): connect Claude, Gemini, ChatGPT, OpenRouter, a local Ollama or any OpenAI-compatible service (several connections, one in use; keys encrypted with your Windows user). Features: **title and summary** per capture (optionally automatic), **step-by-step guide** drafted from your captures, **protect data** (finds mails, IPs, keys, names and numbers and saves a pixelated copy), **ask about the capture**, **incident report** (copy formatted, save as image or text) and **organize the library** in a single request. Available from the library and from the editor. Nothing is sent unless you ask: every feature shows first which captures go to which service; a loading card can be cancelled and times out after 2 minutes without progress.
+- **AI** (optional, off until you turn it on): connect Claude, Gemini, ChatGPT, OpenRouter, a local Ollama or any OpenAI-compatible service (several connections, one in use; keys encrypted with your Windows user). Features: **title and summary** per capture (optionally automatic), **step-by-step guide** drafted from your captures, **protect data** (finds mails, IPs, keys, names and numbers and saves a pixelated copy), **ask about the capture**, **incident report** (copy formatted, save as image or text) and **organize the library** in a single request. Available from the library and from the editor. Nothing is sent unless you ask: every feature shows first which captures go to which service; a loading card can be cancelled and times out after 2 minutes without progress.
 - **Language**: English by default, Spanish available (Personalize → Interface → Language, or View → Language). The app restarts to apply it.
 - **System tray**: click = quick menu (or stop, while recording), double-click = library, right-click = menu.
 
