@@ -35,7 +35,8 @@ if ($ffmpeg) {
 Write-Output "BuzzPrint publicado en $Output"
 if ($Zip) {
     $version = ([xml](Get-Content -LiteralPath $project -Raw)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
-    $stage = Join-Path $PSScriptRoot 'artifacts\zip\BuzzPrint'
+    $zipName = if ($Preview) { 'BuzzPrint-AI-Preview' } else { 'BuzzPrint' }
+    $stage = Join-Path $PSScriptRoot "artifacts\zip\$zipName"
     if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
     New-Item -ItemType Directory -Force $stage | Out-Null
     Copy-Item -Path (Join-Path $Output '*') -Destination $stage -Recurse -Force
@@ -43,7 +44,7 @@ if ($Zip) {
     if (Test-Path -LiteralPath $tools) { Remove-Item -LiteralPath $tools -Recurse -Force }
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'LICENSE') -Destination $stage
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'THIRD-PARTY-NOTICES.md') -Destination $stage
-    $zipPath = Join-Path $PSScriptRoot "artifacts\BuzzPrint-$version-win-x64.zip"
+    $zipPath = Join-Path $PSScriptRoot "artifacts\$zipName-$version-win-x64.zip"
     if (Test-Path -LiteralPath $zipPath) { Remove-Item -LiteralPath $zipPath -Force }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     [IO.Compression.ZipFile]::CreateFromDirectory($stage, $zipPath, [IO.Compression.CompressionLevel]::Optimal, $true)

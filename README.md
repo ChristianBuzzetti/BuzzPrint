@@ -1,6 +1,6 @@
 # BuzzPrint
 
-**Screen capture, recording and step-by-step docs for Windows.** Capture a region or window, record video and audio, annotate, pick any capture from a quick menu to paste it anywhere, and export a set of captures, in order, to PowerPoint, Word, PDF or a single image. With Boberto, a live companion you can dress up. English by default, Spanish built in. MIT licensed.
+**Screen capture, recording and step-by-step docs for Windows.** Capture a region or window, record video and audio, annotate, pick any capture from a quick menu to paste it anywhere, and export a set of captures, in order, to PowerPoint, Word, PDF or a single image with professional templates. An optional **AI Preview** build adds titles, summaries, step-by-step guides, incident reports and data redaction with the AI service you choose. With Boberto, a live companion you can dress up, and a built-in guide (`F1`). English by default, Spanish built in. MIT licensed.
 
 ![Library](docs/library.png)
 
@@ -12,9 +12,9 @@
 
 ## Download (no build needed)
 
-1. Download **`BuzzPrint-<version>-win-x64.zip`** from the [latest release](https://github.com/ChristianBuzzetti/BuzzPrint/releases/latest).
+1. Download **`BuzzPrint-<version>-win-x64.zip`** from the [latest release](https://github.com/ChristianBuzzetti/BuzzPrint/releases/latest) — or **`BuzzPrint-AI-Preview-<version>-win-x64.zip`** for the build with AI features.
 2. Extract it anywhere, for example `C:\Apps`. Avoid running it from inside the zip.
-3. Open `BuzzPrint\BuzzPrint.exe`.
+3. Open `BuzzPrint\BuzzPrint.exe` (or `BuzzPrint-AI-Preview\BuzzPrint.exe`). Both builds can run side by side: they keep separate settings.
 
 Nothing else to install: .NET is included. If FFmpeg (for recording) or WebView2 (for Boberto) is missing, BuzzPrint offers to download it when it's needed.
 
@@ -93,16 +93,19 @@ Your captures, recordings and settings are kept: they live outside the app folde
 
 ## Features
 
+- **Guide** (`F1`, Help → BuzzPrint guide, or the sidebar): every feature explained step by step, with search, shortcuts and buttons that open each feature. It's offered once on the first start.
+- **Document templates** (Export → Design → Change…): 12 built-in designs — Executive report, Consulting, Institutional, Technical report, Audit, Presentation, Corporate, Minimal, Editorial, Technical, Vibrant and BuzzPrint — with image covers, colored heading bands, footer bars with page numbers and a side-by-side PowerPoint layout. **Create template** builds your own (up to 12) with colors, fonts, cover and heading styles, footer, organization line and logo.
 - **Recording**: MP4 video (H.264) with system audio and/or microphone, or **audio only** (MP3). A floating bar shows the time and level, with Stop and Discard. The bar and the area frame never show up in the video. Recordings live in the **Recordings** tab: double-click plays them, `Ctrl+C` copies them as files, and you can drag them into other apps.
-- **Library**: All / Today / Pinned / Edited / Recordings tabs, search (`Ctrl+F`), double-click to edit, `Ctrl+C`, `F2` to rename, `Ctrl+P` to pin, `Del`, drag into other apps. New captures are named by kind and time, e.g. `Region_12_11_2026_16_05_33` (window captures use the window title).
+- **Library**: All / Today / Pinned / Edited / Recordings tabs, search (`Ctrl+F`), double-click to edit, `Ctrl+C`, `F2` to rename, `Ctrl+P` to pin, `Del` (to the Recycle Bin), drag into other apps. Search also finds the **text inside captures**, read on your PC with Windows' own recognition. Cards widen to fill each row. New captures are named by kind and time, e.g. `Region_12_11_2026_16_05_33` (window captures use the window title).
 - **Filters and sections**: filter by **day** (today, yesterday, last 7 days, this month or any specific day), by **section**, and **group** the library by day, section or source, with collapsible headers. Sections are your own groups (a project, a client, a topic): **New section**, right-click → **Move to section**, and Library → rename or delete a section (its captures stay in the library).
 - **Export** (`Ctrl+E`, the Export button or right-click): the selected captures, in order, to **PowerPoint** (one per slide, 16:9), **Word** (steps as navigable headings, page numbers in the footer), **PDF** or **one image**. Reorder by dragging, with `Alt+↑/↓` or by date; each capture gets a title and a note shown under the image (both saved back to the library). Options: cover, step numbers, source and date, one per page, landscape. If you picked captures one by one with `Ctrl+click`, that order is kept; otherwise they go in chronological order. Library → **Export today's…** builds the day's document in one step.
 - **Copy as one image** (`Ctrl+Shift+C`): stacks the selected captures, numbered and titled, into one image ready to paste into a chat or an email.
 - **Editor**: select, arrow, line, rectangle, ellipse, highlighter, pen, text, numbered steps, pixelate and crop (`V A L R E H P T N B C`), colors, stroke width, undo and redo, `Ctrl+wheel` zoom and a capture tray. Saving an edit **keeps the original**: the annotated version is saved as a new capture `<name>_edited` (turn this off in the options panel → *Keep the original when editing*). Annotations stay editable.
 - **Components**: .NET is inside the app. If FFmpeg is missing, BuzzPrint offers to download it the first time you record (official gyan.dev build, SHA-256 checked, kept in `%LOCALAPPDATA%\BuzzPrint\tools`). If WebView2 is missing, it offers Microsoft's installer (signature checked). Help → **Check components…** does both on demand.
-- **Personalize** (header or View menu): palette (23 palettes, 17 dark and 6 light, with an independent accent), fonts, corners, density, options panel, language, Boberto and animations. Clicking Boberto opens Boberto Studio.
-- **Logo** (Personalize → Effects → Logo): head shape (hexagon, circle, rounded, diamond, ghost), eyes (oval, round, happy, lines, pixel), head color and background (or your palette's accent). It restyles the header logo and the window and tray icons; the `.exe` icon stays the original. The logo is alive: its eyes follow the cursor, it blinks, and clicking it blinks both eyes, alternates them or double-blinks. It stays still with animations off.
+- **Personalize** (sidebar or View menu): palette (23 palettes, 17 dark and 6 light, with an independent accent), fonts, rounded or square panels and controls (separately), language, Boberto and animations. Clicking Boberto opens Boberto Studio.
+- **Logo** (Personalize → Effects & Logo): 14 head shapes, 6 eye styles, head and background colors (or any custom color, or your palette's accent). The head turns in 2.5D toward where it looks and spins now and then. It restyles the header logo and the window and tray icons; the `.exe` icon stays the original. The logo is alive: its eyes follow the cursor, it blinks, and clicking it blinks both eyes, alternates them or double-blinks. It stays still with animations off.
 - **Boberto**: ships with a black body, blue eyes, samurai helmet, Mirai night background and crossed frame (change it all in Studio). With an empty library he appears in the middle, watches the cursor and plays gestures; click for another one.
+- **AI Preview build** (optional, separate download): connect Claude, Gemini, ChatGPT, OpenRouter, a local Ollama or any OpenAI-compatible service (several connections, one in use; keys encrypted with your Windows user). Features: **title and summary** per capture (optionally automatic), **step-by-step guide** drafted from your captures, **protect data** (finds mails, IPs, keys, names and numbers and saves a pixelated copy), **ask about the capture**, **incident report** (copy formatted, save as image or text) and **organize the library** in a single request. Available from the library and from the editor. Nothing is sent unless you ask: every feature shows first which captures go to which service; a loading card can be cancelled and times out after 2 minutes without progress.
 - **Language**: English by default, Spanish available (Personalize → Interface → Language, or View → Language). The app restarts to apply it.
 - **System tray**: click = quick menu (or stop, while recording), double-click = library, right-click = menu.
 
