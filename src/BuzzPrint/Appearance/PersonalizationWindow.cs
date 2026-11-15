@@ -61,137 +61,22 @@ public sealed class PersonalizationWindow:Window
         var saved=new StackPanel {Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};var check=Glyph("",12);check.SetResourceReference(TextBlock.ForegroundProperty,"Ok");saved.Children.Add(check);saved.Children.Add(Muted(L.T("Los cambios se aplican al instante · se guardan localmente para BuzzPrint")));foot.Children.Add(saved);
         DockPanel.SetDock(foot,Dock.Bottom);root.Children.Add(foot);
 
-        var columns=new Grid();previewColumns=columns;columns.SizeChanged+=(_,_)=>FitPreview();columns.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(previewWidth)});columns.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(20)});columns.ColumnDefinitions.Add(new ColumnDefinition());
-        var preview=BuildPreview(testProfile);columns.Children.Add(preview);
+        // No preview column: the settings take the whole width and the app behind this window shows every change live.
         Sections.SetResourceReference(StyleProperty,"SegmentedTabs");
-        Grid.SetColumn(Sections,2);columns.Children.Add(Sections);root.Children.Add(columns);Content=root;
+        root.Children.Add(Sections);Content=root;
         BuildStyle();BuildText();BuildInterface();BuildEffects();BuildBoberto();
         Sections.SelectionChanged+=async(_,args)=> {
             if(closed||args.Source!=Sections)return;
             bool full=Sections.SelectedIndex==4;
             // The header action always leads to the opposite place: Studio from the workspace sections, and back.
-            studioButton.Content=full?L.T("Personalizar espacio de trabajo"):L.T("Boberto Studio");preview.Visibility=full?Visibility.Collapsed:Visibility.Visible;columns.ColumnDefinitions[0].Width=new GridLength(full?0:previewWidth);columns.ColumnDefinitions[1].Width=new GridLength(full?0:20);
+            studioButton.Content=full?L.T("Personalizar espacio de trabajo"):L.T("Boberto Studio");
             if(full && Studio==null){Studio=new BobertoStudioControl(settings,isolatedProfile);Studio.FrameReady+=image=>frameChanged?.Invoke(image);((DockPanel)((TabItem)Sections.Items[4]).Content).Children.Add(Studio);}
-            if(PreviewDock!=null)_=PreviewDock.PauseAsync(full||!settings.BobertoVisible);
             if(Studio!=null)await Studio.PauseAsync(!full);
         };
-        Closed+=(_,_)=>{closed=true;Studio?.Dispose();PreviewDock?.Dispose();};
+        Closed+=(_,_)=>{closed=true;Studio?.Dispose();};
         PreviewKeyDown+=(_,key)=> {if(key.Key==Key.Escape)Close();};UpdatePreview();if(studio)Sections.SelectedIndex=4;
     }
 
-    // ---- Live preview: a miniature of the console in the current palette, accent and editor type. ----
-    private ContentControl BuildPreview(string? testProfile)
-    {
-        var card=new ContentControl {VerticalAlignment=VerticalAlignment.Top};card.SetResourceReference(StyleProperty,"NeoCard");   /* hugs its content: no empty band inside */
-        var scroll=new ScrollViewer {VerticalScrollBarVisibility=ScrollBarVisibility.Auto};var scene=new StackPanel();
-        // Boberto's scene is 16:9 art: his stage is always exactly 16:9 (never cropped or zoomed), and the column widens
-        // just enough for that 16:9 stage to fill the height left under the miniature, so no empty strip remains.
-        var column=new DockPanel {Margin=new Thickness(18,16,18,18),LastChildFill=false};DockPanel.SetDock(scene,Dock.Top);column.Children.Add(scene);
-        previewScroll=scroll;previewScene=scene;
-        scene.SizeChanged+=(_,_)=>FitPreview();
-        scroll.Content=column;card.Content=scroll;
-        var top=new DockPanel {Margin=new Thickness(0,0,0,12)};var badge=new Border {BorderThickness=new Thickness(1),Padding=new Thickness(6,1,6,1),VerticalAlignment=VerticalAlignment.Center};badge.SetResourceReference(Border.BorderBrushProperty,"FaintBorder");var badgeText=Mono(L.T("DATOS DE EJEMPLO"),9);badgeText.SetResourceReference(TextBlock.ForegroundProperty,"Muted");badge.Child=badgeText;DockPanel.SetDock(badge,Dock.Right);top.Children.Add(badge);top.Children.Add(SectionTitle(L.T("VISTA PREVIA")));scene.Children.Add(top);
-        previewTitle.FontWeight=FontWeights.SemiBold;previewTitle.SetResourceReference(TextBlock.FontSizeProperty,"SectionFontSize");scene.Children.Add(previewTitle);
-        previewStatus.Margin=new Thickness(0,2,0,12);previewStatus.SetResourceReference(TextBlock.FontSizeProperty,"SmallFontSize");previewStatus.SetResourceReference(TextBlock.ForegroundProperty,"Muted");previewStatus.SetResourceReference(TextBlock.FontFamilyProperty,"MonoFont");scene.Children.Add(previewStatus);
-
-        // A miniature of BuzzPrint itself (header, sidebar, capture cards with an annotation, status bar), drawn with the
-        // live resources, so every palette, accent, font, corner and size change shows on something familiar.
-        var app=new Border {BorderThickness=new Thickness(1),ClipToBounds=true};app.SetResourceReference(Border.BorderBrushProperty,"StrongBorder");app.SetResourceReference(Border.BackgroundProperty,"Canvas");app.SetResourceReference(Border.CornerRadiusProperty,"PanelRadius");
-        var stack=new StackPanel();app.Child=stack;
-        // Header: the mark, the wordmark and the accent Capture button.
-        var bar=new DockPanel();var barFrame=new Border {Padding=new Thickness(10,7,8,7),Child=bar};barFrame.SetResourceReference(Border.BackgroundProperty,"Header");
-        var capture=new Border {Padding=new Thickness(9,3,9,3),VerticalAlignment=VerticalAlignment.Center};capture.SetResourceReference(Border.BackgroundProperty,"Accent");capture.SetResourceReference(Border.CornerRadiusProperty,"ControlRadius");
-        var captureText=new TextBlock {Text=L.T("Capturar"),FontWeight=FontWeights.SemiBold,FontSize=11};captureText.SetResourceReference(TextBlock.ForegroundProperty,"OnAccent");capture.Child=captureText;DockPanel.SetDock(capture,Dock.Right);bar.Children.Add(capture);
-        var brand=new StackPanel {Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
-        var mark=new BobertoMark {Width=18,Height=18,Margin=new Thickness(0,0,6,0),Follow=false,Animated=false};mark.SetResourceReference(BobertoMark.TileProperty,"Accent");brand.Children.Add(mark);
-        var word=Mono("BUZZPRINT",11);word.FontWeight=FontWeights.Bold;word.VerticalAlignment=VerticalAlignment.Center;word.SetResourceReference(TextBlock.ForegroundProperty,"Accent");brand.Children.Add(word);
-        bar.Children.Add(brand);stack.Children.Add(barFrame);
-        var edge=new Border {Height=2};edge.SetResourceReference(Border.BackgroundProperty,"EdgeBar");stack.Children.Add(edge);
-        // Body: sidebar on the left, the library on the right.
-        var body=new Grid();body.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(86)});body.ColumnDefinitions.Add(new ColumnDefinition());
-        var side=new StackPanel {Margin=new Thickness(6,8,4,8)};var sideFrame=new Border {Child=side};sideFrame.SetResourceReference(Border.BackgroundProperty,"Header");body.Children.Add(sideFrame);
-        var label=Mono(L.T("BIBLIOTECA"),8);label.Margin=new Thickness(4,0,0,4);label.SetResourceReference(TextBlock.ForegroundProperty,"Muted");side.Children.Add(label);
-        foreach(var (name,on) in new[]{(L.T("Todas"),true),(L.T("Hoy"),false),(L.T("Fijadas"),false),(L.T("Editadas"),false)})
-        {
-            var item=new Border {Padding=new Thickness(6,3,4,3),Margin=new Thickness(0,1,0,1),BorderThickness=new Thickness(on?2:0,0,0,0)};item.SetResourceReference(Border.CornerRadiusProperty,"ControlRadius");
-            if(on){item.SetResourceReference(Border.BackgroundProperty,"AccentWeak");item.SetResourceReference(Border.BorderBrushProperty,"Accent");}
-            var t=new TextBlock {Text=name,FontSize=10.5,FontWeight=on?FontWeights.SemiBold:FontWeights.Normal,TextTrimming=TextTrimming.CharacterEllipsis};t.SetResourceReference(TextBlock.ForegroundProperty,on?"Accent":"Muted");item.Child=t;side.Children.Add(item);
-        }
-        var lib=new StackPanel {Margin=new Thickness(10,8,10,10)};Grid.SetColumn(lib,1);lib.SetResourceReference(Panel.BackgroundProperty,"Surface");
-        var libFrame=new Border {Child=lib};libFrame.SetResourceReference(Border.BackgroundProperty,"Surface");Grid.SetColumn(libFrame,1);body.Children.Add(libFrame);
-        var libTitle=new TextBlock {Text=L.T("Todas las capturas"),FontWeight=FontWeights.SemiBold,FontSize=12.5,Margin=new Thickness(0,0,0,8)};libTitle.SetResourceReference(TextBlock.ForegroundProperty,"Ink");lib.Children.Add(libTitle);
-        var cards=new UniformGrid {Columns=2};
-        cards.Children.Add(PreviewCard(L.T("Error al iniciar sesión"),"14/11 · 1280×943",annotated:true,selected:false));
-        cards.Children.Add(PreviewCard(L.T("Reporte mensual"),"14/11 · 1366×768",annotated:false,selected:true));
-        lib.Children.Add(cards);
-        stack.Children.Add(body);
-        // Status bar: the editor font shows here (its size follows the Text settings).
-        var status=new DockPanel();var statusFrame=new Border {Padding=new Thickness(10,4,10,5),Child=status,BorderThickness=new Thickness(0,1,0,0)};statusFrame.SetResourceReference(Border.BackgroundProperty,"Header");statusFrame.SetResourceReference(Border.BorderBrushProperty,"AccentRule");
-        var keys=Mono("PrtSc · Ctrl+Alt+V",10);keys.SetResourceReference(TextBlock.ForegroundProperty,"Ink");DockPanel.SetDock(keys,Dock.Right);status.Children.Add(keys);
-        previewSql.Text=L.T("Listo · 3 capturas");previewSql.VerticalAlignment=VerticalAlignment.Center;previewSql.SetResourceReference(TextBlock.FontFamilyProperty,"MonoFont");previewSql.SetResourceReference(TextBlock.ForegroundProperty,"Muted");status.Children.Add(previewSql);
-        stack.Children.Add(statusFrame);scene.Children.Add(app);
-
-        bobertoPreview.SetResourceReference(Border.BorderBrushProperty,"StrongBorder");
-        PreviewDock=new BobertoDockControl(settings,testProfile,cacheSnapshot:true,suspendRenderer:false,snapshotFile:"boberto-preview.png");   /* its own 16:9 snapshot: opens on the same picture the live scene shows */PreviewDock.StudioRequested+=()=>Dispatcher.BeginInvoke(()=> {if(!closed)Sections.SelectedIndex=4;});bobertoPreview.Child=PreviewDock;DockPanel.SetDock(bobertoPreview,Dock.Top);column.Children.Add(bobertoPreview);
-        return card;
-    }
-    private void FitPreview()
-    {
-        if(previewScroll==null||previewScene==null||previewColumns==null||previewColumns.ColumnDefinitions[0].Width.Value==0)return;
-        double chrome=previewColumns.ColumnDefinitions[0].ActualWidth-bobertoPreview.ActualWidth;   // card border + column margins
-        if(chrome<=0||chrome>120)chrome=40;
-        double room=previewColumns.ActualHeight-2-34-previewScene.ActualHeight-14;   // height left under the miniature
-        double max=Math.Max(348,Math.Min(392,ActualWidth*.36));   // capped: a wider column made Boberto too big
-        double width=Math.Clamp(Math.Round(Math.Max(158,room)*16/9+chrome),320,max);
-        if(Math.Abs(width-previewWidth)>2){previewWidth=width;previewColumns.ColumnDefinitions[0].Width=new GridLength(width);}
-        double stage=Math.Round((previewWidth-chrome)*9/16);
-        if(Math.Abs(bobertoPreview.Height-stage)>1)bobertoPreview.Height=stage;
-    }
-    /// <summary>A library card for the miniature: a mock screenshot (optionally annotated), its title and details.</summary>
-    private static Border PreviewCard(string title,string meta,bool annotated,bool selected)
-    {
-        var card=new Border {Margin=new Thickness(0,0,6,0),Padding=new Thickness(5),BorderThickness=new Thickness(selected?2:1)};
-        card.SetResourceReference(Border.CornerRadiusProperty,"StripRadius");
-        card.SetResourceReference(Border.BackgroundProperty,"SurfaceRaised");
-        card.SetResourceReference(Border.BorderBrushProperty,selected?"AccentCardRing":"FaintBorder");
-        var col=new StackPanel();
-        // The "screenshot": a light app window with lines and blocks.
-        var shot=new Grid {Height=58,ClipToBounds=true};
-        var paper=new Border {Background=new SolidColorBrush(Color.FromRgb(0xEE,0xF1,0xF5))};paper.SetResourceReference(Border.CornerRadiusProperty,"ControlRadius");shot.Children.Add(paper);
-        var lines=new Canvas();
-        void R(double x,double y,double w,double h,Color c){var r=new Rectangle {Width=w,Height=h,Fill=new SolidColorBrush(c),RadiusX=1,RadiusY=1};Canvas.SetLeft(r,x);Canvas.SetTop(r,y);lines.Children.Add(r);}
-        R(0,0,200,9,Color.FromRgb(0xD5,0xDB,0xE4));R(6,15,26,36,Color.FromRgb(0xDD,0xE2,0xEA));R(38,15,60,5,Color.FromRgb(0xC5,0xCD,0xD9));R(38,24,48,3,Color.FromRgb(0xD3,0xD9,0xE2));R(38,30,54,3,Color.FromRgb(0xD3,0xD9,0xE2));R(38,38,30,8,Color.FromRgb(0xC9,0xD1,0xDC));
-        shot.Children.Add(lines);
-        if(annotated)
-        {
-            // The annotation: a highlight box, an arrow pointing at it and a numbered step, in the accent.
-            var anno=new Canvas();
-            var box=new Rectangle {Width=36,Height=12,StrokeThickness=1.6,RadiusX=2,RadiusY=2};box.SetResourceReference(Shape.StrokeProperty,"Accent");Canvas.SetLeft(box,36);Canvas.SetTop(box,36);anno.Children.Add(box);
-            var arrow=new Path {StrokeThickness=1.6,Data=Geometry.Parse("M 92,12 L 74,36 M 74,36 L 76,29 M 74,36 L 81,33"),StrokeStartLineCap=PenLineCap.Round,StrokeEndLineCap=PenLineCap.Round};arrow.SetResourceReference(Shape.StrokeProperty,"Accent");anno.Children.Add(arrow);
-            var step=new Border {Width=13,Height=13,CornerRadius=new CornerRadius(7)};step.SetResourceReference(Border.BackgroundProperty,"Accent");
-            var n=new TextBlock {Text="1",FontSize=8.5,FontWeight=FontWeights.Bold,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};n.SetResourceReference(TextBlock.ForegroundProperty,"OnAccent");step.Child=n;
-            Canvas.SetLeft(step,90);Canvas.SetTop(step,4);anno.Children.Add(step);
-            shot.Children.Add(anno);
-        }
-        col.Children.Add(shot);
-        var t=new TextBlock {Text=title,FontSize=10.5,FontWeight=FontWeights.SemiBold,Margin=new Thickness(2,5,0,0),TextTrimming=TextTrimming.CharacterEllipsis};t.SetResourceReference(TextBlock.ForegroundProperty,"Ink");col.Children.Add(t);
-        var m=Mono(meta,8.5);m.Margin=new Thickness(2,1,0,1);m.SetResourceReference(TextBlock.ForegroundProperty,"Muted");col.Children.Add(m);
-        card.Child=col;
-        return card;
-    }
-    private static Border GridRow(string name,string state,string id,bool header=false,bool selectedRow=false)
-    {
-        var row=new Grid();foreach(double width in new[]{1.4,1,.6})row.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(width,GridUnitType.Star)});
-        string[] cells=[name,state,id];
-        for(int i=0;i<3;i++){var text=Mono(cells[i],header?9.5:0);if(header){text.FontWeight=FontWeights.Bold;text.SetResourceReference(TextBlock.ForegroundProperty,"Muted");}else text.SetResourceReference(TextBlock.ForegroundProperty,state==L.T("sin guardar")&&i==2?"ErrorInk":"Ink");Grid.SetColumn(text,i);row.Children.Add(text);}
-        // The selected row carries DBMON's 3 px accent bar and tint; every data row sits on the accent row rule.
-        var inner=new Border {Child=row,Padding=new Thickness(selectedRow?7:10,header?6:5,10,5),BorderThickness=new Thickness(selectedRow?3:0,0,0,0)};
-        if(selectedRow){inner.SetResourceReference(Border.BorderBrushProperty,"Accent");inner.SetResourceReference(Border.BackgroundProperty,"AccentTint");}
-        if(header)return inner;
-        var outer=new Border {Child=inner,BorderThickness=new Thickness(0,0,0,1)};outer.SetResourceReference(Border.BorderBrushProperty,"AccentRowRule");return outer;
-    }
-
-    // ---- Building blocks shared by the sections. ----
     private StackPanel Section(string name)
     {
         var content=new StackPanel {Margin=new Thickness(0,4,10,8)};var scroll=new ScrollViewer {Content=content,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};Sections.Items.Add(new TabItem {Header=TabHeader(name),Content=scroll});return content;
