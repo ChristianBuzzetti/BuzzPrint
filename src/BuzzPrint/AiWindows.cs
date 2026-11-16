@@ -7,6 +7,19 @@ using BuzzPrint.Ai;
 
 namespace BuzzPrint;
 
+/// <summary>Where people report inappropriate AI-generated content (Microsoft Store policy 11.16): a new GitHub issue
+/// with the AI report template. Nothing is attached automatically.</summary>
+public static class AiReport
+{
+    public const string Url = "https://github.com/ChristianBuzzetti/BuzzPrint/issues/new?template=ai-content-report.md";
+
+    public static void Open()
+    {
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Url) { UseShellExecute = true }); }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { Clipboard.SetText(Url); }
+    }
+}
+
 /// <summary>Common chrome for the AI windows: title, muted purpose line, content, footer.</summary>
 public abstract class AiWindowBase : Window
 {
@@ -34,6 +47,12 @@ public abstract class AiWindowBase : Window
         Root.Children.Add(top);
         DockPanel.SetDock(Foot, Dock.Bottom);
         Root.Children.Add(Foot);
+        // Microsoft Store policy 11.16: people can report inappropriate AI-generated content to the developer.
+        var report = new Button { Content = "⚑ " + L.T("Reportar contenido inapropiado"), Style = (Style)FindResource("QuietButton"),
+            ToolTip = L.T("Abre un reporte en GitHub. No se envía nada solo: pegá ahí lo que quieras mostrar.") };
+        report.Click += (_, _) => AiReport.Open();
+        DockPanel.SetDock(report, Dock.Left);
+        Foot.Children.Add(report);
         Content = Root;
         PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) Close(); };
     }

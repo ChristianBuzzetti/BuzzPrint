@@ -210,7 +210,8 @@ public static class GuideContent
                         S("Las API keys de IA se guardan cifradas con tu usuario de Windows.", "AI API keys are stored encrypted with your Windows user.")),
                     Tips(S("CON IA", "WITH AI"),
                         S("Solo se envía lo que vos pedís, al servicio que elegiste, y la app te lo muestra antes de enviar.", "Only what you ask for is sent, to the service you chose, and the app shows it to you before sending."),
-                        S("\"Proteger datos\" tapa información sensible en una copia, sin tocar la original.", "\"Protect data\" hides sensitive information in a copy, without touching the original.")),
+                        S("\"Proteger datos\" tapa información sensible en una copia, sin tocar la original.", "\"Protect data\" hides sensitive information in a copy, without touching the original."),
+                        S("Si la IA escribe algo inapropiado, avisanos con \"Reportar contenido inapropiado\", abajo en cada ventana de IA.", "If the AI writes something inappropriate, tell us with \"Report inappropriate content\", at the bottom of every AI window.")),
                 ],
                 [(S("Abrir la carpeta de capturas", "Open the captures folder"), "folder")]),
         };

@@ -498,7 +498,9 @@ static class LocEn
         ["Texto copiado · {0} palabras"] = "Text copied · {0} words",
         ["{0} quedó libre: ya captura con {0}."] = "{0} is free now: it captures again.",
 
-        // ---- AI (preview)
+        // ---- AI
+        ["Reportar contenido inapropiado"] = "Report inappropriate content",
+        ["Abre un reporte en GitHub. No se envía nada solo: pegá ahí lo que quieras mostrar."] = "Opens a report on GitHub. Nothing is sent on its own: paste there what you want to show.",
         ["IA"] = "AI",
         ["Configurar IA…"] = "Set up AI…",
         ["Configurar IA"] = "Set up AI",
