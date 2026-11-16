@@ -1,4 +1,3 @@
-#if PREVIEW
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
@@ -574,4 +573,3 @@ public sealed class AiSettingsWindow : Window
         w.ShowDialog();
     }
 }
-#endif

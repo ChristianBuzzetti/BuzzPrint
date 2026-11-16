@@ -12,9 +12,9 @@
 
 ## Download (no build needed)
 
-1. Download **`BuzzPrint-AI-Preview-<version>-win-x64.zip`** from the [latest release](https://github.com/ChristianBuzzetti/BuzzPrint/releases/latest).
+1. Download **`BuzzPrint-<version>-win-x64.zip`** from the [latest release](https://github.com/ChristianBuzzetti/BuzzPrint/releases/latest).
 2. Extract it anywhere, for example `C:\Apps`. Avoid running it from inside the zip.
-3. Open `BuzzPrint-AI-Preview\BuzzPrint.exe`. AI stays off until you set it up; if you don't want it, just don't use it.
+3. Open `BuzzPrint\BuzzPrint.exe`. AI stays off until you set it up; if you don't want it, just don't use it.
 
 Nothing else to install: .NET is included. If FFmpeg (for recording) or WebView2 (for Boberto) is missing, BuzzPrint offers to download it when it's needed.
 

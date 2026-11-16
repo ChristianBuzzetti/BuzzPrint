@@ -77,7 +77,7 @@ namespace BuzzPrint
         public string MarkHead = "#0E1015";
         public string MarkEyes = "oval";
         public string MarkTile = "accent";
-        // AI (preview builds). Off until the person turns it on; the API key is stored apart, encrypted (AiKeys).
+        // AI. Off until the person turns it on; the API key is stored apart, encrypted (AiKeys).
         public bool AiEnabled = false;
         public string AiProvider = "anthropic";   // id from AiProviders.All
         public string AiModel = "";               // empty = the provider's suggested model
@@ -118,9 +118,7 @@ namespace BuzzPrint
         {
             LoadSettings();
             ApplyFolders();
-#if !PREVIEW
-            ImportFromSnagAI();   // the preview shares the library and never copies files in bulk
-#endif
+            ImportFromSnagAI();
         }
 
         /// <summary>Captures and recordings folders from the settings (empty = Pictures / Videos defaults).</summary>
@@ -206,7 +204,45 @@ namespace BuzzPrint
                     Settings = Json.Deserialize<Settings>(File.ReadAllText(SettingsPath)) ?? new Settings();
             }
             catch { Settings = new Settings(); }
+            ImportFormerPreviewAi();
             SaveSettings();
+        }
+
+        /// <summary>BuzzPrint 0.5.0 on GitHub shipped as "BuzzPrint AI Preview", with its own settings folder. If this
+        /// BuzzPrint has no AI connection yet, its AI settings and encrypted keys (same Windows user) are copied once.</summary>
+        static void ImportFormerPreviewAi()
+        {
+            try
+            {
+                if (Settings.AiConnections.Count > 0) return;
+                string old = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppInfo.FormerPreviewFolderName);
+                string oldSettings = System.IO.Path.Combine(old, "capture-settings.json");
+                string marker = DataFolder.File(".preview-ai-imported");
+                if (File.Exists(marker) || !File.Exists(oldSettings)) return;
+                var prev = Json.Deserialize<Settings>(File.ReadAllText(oldSettings));
+                if (prev != null)
+                {
+                    Settings.AiEnabled = prev.AiEnabled;
+                    Settings.AiProvider = prev.AiProvider;
+                    Settings.AiModel = prev.AiModel;
+                    Settings.AiBaseUrl = prev.AiBaseUrl;
+                    Settings.AiAutoCaption = prev.AiAutoCaption;
+                    Settings.AiConnections = prev.AiConnections ?? new List<AiConnection>();
+                    Settings.AiActiveId = prev.AiActiveId;
+                    string oldKeys = System.IO.Path.Combine(old, "ai-keys"), keys = DataFolder.File("ai-keys");
+                    if (Directory.Exists(oldKeys))
+                    {
+                        Directory.CreateDirectory(keys);
+                        foreach (var f in Directory.GetFiles(oldKeys))
+                        {
+                            string to = System.IO.Path.Combine(keys, System.IO.Path.GetFileName(f));
+                            if (!File.Exists(to)) File.Copy(f, to);
+                        }
+                    }
+                }
+                File.WriteAllText(marker, DateTime.Now.ToString("o"));
+            }
+            catch { }
         }
 
         public static void SaveSettings()

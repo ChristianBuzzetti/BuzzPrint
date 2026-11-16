@@ -1,7 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- Windows SDK projection for OCR (Windows.Media.Ocr), PDF rendering and the Store's StartupTask. -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <DefineConstants>$(DefineConstants);WINRT</DefineConstants>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>BuzzPrint</AssemblyName>
@@ -18,20 +21,10 @@
     <Deterministic>true</Deterministic>
     <NoWarn>$(NoWarn);CA1416;WFO1000</NoWarn>
   </PropertyGroup>
-  <!-- Microsoft Store build (build.ps1 -Msix): Windows SDK projection for StartupTask and activation, STORE symbol.
-       The zip build stays on plain net10.0-windows so it doesn't carry the projection assemblies. -->
+  <!-- Microsoft Store packaging (build.ps1 -Msix): same app and features; only start-with-Windows (StartupTask) and
+       missing components (bundled, never downloaded) differ. -->
   <PropertyGroup Condition="'$(Store)' == 'true'">
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
-    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
-    <DefineConstants>$(DefineConstants);STORE;WINRT</DefineConstants>
-  </PropertyGroup>
-  <!-- AI preview build (build.ps1 -Preview): its own name, settings folder and single-instance lock, so it runs
-       beside the stable BuzzPrint; Windows SDK projection for OCR. -->
-  <PropertyGroup Condition="'$(Preview)' == 'true'">
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
-    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
-    <DefineConstants>$(DefineConstants);PREVIEW;WINRT</DefineConstants>
-    <Product>BuzzPrint AI Preview</Product>
+    <DefineConstants>$(DefineConstants);STORE</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <!-- WPF owns the UI; Windows Forms is used only for the capture overlay, clipboard, tray icon and hotkey window. -->
@@ -41,9 +34,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
   </ItemGroup>
-  <!-- AI features live only in the preview for now: Claude through Anthropic's official SDK, other providers through
-       their OpenAI-compatible endpoint, API keys encrypted with Windows DPAPI. -->
-  <ItemGroup Condition="'$(Preview)' == 'true'">
+  <!-- AI (off until the person turns it on): Claude through Anthropic's official SDK, other providers through their
+       OpenAI-compatible endpoint, API keys encrypted with Windows DPAPI. -->
+  <ItemGroup>
     <PackageReference Include="Anthropic" Version="13.8.0" />
   </ItemGroup>
   <ItemGroup>

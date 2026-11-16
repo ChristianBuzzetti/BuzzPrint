@@ -326,19 +326,10 @@
     { id: 'circuito',       name: 'Circuito',       serie: 'Materiales',     icon: '🔌' },
     { id: 'ambar',          name: 'Ámbar',          serie: 'Materiales',     icon: '🍯' },
   ];
-  /* Los personajes de franquicia que se retiraron el 14/10/2026, y el disfraz
-   * que los reemplaza. Los cuatro de Rick and Morty además habían sido
-   * accesorios, así que pueden aparecer tanto en la clave del personaje como
-   * en la del accesorio. Los que tienen un primo entre los disfraces pasan a
-   * ese; el resto vuelve al Boberto de siempre con su accesorio. */
-  const PERSONAJE_RETIRADO = {
-    charmander: 'brasita', squirtle: 'caparazon', bulbasaur: 'brotito',
-    pikachu: 'chispa', gengar: 'sombrita',
-    rick: '', morty: '', rick_pepinillo: '', evil_morty: '', gojo: '', gojo_ojos: '',
-    sukuna: '', goku: '', goku_ssj: '', goku_ssj4: '', krilin: '', freezer: '',
-    cell: '', majin_buu: '',
-  };
-  const esRetirado = (id) => !!id && Object.prototype.hasOwnProperty.call(PERSONAJE_RETIRADO, id);
+  /* Un accesorio guardado que ya no está en el catálogo (personajes y
+   * accesorios retirados) vuelve al de siempre: guardarlo dejaría uno fuera
+   * de catálogo. */
+  const esHat = (id) => !!id && HAT_PRESETS.some(x => x.id === id);
   const esCharacter = (id) => !!id && CHARACTERS.some(x => x.id === id);
   // La materia no reemplaza a Boberto: es la misma cabeza, así que el
   // accesorio calza. El resto de los personajes no.
@@ -406,17 +397,11 @@
   try {
     const guardado = localStorage.getItem(LS_CHARACTER);
     character = esCharacter(guardado) ? guardado : '';
-    // Un personaje retirado: se saca, y si tiene disfraz primo se pone ese
-    // como accesorio. Se persiste en el acto, para que el estudio no muestre
-    // un id que ya no está en ningún catálogo.
-    if (esRetirado(guardado)) {
-      if (PERSONAJE_RETIRADO[guardado]) hat = PERSONAJE_RETIRADO[guardado];
-      localStorage.setItem(LS_CHARACTER, 'none');
-      localStorage.setItem(LS_HAT, hat);
-    }
-    // Rick y Morty también vivieron en la clave del accesorio.
-    if (esRetirado(hat)) {
-      hat = PERSONAJE_RETIRADO[hat] || HAT_DEFAULT;
+    // Un personaje o accesorio que ya no está en el catálogo se saca en el
+    // acto, para que el estudio no muestre un id que no existe.
+    if (guardado && guardado !== 'none' && !character) localStorage.setItem(LS_CHARACTER, 'none');
+    if (!esHat(hat)) {
+      hat = HAT_DEFAULT;
       localStorage.setItem(LS_HAT, hat);
     }
   } catch (e) { character = ''; }
@@ -761,8 +746,8 @@
    * El sombreado completo a partir de un color de cuerpo y un tinte de ojos.
    *
    * Es la misma derivación para Boberto y para los personajes: así un
-   * personaje sólo declara los tonos que lo distinguen (el amarillo de
-   * Pikachu, los brazos de Morty) y el resto —brillo, rim light, sombra—
+   * personaje sólo declara los tonos que lo distinguen (el color del
+   * cuerpo, el de los brazos) y el resto —brillo, rim light, sombra—
    * sale con la misma luz que el Boberto de siempre.
    */
   function pintorDe(F, tint, extra) {
@@ -790,7 +775,7 @@
    *
    * En Boberto salen del mismo cuerpo, así que por defecto se copian de él y
    * el dibujo es idéntico al de siempre. Existen como tonos aparte porque en
-   * un personaje NO son el cuerpo: a Rick los brazos y los pies le quedaban
+   * un personaje NO son el cuerpo: a uno los brazos y los pies le quedaban
    * del color elegido por la persona, que es justo lo que un personaje no
    * tiene que heredar.
    */
@@ -1015,14 +1000,14 @@
   // dibuja como tapa encima — se cambia la FORMA del ojo. A 36 píxeles de alto
   // una tapa de un píxel no se lee; un arco sí.
   function drawEyes(c, P, pose) {
-    // Un personaje puede no tener ojos a la vista (Gojo con la venda): ahí no
+    // Un personaje puede no tener ojos a la vista (con una venda): ahí no
     // hay parpadeo ni mirada que dibujar, y pintarlos encima de la venda sería
     // peor que no tenerlos.
     const ch = charActual();
     if (ch && ch.sinOjos) return;
     const gx   = (pose.gaze ? pose.gaze[0] : 0) * 0.62;
     const gy   = (pose.gaze ? pose.gaze[1] : 0) * 0.48;
-    // `ojos` corre la posición de reposo: los ojos de Pikachu o de Sukuna no
+    // `ojos` corre la posición de reposo: los ojos de un personaje no
     // están donde los tiene Boberto. La mirada y el salto se suman igual.
     const lugar = ch && ch.ojos;
     const eyeY = (lugar ? lugar.y : BODY.top + (BODY.bot - BODY.top) * 0.38) + (pose.bodyDY || 0) + gy;
@@ -1044,7 +1029,7 @@
       // mirada: recibe la forma que pide la pose. Si devuelve false, esa forma
       // la resuelve el ojo de Boberto (el corazón y la espiral, en general).
       // gx/gy van aparte porque x/y ya los incluyen: un ojo que no se mueve
-      // entero (el de Gojo, el de Sukuna) los resta y corre sólo el iris.
+      // entero (el de un personaje) los resta y corre sólo el iris.
       if (ch && ch.ojo && ch.ojo(c, P, { side, x, y: eyeY, forma: s, sy, rx, ry, gx, gy, pose })) return;
 
       // ── Ojos que no son un óvalo: corazón y espiral ──
@@ -1160,7 +1145,7 @@
   // ── Boca ──────────────────────────────────────────────────────────────
   function drawMouth(c, P, pose) {
     // Un personaje con boca propia la dibuja entera, con o sin `pose.mouth`:
-    // la sonrisa de Sukuna o la mueca de Gojo son parte de la cara, no un gesto.
+    // la sonrisa o la mueca de un personaje son parte de la cara, no un gesto.
     const ch = charActual();
     if (ch && ch.boca) { ch.boca(c, P, pose); return; }
     if (!pose.mouth) return;
@@ -1344,8 +1329,8 @@
    *
    * Boberto con un pijama-disfraz de cuerpo entero (un kigurumi): el traje
    * tapa la silueta y deja la cara en una abertura, así que se lee como ÉL
-   * disfrazado y no como otro bicho. Reemplazan a los personajes de
-   * franquicia (ver PERSONAJE_RETIRADO): las cinco criaturas son inventadas
+   * disfrazado y no como otro bicho. Reemplazan a los personajes
+   * retirados: las cinco criaturas son inventadas
    * y evocan un tipo —fuego, agua, planta, electricidad, fantasma— sin
    * copiar a ninguna.
    *
@@ -4705,8 +4690,8 @@
      * se leen como antiparras.
      */
     // `o.baja` corre hacia abajo el arranque de la tela (hombros y cuello),
-    // en unidades. El accesorio la usa en 0. Rick la pide más baja: con la cara
-    // de Rick la bata a la altura de siempre le llegaba casi a los ojos y se
+    // en unidades. El accesorio la usa en 0. Un personaje la pide más baja: con la cara
+    // más grande la bata a la altura de siempre le llegaba casi a los ojos y se
     // leía como un cuello alto, no como una bata abierta.
     bata(c, A, o) {
       const T = telaBata(A);
@@ -6112,8 +6097,7 @@
    *   brazo    decora un brazo, en las coordenadas del muñón.
    *
    * El motor acepta además bodyRX, ojos, sinOjos, boca, front, over y bata:
-   * los usaban los personajes de franquicia (Rick, Gojo, Pikachu, Goku…),
-   * que se retiraron el 14/10/2026. Una herramienta interna no tiene por qué
+   * los usaban personajes que se retiraron el 14/10/2026. Una herramienta interna no tiene por qué
    * cargar personajes ajenos; en su lugar están los disfraces, que son
    * accesorios y respetan lo que la persona eligió para el cuerpo.
    *
@@ -8134,7 +8118,7 @@
    *   espalda, lo único a la vista sería un rectángulo gris.
    * - Va baja, sobre las piernas (los pies se ocultan): el canto de la tapa
    *   queda debajo de la boca de todos los personajes, incluida la sonrisa
-   *   abierta de los Dragon Ball en chibi, que baja hasta 12,8.
+   *   abierta de los de cara baja, que baja hasta 12,8.
    * - Tipear sí es de dos manos: los brazos los pone el prop, por el hook
    *   `brazo` del personaje, y las manos se turnan. La tecla que pisa cada
    *   una se hunde y se oscurece delante de los dedos.
@@ -8494,8 +8478,8 @@
    * - Un jarro enlozado de verdad: boca en elipse (se ve apenas desde arriba),
    *   cuerpo panzón, asa en C, borde oscuro de esmalte, el café adentro y la
    *   marca "DBA" en el frente (marcaDBA). Colores FIJOS con contorno oscuro
-   *   y filete claro, como la guitarra: se lee sobre Charmander, Pikachu,
-   *   Freezer o un Gengar de noche, y no cambia con el tema.
+   *   y filete claro, como la guitarra: se lee sobre cualquier
+   *   disfraz o material, de día o de noche, y no cambia con el tema.
    * - La sostiene el personaje con UNA mano, la derecha, en el asa. El brazo
    *   va por el hook `brazo` del personaje (brazoGuitarra), así que lleva su
    *   manga o su guante. El izquierdo queda en reposo, como en `base`: con
@@ -8543,7 +8527,7 @@
     { dy: -0.3,  boca: -0.75 },                         // 4 sorbo largo
     { dy: 0,     taza: [12.7, 10.3, 0] },               // 5 traga
     { dy: -0.1,  taza: [12.8, 10.4, 0.05] },            // 6 "ahh"
-    // El brindis se estira apenas: con -0.4 el pelo de Rick tocaba el borde de
+    // El brindis se estira apenas: con -0.4 el pelo más alto tocaba el borde de
     // arriba a escala 2. El salto lo pone `plt-pop`, que mueve el canvas.
     { dy: -0.25, taza: [13.9, 3.0, 0.15], alto: true }, // 7 brindis
   ];
@@ -8559,7 +8543,7 @@
   /*
    * La altura de la boca del personaje, para el sorbo y para bajar el jarro
    * con la cara. Boberto la tiene en 10,7; los personajes con los ojos más
-   * abajo (los Dragon Ball en chibi, con `ojos.y` cerca de 10) también la
+   * abajo (con `ojos.y` cerca de 10) también la
    * tienen más abajo, a unas dos unidades de los ojos. Nunca sube de 10,7:
    * un jarro más alto le taparía el ojo a quien tiene los ojos altos.
    */
@@ -9027,8 +9011,8 @@
    *   ruedas terminan 1,8 u antes del borde de abajo (antes, 0,7: a escala 1,4
    *   la rueda tocaba la última fila). El salto grande lo pone la clase CSS
    *   `plt-skatehop`, que mueve el canvas entero: el dibujo nunca sube más que
-   *   el skate de siempre (bodyDY -1.2), así el pelo de los Dragon Ball, las
-   *   orejas de Pikachu y los sombreros no se salen por arriba.
+   *   el skate de siempre (bodyDY -1.2), así el pelo y las
+   *   orejas de los disfraces y los sombreros no se salen por arriba.
    */
   const SKATE_COL = {
     contorno: '#17120e', lija: '#2e3139', lijaGrano: '#565c69',
@@ -9249,7 +9233,7 @@
    *   No va en UTILERIA_FIJA porque esa tabla sólo llega a los personajes (se
    *   mezcla en su pintor); acá tiene que valer igual para todos.
    * - Contorno oscuro con filete claro por dentro: el oscuro la separa de un
-   *   cuerpo claro, el filete de uno oscuro (Gengar, los temas de noche).
+   *   cuerpo claro, el filete de uno oscuro (los disfraces y temas de noche).
    * - Los dos brazos los dibuja el prop, como el puntero: la mano izquierda del
    *   personaje pisa el mástil y la derecha rasguea sobre la boca de la caja.
    *   Van DELANTE del cuerpo y con contorno, porque un muñón del color del
@@ -9456,7 +9440,7 @@
    *   vidrio, así que cuando la lupa pasa por delante de un ojo se ve el ojo
    *   enorme, con la forma, la mirada y el parpadeo que tenga en ese cuadro.
    *   No se redibuja el ojo: se aumenta lo que ya está pintado, y por eso
-   *   funciona igual con el ojo de Pikachu, la venda de Gojo o los lentes.
+   *   funciona igual con un ojo grande, una venda o los lentes.
    *
    * Cuadros clave (propPhase). `ojo`: el vidrio centrado sobre ese ojo (1, el
    * de la derecha de quien mira; -1, el otro), siguiendo la mirada y la
@@ -10327,7 +10311,7 @@
    * hacia la derecha es girar en el sentido del reloj. `zumba`: los arquitos
    * de velocidad alrededor del disco. `manoI`: la mano izquierda en alto, para
    * el remate; va por brazoGuitarra y no con el brazo del motor, que se
-   * dibuja detrás del cuerpo y en Goku, Buu o Pikachu no asomaba.
+   * dibuja detrás del cuerpo y en un personaje ancho no asomaba.
    *
    * Todo queda a más de una unidad del borde derecho (18): el perrito termina
    * con el disco en 15,7 y su contorno en 16,95.
@@ -10491,7 +10475,7 @@
    *   arriba (su borde en -0,75, el lienzo empieza en -2: a escala 1,4 un
    *   píxel es 0,7 u y el suavizado del contorno ya lo alcanzaba con menos
    *   aire; lo mismo a la derecha) y el cuerpo no sube
-   *   más que -0,25, el alto que ya aguantaba el pelo de Rick en el yoyó.
+   *   más que -0,25, el alto que ya aguantaba el pelo más alto en el yoyó.
    *
    * Las costuras, el brillo y las marcas de impacto se apagan por debajo de
    * JUEG_DETALLE_PX: a escala de topbar son ruido y tapan los parches, que es
@@ -11400,7 +11384,7 @@
    *   de topbar la pantalla mide ocho píxeles y la historia la cuenta la cara
    *   de Boberto (y la gotita), no la foto.
    * - El celular levantado queda a la altura de la cabeza y al costado, nunca
-   *   arriba: arriba choca con el pelo de Rick contra el borde del lienzo.
+   *   arriba: arriba choca con el pelo más alto contra el borde del lienzo.
    * - El destello que encandila es del lienzo (un brillo en la lente) más una
    *   partícula `plt-pt-flash` en la capa de la mascota: local, nunca la
    *   página entera.
@@ -11684,7 +11668,7 @@
       c.ellipse(px, py, rx, ry, r, 0, Math.PI * 2);
     }
     // El contorno, más oscuro que el borde del cuerpo: es lo que la separa de
-    // un pelo o una cola del mismo color (la cola de Pikachu queda detrás).
+    // un pelo o una cola del mismo color (una cola queda detrás).
     c.lineWidth = 0.3; c.strokeStyle = withA(mixHex(P.edge, '#120c0a', 0.4), 0.9); c.stroke();
     const g = c.createLinearGradient(-0.7, -1.2, 0.7, 0.6);
     g.addColorStop(0, P.handA); g.addColorStop(1, P.handB);
@@ -11709,7 +11693,7 @@
    * El saludo, con la mano abierta en alto.
    *
    * La versión anterior subía el muñón de drawArms DETRÁS del cuerpo: asomaba
-   * apenas por el costado de la cabeza (sobre Pikachu, del mismo amarillo, no
+   * apenas por el costado de la cabeza (sobre un cuerpo del mismo color no
    * se veía) y `waveDown` era igual a `base`, así que el saludo se leía como un
    * parpadeo del brazo. Ahora, con la receta de la guitarra:
    *
@@ -11767,7 +11751,7 @@
    * - Tabla FESTEJO: `manos` son las dos manos [izq x, y, der x, y] y los
    *   brazos los pone el prop (festejar sí es de dos brazos); `puno` es sólo
    *   la derecha, y el otro brazo queda en reposo, pintado por el motor.
-   * - El dibujo nunca sube más que -0.25 (con -0.4 el pelo de Rick tocaba el
+   * - El dibujo nunca sube más que -0.25 (con -0.4 el pelo más alto tocaba el
    *   borde de arriba a escala 2): el salto grande lo pone `plt-salto`, que
    *   mueve el canvas entero.
    */
@@ -11810,7 +11794,7 @@
    * el gesto de "a ver…" que se lee a cualquier tamaño.
    *
    * - El mentón sale de la boca de cada personaje (bocaTaza, la misma que
-   *   usa el café): los Dragon Ball en chibi tienen la cara más abajo, y una
+   *   usa el café): los de cara baja tienen la boca más abajo, y una
    *   mano a la altura de Boberto les taparía la boca.
    * - El índice va primero y el puño encima, así el dedo nace del puño.
    * - `dedo`: hacia dónde apunta el índice, en radianes desde la vertical
@@ -11916,12 +11900,12 @@
    *   tramos hasta el codo y el medio del antebrazo van sin el hook del
    *   personaje (pondría un puño o una muñequera a mitad de camino) y el
    *   último, con el hook (brazoGuitarra), así que lleva su manga o su
-   *   guante; con la bata de Rick, todos los tramos son de tela.
+   *   guante; con la bata, todos los tramos son de tela.
    * - Después se frota la nariz con el puño, de un lado al otro, y sonríe
    *   medio avergonzado.
    *
    * Cuadros clave (propPhase). `mano`: el puño, con la `y` relativa a la
-   * boca del personaje (bocaTaza): los Dragon Ball en chibi tienen la cara
+   * boca del personaje (bocaTaza): hay personajes con la cara
    * más abajo. `codo`: el brazo cruzado delante de la boca. Sin `mano`, el
    * brazo queda en reposo, pintado por el motor. El cuerpo nunca sube más
    * que -0.3: el estirón grande lo pone `plt-inhala`, que mueve el canvas.
@@ -12211,7 +12195,7 @@
    *
    * - Un corazón dibujado que asoma del pecho y late (`latido`: su tamaño en
    *   cada cuadro). Colores FIJOS con contorno oscuro y un brillo: se lee
-   *   sobre Charmander o Freezer igual que sobre Boberto.
+   *   sobre cualquier disfraz igual que sobre Boberto.
    * - La mano derecha en el pecho, al lado del corazón (por el hook `brazo`
    *   del personaje, con su manga o su guante); el otro brazo queda en
    *   reposo, pintado por el motor.
@@ -12416,13 +12400,13 @@
    * La versión anterior era una banda del color del tema que bajaba en cinco
    * cuadros, dos veces, recortada a la silueta de siempre: no seguía a
    * `bodyRX` (el pepinillo, los personajes anchos) ni a `bodyDY`, y la piel
-   * plana de los Dragon Ball la tapaba, así que tenían que volver a
+   * plana de algunos personajes la tapaba, así que tenían que volver a
    * pintarla. Ahora, con la receta de la guitarra:
    *
    * - Colores FIJOS, verde de terminal con un núcleo claro y contorno
    *   oscuro: se lee sobre cualquier cuerpo y cualquier tema.
    * - Se pinta como prop, por delante de todo (también del pelo y de la
-   *   piel de los Dragon Ball), y la parte que tiñe va recortada a la
+   *   piel de los personajes), y la parte que tiñe va recortada a la
    *   silueta del cuadro, con su `bodyRX` y su `bodyDY`.
    * - Cuatro esquinas de visor enmarcan el cuerpo (`marco`: su tamaño, crece
    *   al entrar). El haz (`haz`: de 0 arriba a 1 abajo) cruza el cuerpo y
@@ -13634,7 +13618,7 @@
   function staticBodyFilter(escala) {
     // Un personaje no lleva el brillo elegido para el cuerpo. El filtro es del
     // CANVAS entero, así que hay que apagarlo acá: el halo propio de un
-    // personaje (Gojo) lo pinta paintFrame, que es lo único que viaja también
+    // personaje lo pinta paintFrame, que es lo único que viaja también
     // a renderPose y a las vistas previas.
     if (charActual()) return 'none';
     return `drop-shadow(0 0 ${(4 * escalaHalo(escala)).toFixed(1)}px ${bodyGlowColorA()})`;
@@ -17943,8 +17927,8 @@
    *
    * 1. `character`: un id del catálogo es ese personaje; '', 'none' o null es
    *    "sin personaje". undefined es "no lo digo".
-   * 2. Un `hat` o un `character` retirado (rick, pikachu…) se traduce a su
-   *    disfraz, o a ninguno: hay pantallas escritas antes de que se fueran.
+   * 2. Un `hat` o un `character` que ya no está en el catálogo se ignora:
+   *    hay pantallas escritas antes de que se retiraran.
    * 3. Un `hat` fijo SIN `character` significa sin personaje. El papel manda:
    *    un Boberto al que se le pide la bata tiene que salir con bata aunque
    *    la persona tenga elegido un material.
@@ -17956,9 +17940,7 @@
     let ch;
     if (op.character === null || op.character === '' || op.character === 'none') ch = '';
     else if (esCharacter(op.character)) ch = op.character;
-    const pedido = esRetirado(op.hat) ? PERSONAJE_RETIRADO[op.hat]
-      : (ch === undefined && esRetirado(op.character)) ? PERSONAJE_RETIRADO[op.character] : op.hat;
-    const h = (pedido && HAT_PRESETS.some(x => x.id === pedido)) ? pedido : null;
+    const h = esHat(op.hat) ? op.hat : null;
     if (ch === undefined && h) ch = '';
     if (ch === undefined && !h) return null;
     return { hat: h, character: ch === undefined ? null : ch };
@@ -18859,11 +18841,9 @@
     listHatColors2: () => HAT_DETAIL_PRESETS.slice(),
     getHat: () => hat,
     setHat(id) {
-      // Un panel viejo en caché puede pedir un personaje retirado: recibe su
-      // disfraz, o el accesorio de siempre. Guardar el id dejaría uno fuera
-      // de catálogo.
-      if (esRetirado(id)) id = PERSONAJE_RETIRADO[id];
-      hat = id || HAT_DEFAULT;
+      // Un panel viejo en caché puede pedir un accesorio retirado: recibe el
+      // de siempre. Guardar el id dejaría uno fuera de catálogo.
+      hat = esHat(id) ? id : HAT_DEFAULT;
       try { localStorage.setItem(LS_HAT, hat); } catch (e) {}
       applySkin();
       document.dispatchEvent(new CustomEvent('boberto-skin-changed', { detail: { skin, skinColor, eyeColor, hat } }));
@@ -18882,11 +18862,6 @@
      * ese, y un personaje le cambia la piel entera.
      */
     setCharacter(id) {
-      if (esRetirado(id)) {
-        this.setCharacter(null);
-        if (PERSONAJE_RETIRADO[id]) this.setHat(PERSONAJE_RETIRADO[id]);
-        return;
-      }
       const nuevo = (id == null || id === '' || id === 'none') ? '' : id;
       if (nuevo && !esCharacter(nuevo)) return;
       character = nuevo;

@@ -1,4 +1,3 @@
-#if PREVIEW
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -236,4 +235,3 @@ sealed class OpenAiCompatibleClient(string baseUrl, string? apiKey, string model
 
     static bool QuotaExhausted(string body) => body.Contains("quota", StringComparison.OrdinalIgnoreCase) || body.Contains("RESOURCE_EXHAUSTED", StringComparison.Ordinal) || body.Contains("insufficient_quota", StringComparison.Ordinal);
 }
-#endif

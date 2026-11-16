@@ -1,4 +1,3 @@
-#if PREVIEW
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -275,4 +274,3 @@ public sealed class AiReviewWindow : AiWindowBase
         return w.accepted ? w.checks.Select((c, i) => (c, i)).Where(x => x.c.IsChecked == true).Select(x => x.i).ToList() : null;
     }
 }
-#endif

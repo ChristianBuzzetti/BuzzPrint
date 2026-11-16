@@ -377,8 +377,7 @@
         hacer: (it) => B.playGesture(it.id),
       },
       {
-        /* Los personajes de franquicia se retiraron (ver PERSONAJE_RETIRADO en
-         * el motor): lo que queda en el registro de personajes son los
+        /* Los personajes se retiraron: lo que queda en el registro de personajes son los
          * materiales. Un material es la misma silueta, así que el accesorio se
          * queda; `vestir: true` (el cuerpo) sí se apaga con uno puesto (ver
          * sincronizar). Los disfraces viven en Accesorio. */
@@ -592,7 +591,7 @@
        * error, así que esas filas se apagan (inert: sin foco ni clic).
        * 'piel' se apaga con skin y con material (el cuerpo ya no es el
        * elegido). 'accesorio' sólo con un skin: el material lo deja puesto.
-       * El modo y no un booleano, porque pasar de Gojo a madera tiene que
+       * El modo y no un booleano, porque pasar de un skin a madera tiene que
        * volver a abrir el accesorio. */
       const chId = typeof B.getCharacter === 'function' ? B.getCharacter() : '';
       const modo = !chId ? '' : (esMateria(chId) ? 'materia' : 'skin');
@@ -617,7 +616,7 @@
 
     /* ── El rótulo de la escena ──
      * Una línea que nombra lo que tiene puesto. Las grillas muestran el nombre
-     * de cada opción en dos renglones como mucho, y un "Goku Super Saiyajin 4"
+     * de cada opción en dos renglones como mucho, y un nombre largo
      * cortado no dice cuál quedó elegido; acá se lee entero. Es opcional:
      * lo pone quien arma la escena (el modal sí; la landing no lo necesita). */
     const rotulo = op.rotulo || null;

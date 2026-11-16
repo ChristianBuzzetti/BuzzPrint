@@ -1,4 +1,3 @@
-#if PREVIEW
 namespace BuzzPrint.Ai;
 
 /// <summary>A suggested model: id as the API expects it and a short note ("Recommended", "Fast and cheap").</summary>
@@ -70,4 +69,3 @@ public static class AiConnections
         Store.SaveSettings();
     }
 }
-#endif

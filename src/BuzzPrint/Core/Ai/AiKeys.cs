@@ -1,4 +1,3 @@
-#if PREVIEW
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -55,4 +54,3 @@ public static class AiKeys
     /// <summary>"sk-ant…4f2a": enough to recognize which key is stored, never the whole key.</summary>
     public static string Masked(string key) => key.Length <= 10 ? new string('•', key.Length) : key[..6] + "…" + key[^4..];
 }
-#endif

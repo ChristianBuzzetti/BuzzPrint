@@ -75,7 +75,6 @@ public partial class App : Application
             });
             return;
         }
-#if PREVIEW
         // --ai-test LOG PROVIDER MODEL: one tiny text request with the given provider (key from BUZZPRINT_AI_TEST_KEY,
         // else the stored one); writes OK + answer or FAIL + message to LOG and exits. Support and tests only.
         if (Arg(e.Args, "--ai-test") is string aiLog)
@@ -104,8 +103,6 @@ public partial class App : Application
             });
             return;
         }
-#endif
-#if PREVIEW
         // --ai-feature LOG FEATURE PNG...: runs one AI feature on sample images with the active connection and writes
         // the result to LOG (tests and support; the images never enter the library).
         if (Arg(e.Args, "--ai-feature") is string featureLog)
@@ -150,7 +147,6 @@ public partial class App : Application
             });
             return;
         }
-#endif
         if (Appearance.BobertoVisible) BobertoRuntime.Prewarm(BobertoRuntime.DefaultProfile);
 
         main = new MainWindow();
@@ -434,10 +430,10 @@ public partial class App : Application
     const int CapturePrimaryRetryId = 11;
     bool otherBuildWasRunning;
 
-    /// <summary>True while the other build (stable when this is the preview, and the other way round) is open.</summary>
+    /// <summary>True while a former "BuzzPrint AI Preview" (0.5.0 on GitHub) is still open beside this one.</summary>
     static bool OtherBuildRunning()
     {
-        string other = (AppInfo.IsPreview ? "BuzzPrint" : "BuzzPrintPreview") + "_single_instance";
+        const string other = "BuzzPrintPreview_single_instance";
         if (!Mutex.TryOpenExisting(other, out var m)) return false;
         m.Dispose();
         return true;
@@ -511,9 +507,7 @@ public partial class App : Application
             CaptureItem it;
             using (r.Image) it = Store.Add(r.Image, r.Source);
             if (Store.Settings.CopyAfterCapture) Store.CopyToClipboard(it);
-#if PREVIEW
             if (Store.Settings.AiEnabled && Store.Settings.AiAutoCaption) _ = AutoCaptionAsync(it);
-#endif
             if (Store.Settings.OpenEditorAfterCapture) EditorWindow.Open(it);
             else Toast(L.T(Store.Settings.CopyAfterCapture ? "Captura copiada y guardada" : "Captura guardada"),
                        L.T("Clic acá para editarla") + " · " + Store.Settings.HotkeyPick + " " + L.T("para elegir otra"), it);
@@ -526,7 +520,6 @@ public partial class App : Application
         }
     }
 
-#if PREVIEW
     bool autoCaptionWarned;
     /// <summary>Pie automático: title and caption for a new capture in the background; one warning if it fails.</summary>
     async Task AutoCaptionAsync(CaptureItem it)
@@ -539,7 +532,6 @@ public partial class App : Application
             Toast(L.T("Pie automático con IA"), ex.Message);
         }
     }
-#endif
 
     // ------------------------------------------------------------------ recording flow
     public bool IsRecording => Recorder.Current != null || recordStarting;

@@ -70,9 +70,7 @@ public sealed class AiBusy : IDisposable
         watchdog.Tick += (_, _) => { watchdog.Stop(); Cancel(timedOut: true); };
         watchdog.Start();
         countdown.Tick += (_, _) => CountdownTick();
-#if PREVIEW
         Ai.AiClient.Waiting += OnWaiting;
-#endif
         veil.Show();
     }
 
@@ -146,9 +144,7 @@ public sealed class AiBusy : IDisposable
         closed = true;
         watchdog.Stop();
         countdown.Stop();
-#if PREVIEW
         Ai.AiClient.Waiting -= OnWaiting;
-#endif
         owner.LocationChanged -= Follow; owner.SizeChanged -= Follow; owner.StateChanged -= Follow; owner.Closed -= OwnerClosed;
         owner.IsEnabled = wasEnabled;
         veil.Close();

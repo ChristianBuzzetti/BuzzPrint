@@ -214,9 +214,6 @@ public static class GuideContent
                 ],
                 [(S("Abrir la carpeta de capturas", "Open the captures folder"), "folder")]),
         };
-#if !PREVIEW
-        list.RemoveAll(t => t.AiOnly);
-#endif
         return list;
     }
 }

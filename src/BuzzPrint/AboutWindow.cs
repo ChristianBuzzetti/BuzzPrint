@@ -33,9 +33,6 @@ public sealed class AboutWindow : Window
         var v = typeof(App).Assembly.GetName().Version;
         var chips = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 8, 0, 0) };
         if (v != null) chips.Children.Add(Chip("v" + v.Major + "." + v.Minor + "." + v.Build, accent: false));
-#if PREVIEW
-        chips.Children.Add(Chip("AI PREVIEW", accent: true));
-#endif
         root.Children.Add(chips);
 
         var about = new TextBlock

@@ -20,9 +20,7 @@ public sealed class ExportWindow : Window
     readonly StackPanel rows = new();
     readonly TextBox titleBox;
     readonly TextBox introBox;
-#if PREVIEW
     Button? aiDraftButton;
-#endif
     readonly Button exportButton;
     readonly TextBlock countText, statusText;
     readonly Dictionary<ExportFormat, RadioButton> formats = new();
@@ -69,7 +67,6 @@ public sealed class ExportWindow : Window
         var cancel = new Button { Content = L.T("Cancelar"), IsCancel = true, MinWidth = 96 };
         var right = new StackPanel { Orientation = Orientation.Horizontal };
         right.Children.Add(cancel); right.Children.Add(exportButton);
-#if PREVIEW
         if (Store.Settings.AiEnabled)
         {
             var draft = aiDraftButton = new Button { Content = "✦ " + L.T("Redactar con IA"), MinWidth = 150, Margin = new Thickness(0, 0, 8, 0), ToolTip = L.T("Escribe el título del documento, una introducción y el título y la nota de cada paso a partir de las capturas") };
@@ -77,7 +74,6 @@ public sealed class ExportWindow : Window
             DockPanel.SetDock(draft, Dock.Left);
             foot.Children.Insert(0, draft);
         }
-#endif
         DockPanel.SetDock(right, Dock.Right); foot.Children.Add(right);
         statusText = Muted("", new Thickness(0)); statusText.VerticalAlignment = VerticalAlignment.Center; statusText.TextTrimming = TextTrimming.CharacterEllipsis;
         foot.Children.Add(statusText);
@@ -163,7 +159,6 @@ public sealed class ExportWindow : Window
     /// <summary>Opens the export window for the given captures (recordings are left out and counted).</summary>
     /// <param name="keepOrder">true when the person picked the captures one by one (Ctrl+clic): that order is kept;
     /// otherwise they are listed chronologically, the order things happened.</param>
-#if PREVIEW
     /// <summary>Fills the document title, the introduction and each step's title and note from the captures.</summary>
     async Task DraftWithAiAsync(Button button)
     {
@@ -193,7 +188,6 @@ public sealed class ExportWindow : Window
         catch (OperationCanceledException) { statusText.Text = AiBusy.Stopped(this, L.T("Redactar con IA")); }
         finally { busy = false; button.IsEnabled = true; Sync(); }
     }
-#endif
 
     public static void Open(Window owner, IReadOnlyList<CaptureItem> items, bool keepOrder, bool aiDraft = false)
     {
@@ -206,9 +200,7 @@ public sealed class ExportWindow : Window
         }
         if (!keepOrder) images = images.OrderBy(i => i.Created).ToList();
         var w = new ExportWindow(images, skipped) { Owner = owner };
-#if PREVIEW
         if (aiDraft) w.Loaded += async (_, _) => { if (w.aiDraftButton != null) await w.DraftWithAiAsync(w.aiDraftButton); };
-#endif
         w.ShowDialog();
     }
     // ------------------------------------------------------------------ rows

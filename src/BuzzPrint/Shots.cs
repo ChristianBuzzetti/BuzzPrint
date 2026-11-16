@@ -111,13 +111,11 @@ static class Shots
             await Task.Delay(1200);
             Save(export, Path.Combine(dir, "09-export.png"), log);
             export.Close();
-#if PREVIEW
             var aiWin = AiSettingsWindow.ForShot(main);
             aiWin.Show();
             await Task.Delay(900);
             Save(aiWin, Path.Combine(dir, "10-ai-settings.png"), log);
             aiWin.Close();
-#endif
             var about = AboutWindow.ForShot(main);
             about.Show();
             await Task.Delay(700);
@@ -134,7 +132,6 @@ static class Shots
                 Save(w, Path.Combine(dir, file), log);
                 w.Close();
             }
-#if PREVIEW
             {
                 string sampleReport = "Summary\nDisk almost full on the demo app server\n\nDescription\nThe monitoring screen shows the data volume of DEMO-APP-01 at 96% after the nightly batch.\n\nSteps to reproduce\n1. Open the storage dashboard\n2. Filter by DEMO-APP-01\n\nActual result\n\"ALERT: /data 96% used (threshold 90%)\"\n\nEnvironment\n- Server: DEMO-APP-01\n- Volume: /data\n\nSuggested severity\nMedium — the batch still finishes, but the next run may fail.";
                 var report = AiTextWindow.ForShot(main, "Incident report", "Sample data, invented for the screenshot run.", sampleReport);
@@ -152,7 +149,6 @@ static class Shots
                 Save(busy.Veil, Path.Combine(dir, "18-ai-busy.png"), log);
                 busy.Dispose();
             }
-#endif
             foreach (var (topic, file) in new[] { ("start", "20-guide-start.png"), ("editor", "21-guide-editor.png") })
             {
                 var guide = GuideWindow.ForShot(main, topic);
@@ -216,10 +212,8 @@ static class Shots
                     try { Exporter.Write(file, f, pages.Take(2).ToList(), topt); log.Add("template " + tpl.Id + " " + f + " " + new FileInfo(file).Length + " bytes"); }
                     catch (Exception ex) { log.Add("TEMPLATE FAIL " + tpl.Id + " " + f + " " + ex); }
                 }
-#if PREVIEW
                 try { await RenderPdfPages(Path.Combine(exportDir, "tpl-" + tpl.Id + ".pdf"), Path.Combine(dir, "tpl-" + tpl.Id)); }
                 catch (Exception ex) { log.Add("PDF RENDER FAIL " + tpl.Id + " " + ex.Message); }
-#endif
             }
             {
                 var tw = TemplatesWindow.ForShot(main, "buzzprint", ExportWindow.AccentHex());
@@ -307,7 +301,6 @@ static class Shots
         }
     }
 
-#if PREVIEW
     /// <summary>Renders the first pages of a PDF next to <paramref name="prefix"/> (-p1.png, -p2.png) with Windows.Data.Pdf.</summary>
     static async Task RenderPdfPages(string pdfPath, string prefix)
     {
@@ -324,7 +317,6 @@ static class Shots
             await src.CopyToAsync(dst);
         }
     }
-#endif
 
     static void Save(Window w, string path, List<string> log)
     {

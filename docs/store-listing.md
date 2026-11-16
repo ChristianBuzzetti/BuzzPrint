@@ -46,7 +46,7 @@ Everything stays on your PC: no account, no telemetry, no ads. English and Spani
 
 **Keywords:** screenshot, screen capture, screen recorder, annotate, snipping, documentation, steps, PowerPoint export
 
-**What's new in this version:** First release on Microsoft Store.
+**What's new in this version (0.5.0):** Optional AI features, off until you turn them on with your own API key (Claude, ChatGPT, Gemini, OpenRouter, Ollama or any compatible service): title and summary for captures, step-by-step guides, protect sensitive data, ask about a capture, incident reports and organizing the library. Nothing is sent without showing you first. Also new: search the text inside your captures (OCR, on your PC), document templates for exports, an in-app guide and a redesigned look.
 
 ## Español (es-AR)
 
@@ -80,4 +80,4 @@ Todo queda en tu PC: sin cuenta, sin telemetría, sin publicidad. En inglés y e
 
 **Palabras clave:** captura de pantalla, grabador de pantalla, recorte, anotar, documentación, pasos, exportar PowerPoint
 
-**Novedades:** Primera versión en Microsoft Store.
+**Novedades (0.5.0):** Funciones de IA opcionales, apagadas hasta que las activás con tu propia API key (Claude, ChatGPT, Gemini, OpenRouter, Ollama o cualquier servicio compatible): título y resumen de capturas, guías paso a paso, proteger datos sensibles, preguntar sobre una captura, reportes de incidente y ordenar la biblioteca. Nada se envía sin mostrártelo antes. Además: búsqueda en el texto de las capturas (OCR, en tu PC), plantillas de documentos para exportar, una guía dentro de la app y un diseño renovado.

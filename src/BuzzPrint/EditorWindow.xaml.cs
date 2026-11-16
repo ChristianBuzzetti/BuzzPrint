@@ -214,10 +214,8 @@ public partial class EditorWindow : Window
         DocTitle.Text = string.IsNullOrEmpty(it.Title) ? (string.IsNullOrEmpty(it.Source) ? L.T("Captura") : it.Source) : it.Title;
         Title = DocTitle.Text + " · Editor · BuzzPrint";
         loadingSummary = true; SummaryBox.Text = it.Note; loadingSummary = false; summaryDirty = false;
-#if PREVIEW
         SummaryAiButton.Visibility = Store.Settings.AiEnabled ? Visibility.Visible : Visibility.Collapsed;
         EditorAiButton.Visibility = SummaryAiButton.Visibility;
-#endif
         RenderCommitted();
         Dispatcher.BeginInvoke(FitZoom, System.Windows.Threading.DispatcherPriority.Loaded);
         RefreshTray();
@@ -287,7 +285,6 @@ public partial class EditorWindow : Window
     /// <summary>The same AI actions as the library, for the capture open here (this window owns their dialogs).</summary>
     void EditorAiClick(object sender, RoutedEventArgs e)
     {
-#if PREVIEW
         if (item == null || App.Current.Library is not { } main) return;
         var menu = new ContextMenu { PlacementTarget = EditorAiButton, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
         void Add(string text, Action run) { var mi = new MenuItem { Header = text }; mi.Click += (_, _) => run(); menu.Items.Add(mi); }
@@ -297,12 +294,10 @@ public partial class EditorWindow : Window
         Add(L.T("Reporte de incidente") + "…", () => main.RunAi(this, [item], "ticket"));
         Add(L.T("Guía paso a paso") + "…", () => main.RunAi(this, [item], "document"));
         menu.IsOpen = true;
-#endif
     }
 
     async void SummaryAiClick(object sender, RoutedEventArgs e)
     {
-#if PREVIEW
         if (item == null) return;
         SummaryAiButton.IsEnabled = false;
         StatusText.Text = L.T("IA: escribiendo el resumen…");
@@ -317,9 +312,6 @@ public partial class EditorWindow : Window
         catch (Ai.AiException ex) { StatusText.Text = ""; PromptWindow.Info(this, L.T("Título y resumen"), ex.Message); }
         catch (OperationCanceledException) { StatusText.Text = AiBusy.Stopped(this, L.T("Título y resumen")); }
         finally { SummaryAiButton.IsEnabled = true; }
-#else
-        await Task.CompletedTask;
-#endif
     }
     void Save()
     {

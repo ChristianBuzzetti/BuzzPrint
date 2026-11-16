@@ -45,9 +45,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         Title = AppInfo.Name;
-#if PREVIEW
         MenuAi.Visibility = Visibility.Visible;
-#endif
         Library.ItemsSource = cards;
         CopyToggle.IsChecked = Store.Settings.CopyAfterCapture;
         EditorToggle.IsChecked = Store.Settings.OpenEditorAfterCapture;
@@ -588,7 +586,7 @@ public partial class MainWindow : Window
     // ------------------------------------------------------------------ sidebar
     bool syncingNav;
     static readonly string[] ViewTitles = ["Todas las capturas", "Capturas de hoy", "Fijadas", "Editadas", "Grabaciones"];
-    bool AiOn => AppInfo.IsPreview && Store.Settings.AiEnabled;
+    bool AiOn => Store.Settings.AiEnabled;
 
     void NavFilterChecked(object sender, RoutedEventArgs e)
     {
@@ -637,23 +635,19 @@ public partial class MainWindow : Window
         finally { syncingNav = false; }
     }
 
-#if PREVIEW
     static string ProviderShort(AiConnection c)
     {
         if (c.Name.Trim().Length > 0) return c.Name.Trim();
         return L.T(Ai.AiProviders.Get(c.Provider).Name);
     }
-#endif
     void SyncAiChip()
     {
-#if PREVIEW
         NavAiStatus.Visibility = Visibility.Visible;
         var st = Store.Settings;
         var conn = Ai.AiConnections.Active(st);
         NavAiText.Text = st.AiEnabled && conn != null ? (L.Es ? "IA · " : "AI · ") + ProviderShort(conn) : L.T("IA apagada");
         NavAiStatus.ToolTip = st.AiEnabled && conn != null ? Ai.AiConnections.DisplayName(conn) + " · " + L.T("Configurar IA") : L.T("Configurar IA");
         NavAiDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, st.AiEnabled && conn != null ? "Ok" : "Muted");
-#endif
     }
     void LibrarySelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateStatus();
     void LibraryDoubleClick(object sender, MouseButtonEventArgs e) { if (ItemUnder(e) != null) EditClick(sender, e); }
@@ -695,9 +689,7 @@ public partial class MainWindow : Window
                 if (TemplatesWindow.Pick(from, Store.Settings.ExportTemplate, ExportWindow.AccentHex()) is string id) { Store.Settings.ExportTemplate = id; Store.SaveSettings(); }
                 break;
             case "personalize": App.Current.OpenPersonalization(this); break;
-#if PREVIEW
             case "ai": AiSettingsClick(this, new RoutedEventArgs()); break;
-#endif
         }
     }
 
@@ -850,7 +842,6 @@ public partial class MainWindow : Window
         StatusText.Text = L.F("Texto copiado · {0} palabras", words);
     }
     // ================================================================== AI (preview)
-#if PREVIEW
     /// <summary>Checks AI is on and has a connection (opening the settings otherwise), then asks before sending.</summary>
     bool AiReady(string title, string what)
     {
@@ -892,12 +883,10 @@ public partial class MainWindow : Window
         return true;
     }
     void AiError(string title, Ai.AiException ex) { StatusText.Text = ""; PromptWindow.Info(AiOwner, title, ex.Message); }
-#endif
 
     /// <summary>Title (short) and summary for the selected captures, one at a time.</summary>
     async void AiCaptionClick(object sender, RoutedEventArgs e)
     {
-#if PREVIEW
         Bind(sender);
         string title = L.T("Título y resumen");
         var sel = SelectedImages();
@@ -912,28 +901,22 @@ public partial class MainWindow : Window
         }
         catch (Ai.AiException ex) { AiError(title, ex); }
         catch (OperationCanceledException) { busy.Dispose(); StatusText.Text = AiBusy.Stopped(AiOwner, title); }
-#else
-        await Task.CompletedTask;
-#endif
     }
 
     /// <summary>Opens the export window with the selection and lets AI draft the whole document.</summary>
     void AiDocumentClick(object sender, RoutedEventArgs e)
     {
-#if PREVIEW
         Bind(sender);
         var (items, picked) = aiItems != null ? (aiItems, false) : ExportSelection();
         items = items.Where(x => !x.IsRecording).ToList();
         if (!NeedSelection(items, 40, L.T("Documento paso a paso"))) return;
         if (!Store.Settings.AiEnabled || Ai.AiConnections.Active(Store.Settings) == null) { AiSettingsWindow.ShowFor(AiOwner); Reload(); if (!Store.Settings.AiEnabled) return; }
         ExportWindow.Open(AiOwner, items, picked, aiDraft: true);
-#endif
     }
 
     /// <summary>Finds sensitive data with OCR and patterns (and AI on the text only), then saves a pixelated copy.</summary>
     async void AiRedactClick(object sender, RoutedEventArgs e)
     {
-#if PREVIEW
         Bind(sender);
         string title = L.T("Proteger datos sensibles");
         var sel = SelectedImages();
@@ -958,9 +941,6 @@ public partial class MainWindow : Window
         }
         catch (Ai.AiException ex) { AiError(title, ex); }
         catch (OperationCanceledException) { StatusText.Text = AiBusy.Stopped(AiOwner, title); }
-#else
-        await Task.CompletedTask;
-#endif
     }
 
     static string KindName(string kind) => kind switch
@@ -972,18 +952,15 @@ public partial class MainWindow : Window
 
     void AiAskClick(object sender, RoutedEventArgs e)
     {
-#if PREVIEW
         Bind(sender);
         var sel = SelectedImages();
         if (!NeedSelection(sel, 1, L.T("Preguntar sobre la captura"))) return;
         if (!Store.Settings.AiEnabled || Ai.AiConnections.Active(Store.Settings) == null) { AiSettingsWindow.ShowFor(AiOwner); Reload(); if (!Store.Settings.AiEnabled) return; }
         AiAskWindow.Open(AiOwner, sel[0]);
-#endif
     }
 
     async void AiTicketClick(object sender, RoutedEventArgs e)
     {
-#if PREVIEW
         Bind(sender);
         string title = L.T("Reporte de incidente");
         var sel = SelectedImages().OrderBy(x => x.Created).ToList();
@@ -999,15 +976,11 @@ public partial class MainWindow : Window
         }
         catch (Ai.AiException ex) { AiError(title, ex); }
         catch (OperationCanceledException) { StatusText.Text = AiBusy.Stopped(AiOwner, title); }
-#else
-        await Task.CompletedTask;
-#endif
     }
 
     /// <summary>Short names and sections for the selected captures (or today's untitled ones), reviewed before applying.</summary>
     async void AiOrganizeClick(object sender, RoutedEventArgs e)
     {
-#if PREVIEW
         Bind(sender);
         string title = L.T("Ordenar la biblioteca");
         var sel = SelectedImages();
@@ -1049,17 +1022,12 @@ public partial class MainWindow : Window
         }
         Store.RaiseChanged();
         StatusText.Text = L.F("IA: {0} captura(s) ordenadas", keep.Count);
-#else
-        await Task.CompletedTask;
-#endif
     }
 
     void AiSettingsClick(object sender, RoutedEventArgs e)
     {
-#if PREVIEW
         AiSettingsWindow.ShowFor(AiOwner);
         Reload();
-#endif
     }
     void CopyFileClick(object sender, RoutedEventArgs e) { var it = Selected.FirstOrDefault(); if (it != null) { Store.CopyFileToClipboard(it); StatusText.Text = L.T("Archivo copiado") + " · " + it.Path; } }
     void EditClick(object sender, RoutedEventArgs e)
