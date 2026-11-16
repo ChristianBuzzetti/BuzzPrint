@@ -12,6 +12,16 @@
 
 ## Download (no build needed)
 
+### Microsoft Store (recommended)
+
+<a href="https://apps.microsoft.com/detail/9PP5NT1T6VQF"><img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Get it from Microsoft" width="200"></a>
+
+Install [BuzzPrint from the Microsoft Store](https://apps.microsoft.com/detail/9PP5NT1T6VQF). It updates itself, comes with FFmpeg for recording, and Windows SmartScreen doesn't warn about it. AI stays off until you set it up.
+
+### Zip from GitHub
+
+Prefer not to use the Store?
+
 1. Download **`BuzzPrint-<version>-win-x64.zip`** from the [latest release](https://github.com/ChristianBuzzetti/BuzzPrint/releases/latest).
 2. Extract it anywhere, for example `C:\Apps`. Avoid running it from inside the zip.
 3. Open `BuzzPrint\BuzzPrint.exe`. AI stays off until you set it up; if you don't want it, just don't use it.
