@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- MSIX manifest for the Microsoft Store build. build.ps1 -Msix fills the {{...}} values from packaging\store.json
-     and the csproj version. Identity values must match the app reserved in Partner Center (Product identity page). -->
+     and the Cargo.toml version. Identity values must match the app reserved in Partner Center (Product identity page). -->
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
@@ -26,7 +26,7 @@
   </Resources>
 
   <Applications>
-    <Application Id="BuzzPrint" Executable="BuzzPrint.exe" EntryPoint="Windows.FullTrustApplication">
+    <Application Id="BuzzPrint" Executable="buzzprint.exe" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
         DisplayName="BuzzPrint"
         Description="Screen capture, recording and step-by-step docs for Windows."
@@ -36,8 +36,7 @@
         <uap:DefaultTile Wide310x150Logo="Images\Wide310x150Logo.png" />
       </uap:VisualElements>
       <Extensions>
-        <!-- Start with Windows: off until the person turns it on in BuzzPrint (or in Settings → Apps → Startup). -->
-        <desktop:Extension Category="windows.startupTask" Executable="BuzzPrint.exe" EntryPoint="Windows.FullTrustApplication">
+        <desktop:Extension Category="windows.startupTask" Executable="buzzprint.exe" EntryPoint="Windows.FullTrustApplication">
           <desktop:StartupTask TaskId="BuzzPrintStartup" Enabled="false" DisplayName="BuzzPrint" />
         </desktop:Extension>
       </Extensions>

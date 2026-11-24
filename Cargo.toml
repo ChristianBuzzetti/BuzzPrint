@@ -1,0 +1,76 @@
+[package]
+name = "buzzprint"
+version = "0.6.0"
+edition = "2021"
+description = "BuzzPrint: capturas de pantalla ultralivianas para Windows"
+license = "MIT"
+publish = false
+
+[dependencies]
+# PNG puro en Rust (deflate rápido, sin dependencias de C).
+png = "0.17"
+# Interfaz inmediata: las ventanas se crean al abrirse y se destruyen al cerrarse.
+# Sin `default_fonts`: las fuentes propias (Inter, JetBrains Mono, Segoe) viven en `src/theme.rs`.
+egui = { version = "0.31", default-features = false }
+egui_glow = { version = "0.31", default-features = false }
+glow = "0.16"
+# Configuración y metadatos en el mismo JSON que la versión .NET.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Deflate para armar PPTX/DOCX (zip) y PDF a mano, como la versión .NET.
+miniz_oxide = "0.8"
+crc32fast = "1"
+
+# WinRT para OCR, inicio con Windows dentro del MSIX y WebView2.
+webview2-com = "=0.33.0"
+windows = { version = "0.58", default-features = false, features = ["ApplicationModel_Activation", "Foundation", "Foundation_Collections", "Globalization", "Graphics_Imaging", "Media_Ocr", "Storage_Streams"] }
+
+[dependencies.windows-sys]
+# Bindings crudos a Win32: sin runtime, sin wrappers, costo cero.
+version = "0.59"
+features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Dwm",
+    "Win32_Graphics_Gdi",
+    "Win32_Graphics_GdiPlus",
+    "Win32_Graphics_OpenGL",
+    "Win32_Media",
+    "Win32_Networking_WinHttp",
+    "Win32_Security",
+    "Win32_Security_Cryptography",
+    "Win32_Storage_FileSystem",
+    "Win32_Storage_Packaging_Appx",
+    "Win32_System_Com",
+    "Win32_System_DataExchange",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+    "Win32_System_Ole",
+    "Win32_System_Registry",
+    "Win32_System_SystemInformation",
+    "Win32_System_Threading",
+    "Win32_System_Time",
+    "Win32_UI_Controls",
+    "Win32_UI_Controls_Dialogs",
+    "Win32_UI_HiDpi",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_Shell",
+    "Win32_UI_Shell_Common",
+    "Win32_UI_WindowsAndMessaging",
+]
+
+[build-dependencies]
+# Incrusta ícono, manifest (DPI por monitor) y datos de versión en el .exe.
+embed-resource = "3"
+
+[profile.release]
+opt-level = 3        # velocidad en el camino captura -> PNG
+lto = "fat"
+codegen-units = 1
+panic = "abort"      # sin tablas de unwinding
+strip = true
+debug = false
+incremental = false
+
+# En desarrollo, las dependencias optimizadas: la UI responde fluida aun en debug.
+[profile.dev.package."*"]
+opt-level = 2

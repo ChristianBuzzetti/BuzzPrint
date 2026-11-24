@@ -1,9 +1,4 @@
-bin/
-obj/
-dist/
-artifacts/
-legacy-winforms/
-.vs/
-*.user
-*.suo
-*.tmp
+/target
+/artifacts
+/.cargo/config.toml
+/HANDOFF-reemplazo-dotnet.md

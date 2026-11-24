@@ -1,12 +1,12 @@
 # BuzzPrint privacy policy
 
-*Last updated: November 16, 2026*
+*Last updated: November 24, 2026*
 
-BuzzPrint is a screen capture and recording app for Windows. It works entirely on your PC.
+BuzzPrint is a screen capture and recording app for Windows. Capture, recording, editing and export run locally.
 
 **What BuzzPrint does not do**
 
-- It does not collect, send or sell personal data.
+- The developer does not collect or sell personal data.
 - It has no accounts, analytics, telemetry, ads or tracking.
 - Your captures, recordings, notes and exported documents never leave your PC unless you share them yourself, or send them to the AI service you set up (see below).
 
@@ -26,9 +26,9 @@ BuzzPrint is a screen capture and recording app for Windows. It works entirely o
 
 **Network use**
 
-- Apart from the AI provider you set up, the Microsoft Store version makes no network connections of its own.
-- The version downloaded from GitHub connects to the internet only when you agree to download a missing component: FFmpeg from gyan.dev, or Microsoft Edge WebView2 from Microsoft. Those sites have their own privacy policies.
-- Boberto, the animated companion, is rendered by Microsoft Edge WebView2, a Windows component governed by Microsoft's privacy statement.
+- The Microsoft Store package includes FFmpeg. If BuzzPrint can't find FFmpeg, it asks before downloading it from gyan.dev.
+- BuzzPrint draws the animated companion locally. Boberto Studio uses Microsoft Edge WebView2. BuzzPrint may also use it briefly to import Boberto appearance changes made in an older version. Microsoft's privacy statement applies to WebView2.
+- The AI reporting button opens a GitHub issue template in your browser. It sends no capture or generated text. You choose what to include and whether to submit it.
 
 **Children**
 
@@ -42,13 +42,15 @@ Questions about this policy: open an issue at https://github.com/ChristianBuzzet
 
 # Política de privacidad de BuzzPrint
 
-*Última actualización: 16 de noviembre de 2026*
+*Última actualización: 24 de noviembre de 2026*
 
-BuzzPrint es una app de capturas y grabación de pantalla para Windows. Funciona completamente en tu PC.
+BuzzPrint es una app de capturas y grabación de pantalla para Windows. La captura, la grabación, la edición y la exportación se hacen en tu PC.
 
-- No recopila, envía ni vende datos personales. No tiene cuentas, analíticas, telemetría, publicidad ni seguimiento.
+- El desarrollador no recopila ni vende datos personales. La app no tiene cuentas, analíticas, telemetría, publicidad ni seguimiento.
 - Tus capturas, grabaciones, notas y documentos exportados quedan en tu PC salvo que vos los compartas o los mandes al servicio de IA que configuraste.
 - Al grabar, captura el área que elegís y, si los activás, el audio del sistema y el micrófono. Windows pide permiso para el micrófono y lo podés quitar en Configuración → Privacidad y seguridad → Micrófono.
 - IA (opcional, apagada de fábrica): solo funciona si la activás y cargás tu propia API key del proveedor que elijas. Se envía solo lo que pedís (las capturas elegidas y el texto que escribas), directo desde tu PC a ese proveedor, y BuzzPrint te lo muestra antes de enviar; el pie automático, si lo activás, envía cada captura nueva. BuzzPrint no tiene servidores propios; a esos datos se les aplica la política del proveedor. Las API keys quedan en tu PC, cifradas con tu usuario de Windows. El OCR usa Windows y no sale de tu PC.
-- Fuera del proveedor de IA que configures, la versión de Microsoft Store no hace conexiones de red propias. La versión de GitHub solo se conecta si aceptás descargar un componente faltante (FFmpeg desde gyan.dev o WebView2 desde Microsoft).
+- El paquete de Microsoft Store incluye FFmpeg. Si BuzzPrint no encuentra FFmpeg, te pide permiso antes de descargarlo desde gyan.dev.
+- BuzzPrint dibuja al compañero animado en tu PC. Boberto Studio usa Microsoft Edge WebView2. BuzzPrint también puede usarlo brevemente para importar cambios de apariencia hechos en una versión anterior. A WebView2 se le aplica la declaración de privacidad de Microsoft.
+- El botón para reportar contenido de IA abre una plantilla de GitHub en el navegador. No envía capturas ni texto generado. Vos elegís qué incluir y si querés enviarlo.
 - Consultas: https://github.com/ChristianBuzzetti/BuzzPrint/issues

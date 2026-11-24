@@ -1,0 +1,29 @@
+// Recursos incrustados en buzzprint.exe
+1 ICON "resources/buzzprint.ico"
+1 24 "resources/buzzprint.manifest"
+
+1 VERSIONINFO
+FILEVERSION BUZZPRINT_VERSION_NUMBERS
+PRODUCTVERSION BUZZPRINT_VERSION_NUMBERS
+FILEOS 0x40004
+FILETYPE 0x1
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "CompanyName", "Christian Buzzetti"
+      VALUE "FileDescription", "BuzzPrint"
+      VALUE "FileVersion", BUZZPRINT_VERSION_TEXT
+      VALUE "InternalName", "buzzprint"
+      VALUE "LegalCopyright", "MIT (c) Christian Buzzetti"
+      VALUE "OriginalFilename", "buzzprint.exe"
+      VALUE "ProductName", "BuzzPrint"
+      VALUE "ProductVersion", BUZZPRINT_VERSION_TEXT
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1200
+  END
+END
